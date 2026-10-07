@@ -45,7 +45,7 @@ Monolito modular + hexagonal por módulo (ADR-001).
 ## Regras de negócio essenciais
 
 - Tipos de lançamento: receita, despesa, transferência (duas pernas, soma zero). Aporte, reserva e pagamento de fatura são transferências.
-- Cartão (Unicred, fecha dia 23, vence dia 30; editável com vigência em `account_terms`): a despesa entra no orçamento do **mês de vencimento da fatura**. Compra antes do fechamento vai para a fatura do mês; a partir do fechamento, para a seguinte. Cada parcela entra na fatura em que cai.
+- Cartão é aba à parte, como na planilha: a compra vive na fatura, e o dinheiro só aparece no débito quando a fatura é paga. O campo `account_terms.cycle_start_day` é o **dia em que a fatura nova começa**, não o número que o banco anuncia como fechamento (Unicred: ciclo 04→03, vence 11 → cadastra 4 e 11. Nubank: ciclo 28→27, vence 5 → cadastra 28 e 5). A despesa entra no orçamento do **mês de vencimento da fatura**; cada parcela entra na fatura em que cai; pagamento de fatura não tem `invoice_month` (ADR-007). Editável com vigência em `account_terms`.
 - Cofrinhos = contas `goal`. Aporte conta como guardado no mês. Resgate tem finalidade: usado no objetivo, empréstimo (fica "a devolver") ou retirada definitiva. Aporte só abate dívida quando marcado como devolução (RF18).
 - Valores a receber = contas `receivable` por pessoa (`counterparties`). Pagar por alguém é transferência, não gasto (RF17).
 - Bancos: PicPay (extrato PDF, conta do dia a dia, MVP), Inter (OFX, só investimentos, Fase 2), Unicred (cartão, entrada manual). Nubank fora do escopo.
