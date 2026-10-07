@@ -1,16 +1,42 @@
 #!/usr/bin/env bash
-# Escreve docs/schema.sql a partir do Postgres local do docker-compose.
-# Usa o pg_dump de dentro do container: nada precisa estar instalado no host.
+# Escreve docs/schema.sql a partir do Postgres de desenvolvimento.
+#
+# Funciona em dois ambientes, sem exigir postgresql-client instalado em nenhum:
+#
+#   - na máquina de desenvolvimento, usa o pg_dump de dentro do container do
+#     docker-compose;
+#   - no CI, onde o Postgres é um service container e não há compose, roda a
+#     mesma imagem como cliente na rede do host.
+#
+# Usar sempre a imagem postgres:18-alpine nos dois casos evita a divergência
+# clássica de um pg_dump mais antigo que o servidor.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [ -z "$(docker compose ps --status running --quiet db 2>/dev/null)" ]; then
-    echo "O serviço 'db' não está rodando. Use: docker compose up -d" >&2
+IMAGEM_PG="postgres:18-alpine"
+PGHOST="${PGHOST:-localhost}"
+PGPORT="${PGPORT:-5433}"
+PGUSER="${PGUSER:-owner}"
+PGPASSWORD="${PGPASSWORD:-dev}"
+PGDATABASE="${PGDATABASE:-financeiro}"
+
+if ! command -v docker >/dev/null 2>&1; then
+    echo "docker não encontrado: ele é necessário para gerar o schema." >&2
     exit 1
 fi
 
-mkdir -p docs
+executa_pg_dump() {
+    if [ -n "$(docker compose ps --status running --quiet db 2>/dev/null)" ]; then
+        docker compose exec -T db pg_dump --username "$PGUSER" --dbname "$PGDATABASE" "$@"
+    else
+        docker run --rm --network host -e PGPASSWORD="$PGPASSWORD" "$IMAGEM_PG" \
+            pg_dump \
+            --host "$PGHOST" --port "$PGPORT" \
+            --username "$PGUSER" --dbname "$PGDATABASE" "$@"
+    fi
+}
+
 {
     echo "-- Gerado por scripts/dump_schema.sh. Não edite à mão."
     echo "-- Reflete as migrations aplicadas no Postgres local."
@@ -18,9 +44,7 @@ mkdir -p docs
     # Sem --no-privileges de propósito: os GRANTs fazem parte do modelo de
     # segurança (ADR-004) e devem aparecer junto das policies.
     # O yoyo cria _yoyo_log, _yoyo_migration, _yoyo_version e yoyo_lock.
-    docker compose exec -T db pg_dump \
-        --username owner \
-        --dbname financeiro \
+    executa_pg_dump \
         --schema-only \
         --no-owner \
         --exclude-table '_yoyo_*' \
