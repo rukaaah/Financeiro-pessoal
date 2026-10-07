@@ -120,18 +120,31 @@ dois fins: avisar de queda e reduzir a hibernação do container (ADR-002).
 
 ## Checklist
 
-- [ ] OAuth client criado, com os dois redirect URIs
-- [ ] App publicado, com Python 3.12
-- [ ] Secrets do app preenchidos
-- [ ] Senha do papel `app` definida no Neon
-- [ ] Seu e-mail em `app_users`
-- [ ] Usuário demo criado (`uv run python scripts/seed_demo.py` contra produção)
-- [ ] `DATABASE_URL_OWNER` nos secrets do GitHub Actions
-- [ ] Monitor do UptimeRobot ativo
+Estado em 2026-10-07, verificado consultando o Neon e o GitHub — não por memória:
+
+- [x] App publicado — confirmado por ele ter chegado a erros de aplicação em produção
+- [x] Secrets do banco preenchidos — a conexão funciona (o app chegou a consultar `app_users`)
+- [x] Senha do papel `app` definida no Neon — o app autentica como `app`
+- [x] Migrations 001 a 004 aplicadas em `production` — conferido em `_yoyo_migration`
+- [x] Seu e-mail em `app_users` — 1 usuário dono ativo
+- [x] Usuário demo criado — 1 demo ativo, com 38 lançamentos
+- [x] `DATABASE_URL_OWNER` nos secrets do GitHub Actions — e o workflow de reset já rodou com sucesso
+- [ ] **OAuth client com os dois redirect URIs** — ainda não comprovado. O
+      `StreamlitMissingAuthlibError` acontecia *antes* do redirecionamento, então
+      o fluxo OIDC nunca chegou a ser exercitado. Com a Authlib instalada (PR #13),
+      o próximo login é o primeiro teste real disso.
+- [ ] **Monitor do UptimeRobot ativo** — depende da URL do app
+
+Os papéis `app` e `jobs` existem em produção, ambos sem `BYPASSRLS`, o que a
+guarda da migration 001 confirma a cada apply.
 
 ## O que a T9 verifica depois disso
 
-- quanto tempo o Neon leva para acordar, somado ao do Community Cloud;
+Ver [`validacoes.md`](validacoes.md), onde o primeiro item já tem resposta: o
+Neon acorda em ~0,4s, dez vezes abaixo do limite. Falta:
+
+- quanto tempo o **container do Community Cloud** leva para acordar — é ele que
+  domina a primeira visita, não o banco;
 - se o ping do UptimeRobot mantém o app acordado;
 - se uma conta Google fora da allowlist realmente cai no demo — o teste mais
   importante, porque falhar nele significa expor dado real.

@@ -13,7 +13,9 @@ O que podia ser automatizado já está na suíte — ver a última seção.
 container do Community Cloud também (ADR-002). As duas latências se somam na
 primeira visita depois de um período parado.
 
-**Como medir.** Com o endpoint do branch `dev` já em `idle` no painel do Neon:
+**Como medir.** O jeito mais direto é ler as operações do projeto no Neon, que
+já traz a duração de cada `start_compute` — ver o resultado abaixo. Para medir
+pelo lado do cliente, com o endpoint do branch `dev` já em `idle`:
 
 ```bash
 export DATABASE_URL='<conexão do branch dev>'
@@ -27,15 +29,43 @@ não é um cold start.
 **Critério.** Acima de ~5s, a primeira visita fica ruim o suficiente para o
 ping do UptimeRobot deixar de ser conveniência e passar a ser necessário.
 
-**Registre aqui:**
+### Medido: o Neon acorda em ~0,4s
 
-| Data | Cold start do Neon | Cold start do app | Soma |
-|---|---|---|---|
-| | | | |
+Não foi preciso cronometrar à mão. O Neon registra cada `start_compute` nas
+operações do projeto, com a duração — e o branch de produção já hibernou e
+acordou várias vezes sozinho:
 
-Para o lado do app, cronometre o carregamento de
-`https://<seu-app>.streamlit.app` com o container hibernado — o painel do
-Community Cloud mostra quando ele dormiu.
+| Branch | Amostras | Mediana | Mínimo | Máximo |
+|---|---|---|---|---|
+| `production` | 9 | **396 ms** | 365 ms | 506 ms |
+| `dev` | 3 | 424 ms | 387 ms | 459 ms |
+
+O provisionamento inicial do projeto levou 3204 ms, mas isso acontece uma única
+vez e não é cold start.
+
+**Conclusão: o Neon está dez vezes abaixo do limite, e não é ele o problema.**
+O ADR-002 tratava as duas hibernações como comparáveis; não são. Quem dominar a
+primeira visita é o container do Community Cloud, e é para ele que o ping do
+UptimeRobot faz diferença.
+
+Isso também significa que o `scripts/medir_cold_start.py` é mais útil para
+confirmar uma suspeita futura — se o plano mudar, se a região mudar — do que
+para este primeiro número.
+
+**Registre aqui o lado do app:**
+
+| Data | Cold start do app | Soma com o Neon (~0,4s) |
+|---|---|---|
+| | | |
+
+Cronometre o carregamento de `https://<seu-app>.streamlit.app` com o container
+hibernado — o painel do Community Cloud mostra quando ele dormiu. Uma forma
+simples, de fora:
+
+```bash
+curl -o /dev/null -s -w 'tempo total: %{time_total}s\n' \
+     https://<seu-app>.streamlit.app/_stcore/health
+```
 
 ---
 
