@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Um push novo na mesma branch cancela a execução anterior: não há motivo para
+# gastar minutos revisando um commit que já foi substituído.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1" # falha se o uv.lock estiver desatualizado em relação ao pyproject
+
+jobs:
+  qualidade:
+    name: Lint, tipos e fronteiras
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync
+
+      - name: Formatação (ruff)
+        run: uv run ruff format --check .
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Tipos (mypy strict)
+        run: uv run mypy
+
+      - name: Fronteiras da arquitetura (import-linter)
+        run: uv run lint-imports
+
+  testes:
+    name: Testes, migrations e isolamento
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Mesma major e mesmo locale do docker-compose.yml e do Neon: um teste
+        # que depende de ordenação não pode passar aqui e falhar lá.
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: owner
+          POSTGRES_PASSWORD: dev
+          POSTGRES_DB: financeiro
+          POSTGRES_INITDB_ARGS: >-
+            --encoding=UTF8
+            --locale-provider=builtin
+            --builtin-locale=C.UTF-8
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owner -d financeiro"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    env:
+      # O conftest dos testes aceita este scheme e remove o `+psycopg`.
+      DATABASE_URL: postgresql+psycopg://owner:dev@localhost:5432/financeiro
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: owner
+      PGPASSWORD: dev
+      PGDATABASE: financeiro
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync
+
+      - name: Aplicar migrations
+        run: uv run yoyo apply --database "$DATABASE_URL"
+
+      - name: Reverter e reaplicar
+        # Rollback quebrado só aparece quando alguém precisa dele, no pior
+        # momento possível. Aqui ele é exercitado em todo PR.
+        run: |
+          uv run yoyo rollback --database "$DATABASE_URL" --all --batch
+          uv run yoyo apply --database "$DATABASE_URL"
+
+      - name: Testes unitários
+        run: uv run pytest -m "not integration" -q
+
+      - name: Testes de integração
+        run: uv run pytest -m integration -q
+
+      - name: docs/schema.sql está atualizado?
+        # O dump é determinístico (ver scripts/dump_schema.sh), então qualquer
+        # diferença aqui significa migration aplicada sem regenerar o arquivo.
+        run: |
+          ./scripts/dump_schema.sh
+          if ! git diff --quiet -- docs/schema.sql; then
+            echo "::error file=docs/schema.sql::Desatualizado. Rode ./scripts/dump_schema.sh e commite."
+            git diff -- docs/schema.sql
+            exit 1
+          fi
+          echo "docs/schema.sql confere com as migrations."

@@ -34,25 +34,31 @@ repos:
         language: system
         pass_filenames: true
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.6
-    hooks:
-      - id: ruff-format
-      - id: ruff
-        args: [--fix]
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1
-    hooks:
-      - id: mypy
-        pass_filenames: false
-        args: [--config-file=pyproject.toml]
-        additional_dependencies: [psycopg, pytest]
-
+  # ruff, mypy e import-linter rodam via `uv run`, e não pelos repositórios
+  # de hooks do pre-commit, para que haja uma única fonte de versão: o
+  # uv.lock. Com `rev:` fixado à parte, a versão do hook descola da versão do
+  # projeto e os dois passam a formatar diferente — foi o que aconteceu aqui,
+  # com ruff v0.8.6 no hook contra 0.16.x no lock.
   - repo: local
     hooks:
+      - id: ruff-format
+        name: formatação (ruff, via uv)
+        entry: uv run ruff format
+        language: system
+        types: [python]
+      - id: ruff
+        name: lint (ruff, via uv)
+        entry: uv run ruff check --fix --force-exclude
+        language: system
+        types: [python]
+      - id: mypy
+        name: tipos (mypy strict, via uv)
+        entry: uv run mypy
+        language: system
+        pass_filenames: false
+        types: [python]
       - id: import-linter
-        name: fronteiras da arquitetura (import-linter)
+        name: fronteiras da arquitetura (import-linter, via uv)
         entry: uv run lint-imports
         language: system
         pass_filenames: false
