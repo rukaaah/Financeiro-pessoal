@@ -115,13 +115,13 @@ CREATE FUNCTION public.invoice_month_for(p_account_id uuid, p_occurred_on date, 
     LANGUAGE plpgsql STABLE
     AS $$
 DECLARE
-    v_inicio    smallint;
-    v_due       smallint;
-    v_mes_fecha date;
-    v_mes_vence date;
+    v_fechamento smallint;
+    v_due        smallint;
+    v_mes_fecha  date;
+    v_mes_vence  date;
 BEGIN
-    SELECT cycle_start_day, due_day
-      INTO v_inicio, v_due
+    SELECT closing_day, due_day
+      INTO v_fechamento, v_due
       FROM account_terms
      WHERE account_id = p_account_id
        AND vigencia @> p_occurred_on;
@@ -133,20 +133,19 @@ BEGIN
             USING ERRCODE = '23F01';
     END IF;
 
-    -- Em que mês termina o ciclo que contém esta compra?
-    -- O ciclo começa no dia cycle_start_day e termina no dia anterior, do mês
-    -- seguinte. Logo, compra a partir do dia de início pertence ao ciclo que
-    -- termina no mês seguinte; antes dele, ao ciclo que termina neste mês.
+    -- Em que mês fecha a fatura desta compra? Gasto até o dia do fechamento,
+    -- **inclusive**, entra na que fecha neste mês; depois dele, na do mês
+    -- seguinte. É a diferença em relação à migration 003, que usava >=.
     v_mes_fecha := date_trunc('month', p_occurred_on)::date;
-    IF EXTRACT(DAY FROM p_occurred_on) >= v_inicio THEN
+    IF EXTRACT(DAY FROM p_occurred_on) > v_fechamento THEN
         v_mes_fecha := (v_mes_fecha + INTERVAL '1 month')::date;
     END IF;
 
-    -- E quando essa fatura vence? No mesmo mês em que o ciclo terminou, se o
-    -- dia de vencimento vem depois do início do ciclo (Unicred: 11 >= 4). No
-    -- mês seguinte, se vier antes (Nubank: 5 < 28).
+    -- E quando essa fatura vence? No mesmo mês em que fechou, se o vencimento
+    -- vem depois do fechamento (Unicred: 11 > 4). No mês seguinte, se vier
+    -- antes (Nubank: 5 < 27) — é por isso que o vencimento dele "pula" de mês.
     v_mes_vence := v_mes_fecha;
-    IF v_due < v_inicio THEN
+    IF v_due <= v_fechamento THEN
         v_mes_vence := (v_mes_vence + INTERVAL '1 month')::date;
     END IF;
 
@@ -161,7 +160,7 @@ $$;
 -- Name: FUNCTION invoice_month_for(p_account_id uuid, p_occurred_on date, p_installment_no smallint); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.invoice_month_for(p_account_id uuid, p_occurred_on date, p_installment_no smallint) IS 'Mês de vencimento da fatura em que a compra cai (ADR-005, refinado pelo ADR-007). Levanta 23F01 se não houver account_terms vigente na data.';
+COMMENT ON FUNCTION public.invoice_month_for(p_account_id uuid, p_occurred_on date, p_installment_no smallint) IS 'Mês de vencimento da fatura em que a compra cai (ADR-005, com o fechamento inclusivo do ADR-008). Levanta 23F01 sem account_terms vigente.';
 
 
 --
@@ -307,27 +306,27 @@ CREATE TABLE public.account_terms (
     user_id uuid NOT NULL,
     account_id uuid NOT NULL,
     vigencia daterange NOT NULL,
-    cycle_start_day smallint NOT NULL,
+    closing_day smallint NOT NULL,
     due_day smallint NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT account_terms_cycle_start_day_valido CHECK (((cycle_start_day >= 1) AND (cycle_start_day <= 31))),
+    CONSTRAINT account_terms_closing_day_valido CHECK (((closing_day >= 1) AND (closing_day <= 31))),
     CONSTRAINT account_terms_due_day_valido CHECK (((due_day >= 1) AND (due_day <= 31))),
     CONSTRAINT account_terms_vigencia_nao_vazia CHECK ((NOT isempty(vigencia)))
 );
 
 
 --
--- Name: COLUMN account_terms.cycle_start_day; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN account_terms.closing_day; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.account_terms.cycle_start_day IS 'Dia em que uma fatura nova começa a acumular. NÃO é o número que o banco imprime como "fechamento": no Unicred (ciclo 04→03) cadastra-se 4, e no Nubank (ciclo 28→27, anunciado como "fecha 27") cadastra-se 28. Ver ADR-007.';
+COMMENT ON COLUMN public.account_terms.closing_day IS 'Dia do fechamento, exatamente como o app do banco informa. É inclusivo: a compra feita neste dia ainda entra na fatura que fecha hoje. Unicred 4, Nubank 27. Ver ADR-008.';
 
 
 --
 -- Name: COLUMN account_terms.due_day; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.account_terms.due_day IS 'Dia do vencimento. Se for menor que cycle_start_day, a fatura vence no mês seguinte ao do fim do ciclo (caso Nubank: fecha 27/10, vence 05/11).';
+COMMENT ON COLUMN public.account_terms.due_day IS 'Dia do vencimento, como o app do banco informa. Costuma ser de 7 a 10 dias após o fechamento; quando é menor que closing_day, a fatura vence no mês seguinte ao do fechamento (Nubank: fecha 27/09, vence 05/10).';
 
 
 --

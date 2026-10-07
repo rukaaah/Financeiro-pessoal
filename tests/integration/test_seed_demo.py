@@ -129,7 +129,7 @@ def test_a_virada_do_ciclo_aparece_nos_dados(conn: Conexao, demo: uuid.UUID) -> 
     with conn.cursor() as cur:
         cur.execute(
             "SELECT occurred_on, invoice_month FROM transactions"
-            " WHERE user_id = %s AND description LIKE '%%dia do ciclo'"
+            " WHERE user_id = %s AND description LIKE 'Compra no dia%%'"
             " ORDER BY occurred_on",
             (demo,),
         )
@@ -146,7 +146,7 @@ def test_a_virada_do_ciclo_aparece_nos_dados(conn: Conexao, demo: uuid.UUID) -> 
             )
             break
     else:
-        pytest.fail("o demo não tem o par de compras que atravessa a virada do ciclo")
+        pytest.fail("o demo não tem o par de compras que atravessa a virada da fatura")
 
 
 def test_ha_saldo_a_receber_em_aberto(conn: Conexao, demo: uuid.UUID) -> None:

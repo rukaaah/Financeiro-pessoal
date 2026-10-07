@@ -1,9 +1,9 @@
-"""O ciclo da fatura, fixado pelos dois cartões reais (ADR-007).
+"""O ciclo da fatura, fixado pelos dois cartões reais (ADR-008).
 
-Estes testes existem porque a palavra "fechamento" se mostrou ambígua: o dono
-descreveu os próprios cartões por duas convenções diferentes na mesma frase.
-Em vez de depender do nome da coluna, aqui estão as datas concretas que ele
-informou, e elas passam a ser o contrato.
+Os números são os que o app do banco mostra, sem conversão, e o dia do
+fechamento é inclusivo: a compra feita nele ainda entra na fatura que fecha
+naquele dia. As datas concretas abaixo são o contrato — não o nome da coluna,
+que já mudou duas vezes.
 """
 
 import uuid
@@ -29,16 +29,16 @@ def _usuario(cur: Cursor) -> uuid.UUID:
     return user_id
 
 
-def _cartao(cur: Cursor, user_id: uuid.UUID, nome: str, inicio: int, vence: int) -> uuid.UUID:
+def _cartao(cur: Cursor, user_id: uuid.UUID, nome: str, fecha: int, vence: int) -> uuid.UUID:
     conta = uuid.uuid4()
     cur.execute(
         "INSERT INTO accounts (id, user_id, name, kind) VALUES (%s, %s, %s, 'credit_card')",
         (conta, user_id, nome),
     )
     cur.execute(
-        "INSERT INTO account_terms (user_id, account_id, vigencia, cycle_start_day, due_day)"
+        "INSERT INTO account_terms (user_id, account_id, vigencia, closing_day, due_day)"
         " VALUES (%s, %s, '[2020-01-01,)', %s, %s)",
-        (user_id, conta, inicio, vence),
+        (user_id, conta, fecha, vence),
     )
     return conta
 
@@ -52,58 +52,58 @@ def _fatura_de(cur: Cursor, conta: uuid.UUID, compra: date) -> date:
     return valor
 
 
-# O Unicred é descrito como "fecha dia 04, vence dia 11", e o ciclo que o dono
-# relata é 04/09 → 03/10, pago em 11/10. Logo, cycle_start_day = 4.
+# Unicred: fecha 4, vence 11, os números do app do banco. Como 11 > 4, a
+# fatura vence no mesmo mês em que fecha.
 UNICRED = [
-    (date(2026, 9, 3), date(2026, 9, 1)),  # último dia do ciclo anterior
-    (date(2026, 9, 4), date(2026, 10, 1)),  # "gasto do dia 04/09 ... pago 11/10"
-    (date(2026, 9, 15), date(2026, 10, 1)),
-    (date(2026, 10, 3), date(2026, 10, 1)),  # "... até o dia 03/10"
-    (date(2026, 10, 4), date(2026, 11, 1)),  # "gasto 04/10 a 03/11, pago 11/11"
+    (date(2026, 9, 3), date(2026, 9, 1)),
+    (date(2026, 9, 4), date(2026, 9, 1)),  # o dia do fechamento é inclusivo
+    (date(2026, 9, 5), date(2026, 10, 1)),  # um dia depois, outra fatura
+    (date(2026, 10, 4), date(2026, 10, 1)),
+    (date(2026, 10, 5), date(2026, 11, 1)),
+    (date(2026, 12, 5), date(2027, 1, 1)),  # vira o ano
 ]
 
-# O Nubank é descrito como "fecha dia 27, vence dia 5", e o ciclo relatado é
-# 28/09 → 27/10, pago em 05/11. Logo, cycle_start_day = 28 — e **não** 27, que
-# é o número que o banco anuncia. É o custo consciente do ADR-007.
+# Nubank: fecha 27, vence 5. Como 5 < 27, a fatura vence no mês seguinte ao do
+# fechamento — é por isso que o vencimento dele "pula" de mês.
 NUBANK = [
+    (date(2026, 9, 26), date(2026, 10, 1)),
     (date(2026, 9, 27), date(2026, 10, 1)),  # "o que gasto até 27/09, pago 5/10"
     (date(2026, 9, 28), date(2026, 11, 1)),  # "após o dia 28/09 ... pago 5/11"
-    (date(2026, 10, 15), date(2026, 11, 1)),
     (date(2026, 10, 27), date(2026, 11, 1)),  # "... até o dia 27/10"
     (date(2026, 10, 28), date(2026, 12, 1)),
 ]
 
 
 @pytest.mark.parametrize(("compra", "fatura"), UNICRED)
-def test_unicred_ciclo_04_vence_11(conn: Conexao, compra: date, fatura: date) -> None:
+def test_unicred_fecha_04_vence_11(conn: Conexao, compra: date, fatura: date) -> None:
     with conn.cursor() as cur:
         user_id = _usuario(cur)
-        conta = _cartao(cur, user_id, "Unicred", inicio=4, vence=11)
+        conta = _cartao(cur, user_id, "Unicred", fecha=4, vence=11)
         assert _fatura_de(cur, conta, compra) == fatura
 
 
 @pytest.mark.parametrize(("compra", "fatura"), NUBANK)
-def test_nubank_ciclo_28_vence_05_do_mes_seguinte(
+def test_nubank_fecha_27_vence_05_do_mes_seguinte(
     conn: Conexao, compra: date, fatura: date
 ) -> None:
-    """Vencimento antes do início do ciclo joga a fatura para o mês seguinte."""
+    """Vencimento anterior ao fechamento joga a fatura para o mês seguinte."""
     with conn.cursor() as cur:
         user_id = _usuario(cur)
-        conta = _cartao(cur, user_id, "Nubank", inicio=28, vence=5)
+        conta = _cartao(cur, user_id, "Nubank", fecha=27, vence=5)
         assert _fatura_de(cur, conta, compra) == fatura
 
 
-def test_vencimento_no_mesmo_dia_do_inicio_do_ciclo(conn: Conexao) -> None:
-    """Caso de borda: `due_day == cycle_start_day` vence no mês em que o ciclo fecha.
+def test_vencimento_no_mesmo_dia_do_fechamento(conn: Conexao) -> None:
+    """Caso de borda: `due_day == closing_day` vence no mês seguinte.
 
-    O ciclo que começa em 10/03 termina em 09/04, então o vencimento no dia 10
-    cai logo depois, em 10/04 — e não um mês adiante.
+    O vencimento vem sempre depois do fechamento — de 7 a 10 dias, na prática —
+    então um vencimento no mesmo número de dia só pode ser o do mês seguinte.
     """
     with conn.cursor() as cur:
         user_id = _usuario(cur)
-        conta = _cartao(cur, user_id, "Borda", inicio=10, vence=10)
+        conta = _cartao(cur, user_id, "Borda", fecha=10, vence=10)
         assert _fatura_de(cur, conta, date(2026, 3, 10)) == date(2026, 4, 1)
-        assert _fatura_de(cur, conta, date(2026, 3, 9)) == date(2026, 3, 1)
+        assert _fatura_de(cur, conta, date(2026, 3, 11)) == date(2026, 5, 1)
 
 
 # ------------------------------------------- pagamento não é compra
@@ -113,7 +113,7 @@ def test_vencimento_no_mesmo_dia_do_inicio_do_ciclo(conn: Conexao) -> None:
 def cartao_e_conta(conn: Conexao) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
     with conn.cursor() as cur:
         user_id = _usuario(cur)
-        cartao = _cartao(cur, user_id, "Unicred", inicio=4, vence=11)
+        cartao = _cartao(cur, user_id, "Unicred", fecha=4, vence=11)
         corrente = uuid.uuid4()
         cur.execute(
             "INSERT INTO accounts (id, user_id, name, kind) VALUES (%s, %s, 'PicPay', 'checking')",
