@@ -58,8 +58,8 @@ def cenario(conn: Conexao) -> Cenario:
             ],
         )
         cur.execute(
-            "INSERT INTO account_terms (user_id, account_id, vigencia, closing_day, due_day)"
-            " VALUES (%s, %s, %s, 23, 30)",
+            "INSERT INTO account_terms (user_id, account_id, vigencia, cycle_start_day, due_day)"
+            " VALUES (%s, %s, %s, 4, 11)",
             (usuario, ids["cartao"], "[2020-01-01,)"),
         )
         cur.execute(
@@ -106,20 +106,26 @@ def _gasto_no_cartao(
 @pytest.mark.parametrize(
     ("compra", "fatura"),
     [
-        (date(2026, 3, 1), date(2026, 3, 1)),  # começo do ciclo
-        (date(2026, 3, 22), date(2026, 3, 1)),  # véspera do fechamento
-        (date(2026, 3, 23), date(2026, 4, 1)),  # o dia do fechamento já vira
-        (date(2026, 3, 24), date(2026, 4, 1)),
+        # Ciclo do Unicred: começa dia 4, termina dia 3 do mês seguinte,
+        # vence dia 11 do mês em que termina (ADR-007).
+        (date(2026, 3, 1), date(2026, 3, 1)),
+        (date(2026, 3, 3), date(2026, 3, 1)),  # último dia do ciclo
+        (date(2026, 3, 4), date(2026, 4, 1)),  # primeiro dia do ciclo novo
+        (date(2026, 3, 22), date(2026, 4, 1)),
+        (date(2026, 4, 3), date(2026, 4, 1)),  # fecha o mesmo ciclo do dia 4/3
         (date(2026, 12, 28), date(2027, 1, 1)),  # vira o ano
     ],
 )
-def test_mes_da_fatura_segue_o_fechamento(
+def test_mes_da_fatura_segue_o_inicio_do_ciclo(
     conn: Conexao, cenario: Cenario, compra: date, fatura: date
 ) -> None:
-    """Antes do fechamento vai para a fatura do mês; a partir dele, para a seguinte."""
+    """Antes do início do ciclo vai para a fatura deste mês; a partir dele, a seguinte."""
     with conn.cursor() as cur:
         _gasto_no_cartao(cur, cenario, compra)
-        cur.execute("SELECT invoice_month FROM transactions WHERE occurred_on = %s", (compra,))
+        cur.execute(
+            "SELECT invoice_month FROM transactions WHERE user_id = %s AND occurred_on = %s",
+            (cenario["usuario"], compra),
+        )
         assert cur.fetchone() == (fatura,)
 
 
@@ -129,12 +135,13 @@ def test_cada_parcela_cai_na_fatura_em_que_vence(conn: Conexao, cenario: Cenario
             _gasto_no_cartao(cur, cenario, date(2026, 3, 10), parcela=(numero, 3))
         cur.execute(
             "SELECT installment_no, invoice_month FROM transactions"
-            " WHERE installment_no IS NOT NULL ORDER BY installment_no"
+            " WHERE user_id = %s AND installment_no IS NOT NULL ORDER BY installment_no",
+            (cenario["usuario"],),
         )
         assert cur.fetchall() == [
-            (1, date(2026, 3, 1)),
-            (2, date(2026, 4, 1)),
-            (3, date(2026, 5, 1)),
+            (1, date(2026, 4, 1)),
+            (2, date(2026, 5, 1)),
+            (3, date(2026, 6, 1)),
         ]
 
 
@@ -187,7 +194,7 @@ def test_vigencias_do_mesmo_cartao_nao_se_sobrepoem(conn: Conexao, cenario: Cena
     with conn.cursor() as cur, pytest.raises(psycopg.errors.ExclusionViolation):
         cur.execute(
             "INSERT INTO account_terms"
-            " (user_id, account_id, vigencia, closing_day, due_day)"
+            " (user_id, account_id, vigencia, cycle_start_day, due_day)"
             " VALUES (%s, %s, '[2025-01-01,2027-01-01)', 10, 20)",
             (cenario["usuario"], cenario["cartao"]),
         )
@@ -203,16 +210,20 @@ def test_mudanca_de_vigencia_preserva_o_calculo_historico(conn: Conexao, cenario
         )
         cur.execute(
             "INSERT INTO account_terms"
-            " (user_id, account_id, vigencia, closing_day, due_day)"
-            " VALUES (%s, %s, '[2026-06-01,)', 5, 15)",
+            " (user_id, account_id, vigencia, cycle_start_day, due_day)"
+            " VALUES (%s, %s, '[2026-06-01,)', 20, 27)",
             (cenario["usuario"], cenario["cartao"]),
         )
-        _gasto_no_cartao(cur, cenario, date(2026, 3, 10))  # regra antiga: fecha 23
-        _gasto_no_cartao(cur, cenario, date(2026, 6, 10))  # regra nova: fecha 5
-        cur.execute("SELECT occurred_on, invoice_month FROM transactions ORDER BY occurred_on")
+        _gasto_no_cartao(cur, cenario, date(2026, 3, 10))  # vigência antiga: ciclo 4
+        _gasto_no_cartao(cur, cenario, date(2026, 6, 10))  # vigência nova: ciclo 20
+        cur.execute(
+            "SELECT occurred_on, invoice_month FROM transactions"
+            " WHERE user_id = %s ORDER BY occurred_on",
+            (cenario["usuario"],),
+        )
         assert cur.fetchall() == [
-            (date(2026, 3, 10), date(2026, 3, 1)),  # dia 10 < 23: fatura de março
-            (date(2026, 6, 10), date(2026, 7, 1)),  # dia 10 >= 5: fatura de julho
+            (date(2026, 3, 10), date(2026, 4, 1)),  # dia 10 >= 4: fatura de abril
+            (date(2026, 6, 10), date(2026, 6, 1)),  # dia 10 < 20: fatura de junho
         ]
 
 

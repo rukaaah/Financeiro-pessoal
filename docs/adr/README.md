@@ -17,3 +17,4 @@ substitui o anterior, e o antigo passa a `Status: substituído pelo ADR-NNN`.
 | [004](004-neon-psycopg-rls.md) | Neon + psycopg 3 + RLS por `SET LOCAL` | Aceito |
 | [005](005-orcamento-pelo-mes-da-fatura.md) | Despesa de cartão entra no orçamento do mês de vencimento da fatura | Aceito |
 | [006](006-runner-de-migrations.md) | yoyo-migrations como runner de migrations | Aceito |
+| [007](007-ciclo-de-fatura-e-pagamento.md) | Ciclo da fatura pelo dia de início; pagamento não é compra | Aceito |
