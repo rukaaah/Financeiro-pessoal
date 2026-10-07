@@ -44,3 +44,43 @@ policies de RLS e constraints num arquivo só, sem `pg_dump` instalado no host:
 ```bash
 ./scripts/dump_schema.sh
 ```
+
+## Diferenças entre o Postgres local e o Neon
+
+Conferidas por consulta, não por suposição. Nenhuma delas exige migration
+diferente, mas todas mudam como se lê um erro:
+
+| | Docker local | Neon |
+|---|---|---|
+| Papel que aplica | `owner` | `neondb_owner` |
+| É superusuário? | sim | não |
+| Tem `BYPASSRLS`? | sim (por ser superusuário) | sim (atributo próprio) |
+| Pode `CREATE ROLE`? | sim | sim (`rolcreaterole`) |
+| Banco padrão | `financeiro` | `neondb` |
+
+Consequência prática: as funções `SECURITY DEFINER` (`resolve_app_user`,
+`demo_app_user`) enxergam fora da RLS nos dois ambientes, mas por motivos
+diferentes. Se um dia o papel aplicador perder `BYPASSRLS`, elas param de
+funcionar no Neon e o login quebra — por isso as migrations nunca devem ser
+aplicadas por um papel comum.
+
+Nenhum comando das migrations cita o papel aplicador pelo nome, justamente
+para que o mesmo arquivo sirva nos dois.
+
+## `SET LOCAL` não aceita parâmetro
+
+`SET LOCAL app.user_id = %s` é erro de sintaxe: o comando `SET` não aceita
+parâmetro vinculado. Interpolar o valor na string seria injeção de SQL. A forma
+correta, que a unit of work deve usar:
+
+```sql
+SELECT set_config('app.user_id', %s, true)   -- true = escopo da transação
+```
+
+## Depois de mexer em migration
+
+Regenere o schema consolidado, que vai versionado:
+
+```bash
+./scripts/dump_schema.sh && git add docs/schema.sql
+```
