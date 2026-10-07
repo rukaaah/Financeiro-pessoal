@@ -45,6 +45,11 @@ no banco (ADR-004). Visitante sem conta cai no modo demo, com dados fictícios.
 - O container hiberna quando ocioso. A primeira visita depois da hibernação é lenta,
   somada ao tempo de acordar do próprio Neon — a T9 mede esses dois tempos antes de
   considerarmos a combinação aceitável.
+
+  **Medido depois (ver [validacoes.md](../validacoes.md)):** o Neon acorda em ~0,4s,
+  mediana de 9 amostras. Esta consequência tratava as duas hibernações como
+  comparáveis, e não são: o banco é desprezível, e quem domina a primeira visita é o
+  container. O ping do UptimeRobot, portanto, serve ao app — não ao banco.
 - O `schedule` do GitHub Actions não é pontual: atrasa em horário de pico e é
   desativado automaticamente após 60 dias sem atividade no repositório. Os jobs
   precisam ser idempotentes e tolerar execução fora de hora.
