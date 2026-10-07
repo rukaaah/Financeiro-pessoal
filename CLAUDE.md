@@ -52,15 +52,28 @@ Monolito modular + hexagonal por módulo (ADR-001).
 
 ## Fase 0 — tarefas (um PR por tarefa, em ordem)
 
-- [ ] **T1** Base do repo: `pyproject.toml` (uv, 3.12), ruff, mypy, pytest, pre-commit, import-linter, README inicial, ADRs 001–005 em `docs/adr/` (monolito modular; hospedagem Community Cloud + GitHub Actions; login Google + `app_users`; Neon + psycopg + RLS por `SET LOCAL`; orçamento pelo mês da fatura). Decidir se `neon.ts`/`package.json` ficam no repo.
-- [ ] **T2** `docker-compose.yml` com Postgres; escolher runner de migrations (yoyo-migrations ou dbmate) e registrar no ADR-006; branch `dev` no Neon sem TTL.
-- [ ] **T3** Migration 001: papéis `owner`/`app`/`jobs`, `app_users` (id, email, display_name, is_demo, active), função `current_app_user()`, padrão de RLS.
-- [ ] **T4** Migration 002: accounts, account_terms, counterparties, category_groups, categories, transactions; RLS, FKs, trigger de transferência soma zero.
-- [ ] **T5** CI (GitHub Actions): lint, mypy, testes unitários e de integração com Postgres service; teste de isolamento entre 2 usuários em todas as tabelas.
-- [ ] **T6** Módulo `identity`: `st.login`, consulta a `app_users`, roteamento dono/demo, unit of work com `SET LOCAL`.
-- [ ] **T7** Demo: `scripts/seed_demo.py` (dados fictícios) + workflow noturno de reset.
-- [ ] **T8** Esqueleto do app: `st.navigation` com páginas vazias, faixa "Dados fictícios", deploy no Community Cloud, secrets de produção, redirect de produção no OAuth client.
-- [ ] **T9** Validações: tempo de acordar do Neon, ping do UptimeRobot, conta fora da allowlist caindo no demo.
+- [x] **T1** Base do repo: `pyproject.toml` (uv, 3.12), ruff, mypy, pytest, pre-commit, import-linter, README inicial, ADRs 001–005 em `docs/adr/` (monolito modular; hospedagem Community Cloud + GitHub Actions; login Google + `app_users`; Neon + psycopg + RLS por `SET LOCAL`; orçamento pelo mês da fatura). Decidir se `neon.ts`/`package.json` ficam no repo.
+- [x] **T2** `docker-compose.yml` com Postgres; escolher runner de migrations (yoyo-migrations ou dbmate) e registrar no ADR-006; branch `dev` no Neon sem TTL.
+- [x] **T3** Migration 001: papéis `owner`/`app`/`jobs`, `app_users` (id, email, display_name, is_demo, active), função `current_app_user()`, padrão de RLS.
+- [x] **T4** Migration 002: accounts, account_terms, counterparties, category_groups, categories, transactions; RLS, FKs, trigger de transferência soma zero.
+- [x] **T5** CI (GitHub Actions): lint, mypy, testes unitários e de integração com Postgres service; teste de isolamento entre 2 usuários em todas as tabelas.
+- [x] **T6** Módulo `identity`: `st.login`, consulta a `app_users`, roteamento dono/demo, unit of work com `SET LOCAL`.
+- [x] **T7** Demo: `scripts/seed_demo.py` (dados fictícios) + workflow noturno de reset.
+- [x] **T8** Esqueleto do app: `st.navigation` com páginas vazias, faixa "Dados fictícios", deploy no Community Cloud, secrets de produção, redirect de produção no OAuth client.
+- [x] **T9** Validações: tempo de acordar do Neon, ping do UptimeRobot, conta fora da allowlist caindo no demo.
+
+## Pendente de ação externa (não é código)
+
+O que falta da Fase 0 depende de painéis de terceiros, e está detalhado em
+`docs/deploy.md` (passo a passo) e `docs/validacoes.md` (o que medir depois):
+
+- OAuth client no Google Cloud, com os **dois** redirect URIs
+- publicar no Community Cloud e preencher os secrets, no formato `[auth.google]`
+- senha do papel `app` no Neon (a migration 001 o cria sem senha de propósito)
+- seu e-mail em `app_users`, senão você também cai no modo demo
+- `DATABASE_URL_OWNER` nos secrets do GitHub Actions, para o reset do demo
+- monitor do UptimeRobot
+- anotar em `docs/validacoes.md` o cold start do Neon e do app
 
 ## Convenções
 
