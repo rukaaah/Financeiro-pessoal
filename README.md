@@ -25,7 +25,8 @@ demo**, com dados fictícios e uma faixa avisando disso. O isolamento entre usu�
 | Jobs | GitHub Actions agendado |
 | Ferramentas | uv, Python 3.12, ruff, mypy, pytest, pre-commit, import-linter |
 
-As decisões e seus porquês estão em [`docs/adr/`](docs/adr/).
+As decisões e seus porquês estão em [`docs/adr/`](docs/adr/). Os passos de
+publicação, em [`docs/deploy.md`](docs/deploy.md).
 
 ## Arquitetura
 
@@ -44,6 +45,9 @@ src/financeiro/
 ├── identity/        login, allowlist, unit of work
 └── shared/          tipos e utilidades comuns
 ```
+
+A interface fica em `app/`, com uma página por arquivo em `app/paginas/` e o
+ponto de entrada em `streamlit_app.py`.
 
 Cada módulo tem três camadas, com as dependências apontando só para dentro:
 
@@ -96,6 +100,16 @@ Testes de integração precisam do Postgres local e são marcados com `integrati
 ```bash
 uv run pytest -m integration
 ```
+
+Rodar o app:
+
+```bash
+uv run streamlit run streamlit_app.py
+```
+
+`DATABASE_URL` no ambiente tem precedência sobre os secrets do Streamlit, de
+propósito: o `.streamlit/secrets.toml` da máquina aponta para produção, e sem
+essa ordem um `streamlit run` local conectaria lá sem avisar.
 
 Dados fictícios do modo demo:
 

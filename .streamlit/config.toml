@@ -1,0 +1,12 @@
+# Configuração do app. Diferente de secrets.toml, este arquivo entra no Git:
+# não tem segredo nenhum.
+[server]
+# O app guarda dado financeiro; não há motivo para aceitar upload grande.
+maxUploadSize = 5
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#1f6f54"

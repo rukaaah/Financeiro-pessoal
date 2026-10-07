@@ -78,8 +78,8 @@ docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.12"
-# app/ e jobs/ entram nesta lista quando forem criados (T8).
-files = ["src", "tests", "scripts"]
+# jobs/ entra nesta lista quando for criado.
+files = ["src", "tests", "scripts", "app", "streamlit_app.py"]
 strict = true
 warn_unreachable = true
 disallow_any_explicit = false
@@ -116,8 +116,22 @@ exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "\\.\\.\\."]
 # Fronteiras da arquitetura (ADR-001). Rodado no CI a cada PR.
 
 [tool.importlinter]
-root_packages = ["financeiro"]
+root_packages = ["financeiro", "app"]
 include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "As páginas não conhecem banco nem adapters"
+type = "forbidden"
+# A raiz de composição (app.composicao) é a única parte da interface que pode
+# escolher implementações concretas — alguém precisa fazer isso, e é na borda.
+# As páginas, não: elas recebem a sessão pronta e chamam casos de uso.
+source_modules = ["app.paginas", "app.layout"]
+forbidden_modules = ["psycopg", "psycopg_pool", "financeiro.identity.adapters"]
+# Só imports diretos: a página chama `sessao_atual()` da raiz de composição, e
+# é inevitável que *ela* conheça psycopg. O que a regra impede é a página pular
+# a raiz e falar com o banco por conta própria.
+allow_indirect_imports = true
+unmatched_ignore_imports_alone = true
 
 [[tool.importlinter.contracts]]
 name = "Camadas dentro de cada módulo: domain <- application <- adapters"
