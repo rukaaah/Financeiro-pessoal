@@ -26,8 +26,8 @@ Use o branch **`dev`**, não `production`: medir é conectar, e conectar acorda 
 compute. O script avisa se o compute já estava acordado, caso em que o número
 não é um cold start.
 
-**Critério.** Acima de ~5s, a primeira visita fica ruim o suficiente para o
-ping do UptimeRobot deixar de ser conveniência e passar a ser necessário.
+**Critério.** Acima de ~5s, a latência do banco passaria a pesar na primeira
+visita e exigiria alguma mitigação.
 
 ### Medido: o Neon acorda em ~0,4s
 
@@ -44,23 +44,17 @@ O provisionamento inicial do projeto levou 3204 ms, mas isso acontece uma única
 vez e não é cold start.
 
 **Conclusão: o Neon está dez vezes abaixo do limite, e não é ele o problema.**
-O ADR-002 tratava as duas hibernações como comparáveis; não são. Quem dominar a
-primeira visita é o container do Community Cloud, e é para ele que o ping do
-UptimeRobot faz diferença.
+O ADR-002 tratava as duas hibernações como comparáveis; não são. O que separa o
+visitante do sistema é o sono do container — e isso virou uma decisão, não uma
+medição: ver o item 2 e o ADR-009.
 
 Isso também significa que o `scripts/medir_cold_start.py` é mais útil para
 confirmar uma suspeita futura — se o plano mudar, se a região mudar — do que
 para este primeiro número.
 
-**Registre aqui o lado do app:**
-
-| Data | Cold start do app | Soma com o Neon (~0,4s) |
-|---|---|---|
-| | | |
-
-Cronometre o carregamento de `https://<seu-app>.streamlit.app` com o container
-hibernado — o painel do Community Cloud mostra quando ele dormiu. Uma forma
-simples, de fora:
+**E o lado do app?** Deixou de ser uma medição necessária. Pelo ADR-009 a
+hibernação é aceita, e o que separa o visitante do sistema é um clique, não
+segundos de espera. Se um dia quiser o número de todo modo:
 
 ```bash
 curl -o /dev/null -s -w 'tempo total: %{time_total}s\n' \
@@ -69,27 +63,26 @@ curl -o /dev/null -s -w 'tempo total: %{time_total}s\n' \
 
 ---
 
-## 2. Ping do UptimeRobot
+## 2. Hibernação do app — decidido, sem monitor
 
-**O risco.** O monitor existe para dois fins, e só um deles é óbvio: avisar de
-queda, e **manter o container acordado**. Se o intervalo for longo demais, o
-segundo não acontece.
+**Verificado: o ping não serve para isso.** O ADR-002 escolheu o UptimeRobot
+para avisar de queda e manter o container acordado. Nenhum dos dois se sustenta:
 
-**Como verificar.** Com o monitor ativo em
-`https://<seu-app>.streamlit.app/_stcore/health` a cada 5 minutos, deixe o app
-sem visita humana por algumas horas e então abra. Se carregar rápido, o ping
-está segurando; se demorar como um cold start, não está.
+| Objetivo no ADR-002 | Realidade |
+|---|---|
+| Manter o container acordado | **não funciona.** O app dorme após 12h de inatividade (era 7 dias), e o Streamlit mudou o que conta como atividade: um ping HTTP checa o backend mas não carrega a página, então não reseta o timer. |
+| Avisar de queda | fraco. Um app dormindo responde como "no ar", então erraria nos dois sentidos. |
 
-**Registre aqui:**
+Agrava: desde abril de 2025 nem um push no repositório acorda um app dormindo —
+só um visitante clicando em "Yes, get this app back up!" — e o reset noturno do
+demo escreve no banco sem visitar o app.
 
-| Data | Intervalo do monitor | Carregou rápido após horas parado? |
-|---|---|---|
-| | | |
+**Decisão (ADR-009): a hibernação é aceita e não há monitor externo.** Quem abrir
+depois de 12h parado clica uma vez para acordar; não há erro nem perda de dado. A
+alternativa — um workflow abrindo a página num navegador real a cada ~10h — fica
+registrada como saída caso passe a incomodar.
 
-Vale conferir no painel do UptimeRobot se há falhas registradas — elas também
-indicam hibernação que o ping não evitou.
-
----
+Nada a medir aqui, portanto. Este item está fechado.
 
 ## 3. Conta fora da allowlist cai no demo
 

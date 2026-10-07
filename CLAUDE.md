@@ -62,20 +62,22 @@ Monolito modular + hexagonal por módulo (ADR-001).
 - [x] **T6** Módulo `identity`: `st.login`, consulta a `app_users`, roteamento dono/demo, unit of work com `SET LOCAL`.
 - [x] **T7** Demo: `scripts/seed_demo.py` (dados fictícios) + workflow noturno de reset.
 - [x] **T8** Esqueleto do app: `st.navigation` com páginas vazias, faixa "Dados fictícios", deploy no Community Cloud, secrets de produção, redirect de produção no OAuth client.
-- [x] **T9** Validações: tempo de acordar do Neon, ping do UptimeRobot, conta fora da allowlist caindo no demo.
+- [x] **T9** Validações: tempo de acordar do Neon (~0,4s, medido), hibernação do app (aceita, ADR-009), conta fora da allowlist caindo no demo (automatizado).
 
-## Pendente de ação externa (não é código)
+## Estado: Fase 0 concluída e no ar
 
-O que falta da Fase 0 depende de painéis de terceiros, e está detalhado em
-`docs/deploy.md` (passo a passo) e `docs/validacoes.md` (o que medir depois):
+Verificado em 2026-10-07 consultando o Neon e o GitHub, não por memória:
 
-- OAuth client no Google Cloud, com os **dois** redirect URIs
-- publicar no Community Cloud e preencher os secrets, no formato `[auth.google]`
-- senha do papel `app` no Neon (a migration 001 o cria sem senha de propósito)
-- seu e-mail em `app_users`, senão você também cai no modo demo
-- `DATABASE_URL_OWNER` nos secrets do GitHub Actions, para o reset do demo
-- monitor do UptimeRobot
-- anotar em `docs/validacoes.md` o cold start do Neon e do app
+- app publicado no Community Cloud, login Google funcionando
+- migrations 001 a 004 aplicadas em `production`
+- 1 usuário dono e 1 demo ativos; demo com 38 lançamentos
+- papéis `app` e `jobs` sem `BYPASSRLS`
+- workflow de reset do demo já executado com sucesso
+- sem monitor externo, por decisão (ADR-009): o app dorme após 12h sem visita e
+  acorda com um clique
+
+Detalhes em `docs/deploy.md` (o que foi configurado) e `docs/validacoes.md` (o
+que foi medido). A Fase 1 começa pelos casos de uso de lançamentos e orçamento.
 
 ## Convenções
 

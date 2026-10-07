@@ -112,12 +112,6 @@ workflow sem tocar em produção.
 
 Sem esse secret, o workflow falha de propósito, em vez de rodar contra nada.
 
-## 6. Monitoramento
-
-Em uptimerobot.com, crie um monitor HTTP(s) para
-`https://<seu-app>.streamlit.app/_stcore/health` a cada 5 minutos. Serve para
-dois fins: avisar de queda e reduzir a hibernação do container (ADR-002).
-
 ## Checklist
 
 Estado em 2026-10-07, verificado consultando o Neon e o GitHub — não por memória:
@@ -129,22 +123,18 @@ Estado em 2026-10-07, verificado consultando o Neon e o GitHub — não por mem�
 - [x] Seu e-mail em `app_users` — 1 usuário dono ativo
 - [x] Usuário demo criado — 1 demo ativo, com 38 lançamentos
 - [x] `DATABASE_URL_OWNER` nos secrets do GitHub Actions — e o workflow de reset já rodou com sucesso
-- [ ] **OAuth client com os dois redirect URIs** — ainda não comprovado. O
-      `StreamlitMissingAuthlibError` acontecia *antes* do redirecionamento, então
-      o fluxo OIDC nunca chegou a ser exercitado. Com a Authlib instalada (PR #13),
-      o próximo login é o primeiro teste real disso.
-- [ ] **Monitor do UptimeRobot ativo** — depende da URL do app
+- [x] **OAuth client com os dois redirect URIs** — confirmado: o login com Google
+      funciona em produção desde a instalação da Authlib (PR #13)
+- [x] **Hibernação do app** — decidido não combatê-la (ADR-009). O UptimeRobot
+      saiu do plano: o ping não mantém o app acordado.
 
 Os papéis `app` e `jobs` existem em produção, ambos sem `BYPASSRLS`, o que a
 guarda da migration 001 confirma a cada apply.
 
 ## O que a T9 verifica depois disso
 
-Ver [`validacoes.md`](validacoes.md), onde o primeiro item já tem resposta: o
-Neon acorda em ~0,4s, dez vezes abaixo do limite. Falta:
-
-- quanto tempo o **container do Community Cloud** leva para acordar — é ele que
-  domina a primeira visita, não o banco;
-- se o ping do UptimeRobot mantém o app acordado;
+Ver [`validacoes.md`](validacoes.md). Os três itens estão fechados: o Neon
+acorda em ~0,4s, a hibernação do app foi aceita (ADR-009), e o roteamento
+dono/demo tem cobertura automatizada. Resta apenas, por ser manual:
 - se uma conta Google fora da allowlist realmente cai no demo — o teste mais
   importante, porque falhar nele significa expor dado real.
