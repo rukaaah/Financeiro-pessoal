@@ -51,6 +51,15 @@ url = "postgresql://app:SENHA@HOST.neon.tech/DATABASE?sslmode=require"
 redirect_uri = "https://<seu-app>.streamlit.app/oauth2callback"
 cookie_secret = "<32+ bytes aleatórios>"
 
+# Formato de **provedor nomeado**: as credenciais ficam numa subseção
+# `[auth.google]`, e o app chama `st.login("google")`. O outro formato possível
+# é pôr client_id, client_secret e server_metadata_url soltos em `[auth]`, e aí
+# a chamada é `st.login()` sem argumento.
+#
+# Misturar os dois é a armadilha: um secrets.toml local no formato sem nome faz
+# `st.login()` funcionar na máquina e falhar em produção, onde a configuração é
+# nomeada. Há teste (tests/unit/test_coerencia_do_deploy.py) conferindo que o
+# código e este arquivo não se separem.
 [auth.google]
 client_id = "<do passo 1>"
 client_secret = "<do passo 1>"
@@ -69,6 +78,16 @@ papel **sem senha** de propósito, porque o repositório é público:
 ```sql
 ALTER ROLE app PASSWORD '<senha forte>';
 ```
+
+## 3b. Secrets locais
+
+Para o login funcionar na máquina de desenvolvimento, o
+`.streamlit/secrets.toml` precisa do **mesmo formato nomeado** — com
+`[auth.google]`, e não as credenciais soltas em `[auth]`. Caso contrário o
+`st.login("google")` do app não encontra as credenciais localmente.
+
+O `redirect_uri` local é `http://localhost:8501/oauth2callback`. Esse arquivo
+nunca entra no Git.
 
 ## 4. Allowlist
 

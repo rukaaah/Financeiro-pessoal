@@ -15,6 +15,13 @@ st.set_page_config(
     layout="wide",
 )
 
+# Nome do provedor OIDC. Precisa ser exatamente o sufixo da seção
+# `[auth.<provedor>]` nos secrets: com provedor nomeado, `st.login()` sem
+# argumento não encontra as credenciais. Local, com `[auth]` sem nome, chamar
+# sem argumento funciona — então o erro só apareceria em produção. Há teste
+# conferindo que este nome e o docs/deploy.md não se separem.
+PROVEDOR_OIDC = "google"
+
 PAGINAS = (
     ("app/paginas/visao_geral.py", "Visão geral", ":material/dashboard:"),
     ("app/paginas/lancamentos.py", "Lançamentos", ":material/receipt_long:"),
@@ -37,7 +44,7 @@ def _controles_de_conta() -> None:
         st.divider()
         if sessao.modo is ModoDeAcesso.DEMO:
             if st.button("Entrar com Google", width="stretch"):
-                st.login()
+                st.login(PROVEDOR_OIDC)
         elif st.button("Sair", width="stretch"):
             esquecer_sessao()
             st.logout()
@@ -52,4 +59,8 @@ def main() -> None:
     st.navigation(paginas).run()
 
 
-main()
+# O Streamlit executa este arquivo como script, então o guard não impede nada —
+# e deixa o módulo importável, para que um teste possa ler PROVEDOR_OIDC sem
+# disparar o app inteiro.
+if __name__ == "__main__":
+    main()

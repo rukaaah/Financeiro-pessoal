@@ -131,3 +131,94 @@ def test_sem_configuracao_de_banco_a_falha_e_explicita(monkeypatch: pytest.Monke
     mensagens = " ".join(str(e.value) for e in resultado.exception)
     assert "não configurada" in mensagens
     assert "postgres" not in mensagens.lower()
+
+
+# ---------------------------------------------- roteamento dono/demo
+#
+# A validação mais importante da T9: uma conta Google fora da allowlist precisa
+# cair no modo demonstração. Falhar aqui significa expor dado financeiro real
+# num app público, então o teste simula o login de verdade em vez de confiar na
+# inspeção do caso de uso.
+
+
+@pytest.fixture
+def dono_no_banco(url_do_banco: str) -> Iterator[str]:
+    """Um usuário real na allowlist, com e-mail conhecido."""
+    email = f"dono-{uuid.uuid4()}@exemplo.com"
+    with psycopg.connect(url_do_banco, autocommit=True) as conexao:
+        with conexao.cursor() as cur:
+            cur.execute(
+                "INSERT INTO app_users (email, display_name) VALUES (%s, 'Dono')",
+                (email,),
+            )
+        try:
+            yield email
+        finally:
+            with conexao.cursor() as cur:
+                cur.execute("DELETE FROM app_users WHERE email = %s", (email,))
+
+
+def _finge_login(monkeypatch: pytest.MonkeyPatch, email: str, *, verificado: bool) -> None:
+    """Coloca em `st.user` o que o `st.login` deixaria depois de um login Google."""
+    monkeypatch.setattr(
+        st,
+        "user",
+        {
+            "is_logged_in": True,
+            "email": email,
+            "email_verified": verificado,
+            "name": "Pessoa",
+        },
+        raising=False,
+    )
+
+
+def test_conta_fora_da_allowlist_cai_no_demo(app: AppTest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Logada no Google, com e-mail verificado, mas ausente de `app_users`."""
+    _finge_login(monkeypatch, "estranha@gmail.com", verificado=True)
+    resultado = app.run()
+
+    assert not resultado.exception, [str(e) for e in resultado.exception]
+    avisos = [aviso.value for aviso in resultado.warning]
+    assert any("Dados fictícios" in texto for texto in avisos), (
+        "conta fora da allowlist não caiu no demo — isto exporia dado real"
+    )
+
+
+def test_conta_da_allowlist_entra_como_dono(
+    app: AppTest, dono_no_banco: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _finge_login(monkeypatch, dono_no_banco, verificado=True)
+    resultado = app.run()
+
+    assert not resultado.exception, [str(e) for e in resultado.exception]
+    avisos = [aviso.value for aviso in resultado.warning]
+    assert not any("Dados fictícios" in texto for texto in avisos)
+    assert "Sair" in [botao.label for botao in resultado.sidebar.button]
+
+
+def test_email_da_allowlist_mas_nao_verificado_cai_no_demo(
+    app: AppTest, dono_no_banco: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O e-mail certo não basta: sem verificação do provedor, não se confia nele."""
+    _finge_login(monkeypatch, dono_no_banco, verificado=False)
+    resultado = app.run()
+
+    assert not resultado.exception, [str(e) for e in resultado.exception]
+    avisos = [aviso.value for aviso in resultado.warning]
+    assert any("Dados fictícios" in texto for texto in avisos)
+
+
+def test_usuario_inativo_cai_no_demo(
+    app: AppTest, dono_no_banco: str, url_do_banco: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Revogar acesso é `active = false`, sem deploy (ADR-003)."""
+    with psycopg.connect(url_do_banco, autocommit=True) as conexao, conexao.cursor() as cur:
+        cur.execute("UPDATE app_users SET active = false WHERE email = %s", (dono_no_banco,))
+
+    _finge_login(monkeypatch, dono_no_banco, verificado=True)
+    resultado = app.run()
+
+    assert not resultado.exception, [str(e) for e in resultado.exception]
+    avisos = [aviso.value for aviso in resultado.warning]
+    assert any("Dados fictícios" in texto for texto in avisos)
