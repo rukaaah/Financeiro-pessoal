@@ -29,10 +29,49 @@ BEGIN
 END
 $$;
 
--- Idempotente e explícito: garante o estado mesmo se o papel já tiver sido
--- criado à mão no console do Neon com outros atributos.
-ALTER ROLE app  NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
-ALTER ROLE jobs NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+-- Antes havia dois `ALTER ROLE ... NOSUPERUSER NOCREATEDB NOCREATEROLE
+-- NOBYPASSRLS` aqui, para garantir o estado caso o papel já existisse, criado à
+-- mão no console do Neon. Isso não funciona no Neon: mexer no atributo
+-- SUPERUSER exige **ser** superusuário, e o `neondb_owner` não é. O apply
+-- falhava com "Only roles with the SUPERUSER attribute may change the SUPERUSER
+-- attribute" — e só lá, porque no Docker o papel aplicador é superusuário.
+--
+-- Verificar em vez de corrigir também é mais honesto: um papel `app` com
+-- BYPASSRLS anula todas as policies de uma vez, e isso merece parar a migration
+-- com um erro legível, não ser silenciosamente consertado.
+--
+-- marcador: guarda-de-atributos-dos-papeis (início)
+DO $$
+DECLARE
+    v_papel   text;
+    v_perigos text;
+BEGIN
+    FOREACH v_papel IN ARRAY ARRAY['app', 'jobs'] LOOP
+        SELECT string_agg(atributo, ', ' ORDER BY atributo)
+          INTO v_perigos
+          FROM pg_roles r
+          CROSS JOIN LATERAL (
+              VALUES
+                  ('SUPERUSER',  r.rolsuper),
+                  ('CREATEDB',   r.rolcreatedb),
+                  ('CREATEROLE', r.rolcreaterole),
+                  ('BYPASSRLS',  r.rolbypassrls)
+          ) AS a(atributo, tem)
+         WHERE r.rolname = v_papel
+           AND a.tem;
+
+        IF v_perigos IS NOT NULL THEN
+            RAISE EXCEPTION
+                'o papel % tem atributo que não pode ter: %. '
+                'BYPASSRLS anula todas as policies de uma vez (ADR-004). '
+                'Corrija com ALTER ROLE % NO<atributo> e aplique de novo.',
+                v_papel, v_perigos, v_papel
+                USING ERRCODE = '42501';
+        END IF;
+    END LOOP;
+END
+$$;
+-- marcador: guarda-de-atributos-dos-papeis (fim)
 
 GRANT USAGE ON SCHEMA public TO app, jobs;
 REVOKE CREATE ON SCHEMA public FROM app, jobs;
