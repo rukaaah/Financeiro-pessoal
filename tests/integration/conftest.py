@@ -71,3 +71,20 @@ def como_app(cur: psycopg.Cursor[tuple[object, ...]], user_id: uuid.UUID | None 
     cur.execute("SET LOCAL ROLE app")
     if user_id is not None:
         define_usuario(cur, user_id)
+
+
+@pytest.fixture(scope="session")
+def url_como_app(url_do_banco: str) -> str:
+    """URL de conexão pelo papel `app`, o papel real da aplicação.
+
+    A migration 001 cria `app` sem senha de propósito (o repositório é
+    público). Para exercitar o caminho verdadeiro — conexão autenticada como
+    `app`, sujeita à RLS — os testes definem uma senha local. Vale só para o
+    Postgres descartável do docker-compose e do CI; no Neon a senha é
+    configurada fora do versionamento.
+    """
+    with psycopg.connect(url_do_banco, autocommit=True) as conexao, conexao.cursor() as cur:
+        cur.execute("ALTER ROLE app LOGIN PASSWORD 'dev'")
+
+    sem_credencial = url_do_banco.split("://", 1)[1].split("@", 1)[1]
+    return f"postgresql://app:dev@{sem_credencial}"
