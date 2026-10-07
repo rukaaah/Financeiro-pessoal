@@ -53,6 +53,24 @@ class UnidadeDeTrabalhoPsycopg:
     pool: ConnectionPool
 
     @contextmanager
+    def transacao_sem_usuario(self) -> Iterator[TransacaoPsycopg]:
+        """Transação sem `app.user_id`, para resolver a identidade de quem chegou.
+
+        Existe por um problema de ordem: descobrir o usuário exige consultar o
+        banco, e não há usuário para fixar antes disso. As únicas coisas
+        alcançáveis aqui são as funções SECURITY DEFINER da migration 001
+        (`resolve_app_user`, `demo_app_user`) — para todo o resto, a RLS não
+        devolve linha nenhuma, que é exatamente o comportamento desejado se
+        alguém usar isto fora do login.
+        """
+        with (
+            self.pool.connection() as conexao,
+            conexao.transaction(),
+            conexao.cursor() as cursor,
+        ):
+            yield TransacaoPsycopg(cursor)
+
+    @contextmanager
     def transacao(self, user_id: UUID) -> Iterator[TransacaoPsycopg]:
         """Abre uma transação com `app.user_id` fixado.
 
