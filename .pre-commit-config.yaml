@@ -39,27 +39,32 @@ repos:
   # uv.lock. Com `rev:` fixado à parte, a versão do hook descola da versão do
   # projeto e os dois passam a formatar diferente — foi o que aconteceu aqui,
   # com ruff v0.8.6 no hook contra 0.16.x no lock.
+  #
+  # `--group dev` é obrigatório: o pyproject não instala grupo por omissão, e
+  # sem ele um venv sincronizado com `uv sync` puro faria o hook falhar com
+  # "Failed to spawn: ruff", que não diz nada sobre a causa. Com a flag, o uv
+  # instala o grupo na hora.
   - repo: local
     hooks:
       - id: ruff-format
         name: formatação (ruff, via uv)
-        entry: uv run ruff format
+        entry: uv run --group dev ruff format
         language: system
         types: [python]
       - id: ruff
         name: lint (ruff, via uv)
-        entry: uv run ruff check --fix --force-exclude
+        entry: uv run --group dev ruff check --fix --force-exclude
         language: system
         types: [python]
       - id: mypy
         name: tipos (mypy strict, via uv)
-        entry: uv run mypy
+        entry: uv run --group dev mypy
         language: system
         pass_filenames: false
         types: [python]
       - id: import-linter
         name: fronteiras da arquitetura (import-linter, via uv)
-        entry: uv run lint-imports
+        entry: uv run --group dev lint-imports
         language: system
         pass_filenames: false
         types: [python]

@@ -72,20 +72,20 @@ Três regras, verificadas por import-linter no CI:
 Requer [uv](https://docs.astral.sh/uv/) e Docker.
 
 ```bash
-uv sync                    # cria o .venv com Python 3.12 e instala tudo
-uv run pre-commit install  # liga os hooks de commit
+uv sync --group dev        # .venv com Python 3.12, app e ferramentas
+uv run --group dev pre-commit install   # liga os hooks de commit
 cp .env.example .env.local # DATABASE_URL do Postgres local
-docker compose up -d       # sobe o Postgres 17 na porta 5433
+docker compose up -d       # sobe o Postgres 18 na porta 5433
 ```
 
 Durante o trabalho:
 
 ```bash
-uv run ruff format .       # formata
-uv run ruff check . --fix  # lint
-uv run mypy                # tipos (strict)
-uv run lint-imports        # fronteiras da arquitetura
-uv run pytest              # testes
+uv run --group dev ruff format .      # formata
+uv run --group dev ruff check . --fix # lint
+uv run --group dev mypy               # tipos (strict)
+uv run --group dev lint-imports       # fronteiras da arquitetura
+uv run --group dev pytest             # testes
 ```
 
 Migrations ([ADR-006](docs/adr/006-runner-de-migrations.md)), sempre com o papel
@@ -93,15 +93,15 @@ Migrations ([ADR-006](docs/adr/006-runner-de-migrations.md)), sempre com o papel
 
 ```bash
 export DATABASE_URL="postgresql+psycopg://owner:dev@localhost:5433/financeiro"
-uv run yoyo apply --database "$DATABASE_URL"   # aplica as pendentes
-uv run yoyo list  --database "$DATABASE_URL"   # o que já está aplicado
+uv run --group dev yoyo apply --database "$DATABASE_URL"   # aplica as pendentes
+uv run --group dev yoyo list  --database "$DATABASE_URL"   # já aplicado
 ./scripts/dump_schema.sh                        # regenera docs/schema.sql
 ```
 
 Testes de integração precisam do Postgres local e são marcados com `integration`:
 
 ```bash
-uv run pytest -m integration
+uv run --group dev pytest -m integration
 ```
 
 Rodar o app:
@@ -113,6 +113,12 @@ uv run streamlit run streamlit_app.py
 `DATABASE_URL` no ambiente tem precedência sobre os secrets do Streamlit, de
 propósito: o `.streamlit/secrets.toml` da máquina aponta para produção, e sem
 essa ordem um `streamlit run` local conectaria lá sem avisar.
+
+O `--group dev` aparece em todo comando de ferramenta porque o `pyproject.toml`
+não instala grupo nenhum por omissão — o Streamlit Community Cloud roda
+`uv sync` a cada boot e não deve carregar mypy, ruff, pytest e companhia. Com a
+flag, o uv instala o grupo na hora se faltar; sem ela, o erro é um
+`Failed to spawn` que não explica a causa.
 
 Dados fictícios do modo demo:
 

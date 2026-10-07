@@ -36,6 +36,7 @@ jobs:
         with:
           enable-cache: true
 
+      # Sem --group dev: o seed só precisa do psycopg.
       - run: uv sync --frozen
 
       - name: Reconstruir o demo
