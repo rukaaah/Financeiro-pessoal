@@ -69,11 +69,21 @@ def demo_no_banco(url_do_banco: str) -> Iterator[None]:
 
 
 @pytest.fixture
-def app(url_do_banco: str, demo_no_banco: None, monkeypatch: pytest.MonkeyPatch) -> AppTest:
-    # Pelo ambiente, que é a precedência que o app usa e o caminho do
-    # desenvolvimento. Os secrets ficam vazios de propósito, para o teste nunca
-    # alcançar o banco de produção de quem o estiver rodando.
-    monkeypatch.setenv("DATABASE_URL", url_do_banco)
+def app(url_como_app: str, demo_no_banco: None, monkeypatch: pytest.MonkeyPatch) -> AppTest:
+    """O app sob o papel `app`, não sob o `owner`.
+
+    Esta escolha é o que dá valor aos testes abaixo. Conectando como `owner` —
+    superusuário no Docker — a RLS não se aplica, e um bug de contexto ausente
+    passa verde. Foi o que aconteceu: `carregar()` lia `app_users` sem
+    `app.user_id`, a policy escondia a linha em produção, e aqui não.
+
+    O setup (inserir usuários) continua pelo `owner`, que é quem pode escrever
+    em `app_users`.
+    """
+    # Pelo ambiente, que é a precedência que o app usa. Os secrets ficam vazios
+    # de propósito, para o teste nunca alcançar o banco de produção de quem o
+    # estiver rodando.
+    monkeypatch.setenv("DATABASE_URL", url_como_app)
     teste = AppTest.from_file(str(ENTRADA), default_timeout=TEMPO_LIMITE)
     teste.secrets["database"] = {"url": ""}
     return teste

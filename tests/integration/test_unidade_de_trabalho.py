@@ -175,21 +175,75 @@ def test_repositorio_resolve_email_da_allowlist(
         assert repositorio.resolver_por_email("ninguem@exemplo.com") is None
 
 
-def test_sessao_de_dono_de_ponta_a_ponta(
-    url_do_banco: str,
-    pool_de_uma_conexao: ConnectionPool,
-    dois_usuarios: tuple[uuid.UUID, uuid.UUID],
+@pytest.fixture
+def usuario_demo(url_do_banco: str) -> Iterator[uuid.UUID]:
+    """Um usuário demo commitado, destino de quem está fora da allowlist."""
+    demo = uuid.uuid4()
+    with psycopg.connect(url_do_banco, autocommit=True) as conexao:
+        with conexao.cursor() as cur:
+            cur.execute("DELETE FROM app_users WHERE is_demo")
+            cur.execute(
+                "INSERT INTO app_users (id, email, display_name, is_demo)"
+                " VALUES (%s, %s, 'Visitante', true)",
+                (demo, f"{demo}@exemplo.com"),
+            )
+        try:
+            yield demo
+        finally:
+            with conexao.cursor() as cur:
+                cur.execute("DELETE FROM app_users WHERE id = %s", (demo,))
+
+
+def test_sessao_de_dono_pelo_caminho_do_login(
+    pool_de_uma_conexao: ConnectionPool, dois_usuarios: tuple[uuid.UUID, uuid.UUID]
 ) -> None:
-    """Caso de uso real contra o banco real, sem fake no meio."""
+    """O caminho real: `transacao_sem_usuario`, como o app faz antes de saber quem é.
+
+    Este é o teste que faltava. O que existia usava `transacao(a)`, que já fixa
+    o `app.user_id` — então exercitava um caminho que o login nunca percorre, e
+    não via que `carregar()` dependia de um contexto ainda inexistente.
+    """
     a, _ = dois_usuarios
     uow = UnidadeDeTrabalhoPsycopg(pool_de_uma_conexao)
-    with uow.transacao(a) as t:
+    with uow.transacao_sem_usuario() as t:
         sessao = resolver_sessao(
             Credenciais(f"{a}@exemplo.com".upper(), True),
             RepositorioDeUsuariosPsycopg(t),
         )
     assert sessao.modo is ModoDeAcesso.DONO
     assert sessao.usuario.id == a
+
+
+def test_sessao_de_demo_pelo_caminho_do_login(
+    pool_de_uma_conexao: ConnectionPool, usuario_demo: uuid.UUID
+) -> None:
+    """Quem está fora da allowlist precisa conseguir carregar o demo."""
+    uow = UnidadeDeTrabalhoPsycopg(pool_de_uma_conexao)
+    with uow.transacao_sem_usuario() as t:
+        sessao = resolver_sessao(
+            Credenciais("desconhecida@exemplo.com", True),
+            RepositorioDeUsuariosPsycopg(t),
+        )
+    assert sessao.modo is ModoDeAcesso.DEMO
+    assert sessao.usuario.id == usuario_demo
+    assert sessao.mostrar_faixa_de_dados_ficticios
+
+
+def test_carregar_nao_alcanca_a_linha_de_outro_usuario(
+    pool_de_uma_conexao: ConnectionPool, dois_usuarios: tuple[uuid.UUID, uuid.UUID]
+) -> None:
+    """A correção fixa o contexto com o próprio id, então segue valendo a RLS.
+
+    Importa justamente porque a alternativa recusada — uma função SECURITY
+    DEFINER devolvendo a linha de qualquer id — passaria neste cenário e
+    exporia o e-mail de quem tivesse o uuid adivinhado.
+    """
+    a, b = dois_usuarios
+    uow = UnidadeDeTrabalhoPsycopg(pool_de_uma_conexao)
+    with uow.transacao(a) as t:
+        repositorio = RepositorioDeUsuariosPsycopg(t)
+        assert repositorio.carregar(a) is not None
+        assert repositorio.carregar(b) is None
 
 
 def test_sem_demo_cadastrado_o_visitante_e_recusado_em_vez_de_entrar_sem_contexto(

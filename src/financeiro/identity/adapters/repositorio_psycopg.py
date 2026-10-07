@@ -27,6 +27,34 @@ class RepositorioDeUsuariosPsycopg:
         return _uuid_ou_nulo(linha)
 
     def carregar(self, user_id: UUID) -> UsuarioApp | None:
+        """Carrega a linha do usuário, fixando o contexto para poder lê-la.
+
+        O `set_config` aqui não é detalhe de otimização: sem ele este método é
+        quebrado. A policy de `app_users` só mostra a linha cujo `id` é igual a
+        `current_app_user()`, e no momento do login a transação ainda não tem
+        `app.user_id` — então a consulta voltava vazia, o login do dono caía no
+        demo e o próprio demo falhava em carregar. Como o papel `owner` é
+        superusuário no Docker, os testes passavam.
+
+        O contexto é definido **apenas se ainda não houver um**. A diferença não
+        é sutil: definir incondicionalmente deixaria `carregar(outro_id)` ler a
+        linha de qualquer pessoa, bastando reapontar o contexto para ela — e
+        ainda trocaria o usuário da transação em curso. Seria o mesmo vazamento
+        de uma função SECURITY DEFINER que devolvesse a linha de qualquer id,
+        que foi recusada justamente por isso.
+
+        Com o `coalesce`, o login (contexto vazio) carrega quem acabou de ser
+        autenticado, e uma sessão já estabelecida continua sujeita à RLS: pedir
+        a linha de outro devolve nada.
+        """
+        self.transacao.executar(
+            "SELECT set_config("
+            "    'app.user_id',"
+            "    coalesce(nullif(current_setting('app.user_id', true), ''), %s),"
+            "    true"
+            ")",
+            (str(user_id),),
+        )
         linha = self.transacao.um(
             "SELECT id, email, display_name, is_demo FROM app_users WHERE id = %s",
             (user_id,),
