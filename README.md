@@ -97,6 +97,16 @@ Testes de integração precisam do Postgres local e são marcados com `integrati
 uv run pytest -m integration
 ```
 
+Dados fictícios do modo demo:
+
+```bash
+uv run python scripts/seed_demo.py   # apaga e recria o usuário demo
+```
+
+É idempotente: rodar duas vezes dá o mesmo resultado. Em produção, um workflow
+agendado faz isso toda noite, para que o que um visitante mexeu não fique para
+o próximo.
+
 ## Segurança
 
 O repositório é **público**. Portanto:

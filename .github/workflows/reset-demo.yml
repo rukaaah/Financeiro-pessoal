@@ -1,0 +1,56 @@
+name: Reset do demo
+
+# Reconstrói os dados fictícios do modo demo todas as noites, para que o que
+# um visitante tenha mexido não fique para o próximo (ADR-003).
+#
+# 06:00 UTC é 03:00 em Brasília. O `schedule` do GitHub Actions atrasa em
+# horário de pico e é desativado após 60 dias sem atividade no repositório
+# (ADR-002), por isso o script é idempotente e tolera rodar fora de hora —
+# e por isso existe o gatilho manual abaixo.
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Qual banco reconstruir
+        type: choice
+        options: [production, dev]
+        default: production
+
+# Duas execuções simultâneas reconstruiriam o mesmo usuário ao mesmo tempo.
+concurrency:
+  group: reset-demo-${{ inputs.ambiente || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    name: Reconstruir dados fictícios
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      - name: Reconstruir o demo
+        env:
+          # Conexão pelo papel `owner`: o script escreve em app_users, que o
+          # papel `app` nem tem permissão de alterar. O segredo nunca é
+          # impresso, e o script foi escrito para não repeti-lo em mensagem de
+          # erro — o repositório é público.
+          DATABASE_URL: >-
+            ${{ inputs.ambiente == 'dev'
+                && secrets.DATABASE_URL_OWNER_DEV
+                || secrets.DATABASE_URL_OWNER }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::Secret de conexão ausente para o ambiente escolhido."
+            exit 1
+          fi
+          uv run python scripts/seed_demo.py

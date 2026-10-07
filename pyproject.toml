@@ -78,8 +78,8 @@ docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.12"
-# app/, jobs/ e scripts/ entram nesta lista quando forem criados (T7/T8).
-files = ["src", "tests"]
+# app/ e jobs/ entram nesta lista quando forem criados (T8).
+files = ["src", "tests", "scripts"]
 strict = true
 warn_unreachable = true
 disallow_any_explicit = false
