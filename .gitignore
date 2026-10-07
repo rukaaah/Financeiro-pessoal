@@ -5,6 +5,7 @@ node_modules/
 # segredos e ambiente
 .env
 .env.*
+!.env.example
 .streamlit/secrets.toml
 
 # extratos reais nunca entram no repo
@@ -22,3 +23,10 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# editores
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

@@ -1,0 +1,40 @@
+# Postgres local para desenvolvimento e testes de integração.
+#   docker compose up -d
+#   uv run pytest -m integration
+#
+# Não guarda nada que importe: é descartável e recriado do zero pelas migrations.
+# Dados reais moram no Neon (ADR-004).
+
+services:
+  db:
+    # Mesma major do Neon (ADR-004), para não descobrir incompatibilidade só em produção.
+    image: postgres:18-alpine
+    container_name: financeiro-db
+    environment:
+      POSTGRES_USER: owner
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: financeiro
+      # Paridade com o Neon, conferida contra o branch `dev`: provider builtin
+      # e datlocale C.UTF-8 (no PG 18 o locale real fica em pg_database.datlocale,
+      # não em datcollate). Sem isso, ORDER BY em texto com acento diverge entre
+      # o local e a produção.
+      POSTGRES_INITDB_ARGS: >-
+        --encoding=UTF8
+        --locale-provider=builtin
+        --builtin-locale=C.UTF-8
+    ports:
+      # 5433 no host: não conflita com um Postgres instalado localmente.
+      - "5433:5432"
+    volumes:
+      # A imagem 18+ espera o mount em /var/lib/postgresql (e não em .../data),
+      # para que o pg_upgrade consiga trabalhar entre majors.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U owner -d financeiro"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  pgdata:

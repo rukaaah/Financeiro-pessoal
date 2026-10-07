@@ -16,3 +16,4 @@ substitui o anterior, e o antigo passa a `Status: substituído pelo ADR-NNN`.
 | [003](003-login-google-app-users.md) | Login Google via `st.login` com allowlist em `app_users` | Aceito |
 | [004](004-neon-psycopg-rls.md) | Neon + psycopg 3 + RLS por `SET LOCAL` | Aceito |
 | [005](005-orcamento-pelo-mes-da-fatura.md) | Despesa de cartão entra no orçamento do mês de vencimento da fatura | Aceito |
+| [006](006-runner-de-migrations.md) | yoyo-migrations como runner de migrations | Aceito |
