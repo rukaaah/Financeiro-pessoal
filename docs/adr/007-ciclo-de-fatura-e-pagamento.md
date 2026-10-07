@@ -1,6 +1,8 @@
 # ADR-007 — O ciclo da fatura é definido pelo dia em que ela começa, e pagamento não é compra
 
-- **Status:** Aceito
+- **Status:** Parcialmente substituído pelo [ADR-008](008-fechamento-inclusivo.md)
+  — a decisão sobre `cycle_start_day` não vale mais; a de que pagamento de
+  fatura não tem `invoice_month` continua valendo.
 - **Data:** 2026-10-07
 - **Refina:** [ADR-005](005-orcamento-pelo-mes-da-fatura.md)
 

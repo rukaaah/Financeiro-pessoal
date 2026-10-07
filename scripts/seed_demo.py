@@ -54,10 +54,10 @@ def ident(nome: str) -> UUID:
 
 USUARIO = ident("usuario")
 
-# Unicred de verdade: o ciclo começa dia 4 e a fatura vence dia 11 do mês em
-# que ele termina (ADR-007). Usar os números reais faz o demo exercitar a regra
-# de verdade, incluindo a compra que atravessa a virada do ciclo.
-INICIO_DO_CICLO = 4
+# Unicred de verdade, com os números que o app do banco mostra: fecha dia 4 e
+# vence dia 11 (ADR-008). Usar os números reais faz o demo exercitar a regra de
+# verdade, incluindo a compra que atravessa a virada da fatura.
+FECHAMENTO = 4
 VENCIMENTO = 11
 
 
@@ -80,10 +80,10 @@ RECORRENTES = (
     Lancamento("unicred", "mercado", "-184.90", 19, "Feira e padaria"),
     Lancamento("unicred", "transporte", "-96.00", 14, "Combustível"),
     Lancamento("unicred", "lazer", "-55.90", 21, "Streaming"),
-    # Dia 3 e dia 4 de propósito: um dia de diferença, duas faturas
-    # diferentes. É a regra do ADR-007 visível na tela.
-    Lancamento("unicred", "mercado", "-238.70", 3, "Compra no último dia do ciclo"),
-    Lancamento("unicred", "saude", "-120.00", 4, "Compra no primeiro dia do ciclo"),
+    # Dia 4 e dia 5 de propósito: um dia de diferença, duas faturas diferentes.
+    # É a regra do ADR-008 visível na tela, não só no teste.
+    Lancamento("unicred", "mercado", "-238.70", 4, "Compra no dia do fechamento"),
+    Lancamento("unicred", "saude", "-120.00", 5, "Compra no dia seguinte ao fechamento"),
 )
 
 CONTAS = (
@@ -171,9 +171,9 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
 
         cur.execute(
             "INSERT INTO account_terms"
-            " (id, user_id, account_id, vigencia, cycle_start_day, due_day)"
+            " (id, user_id, account_id, vigencia, closing_day, due_day)"
             " VALUES (%s, %s, %s, '[2020-01-01,)', %s, %s)",
-            (ident("termos"), USUARIO, ident("unicred"), INICIO_DO_CICLO, VENCIMENTO),
+            (ident("termos"), USUARIO, ident("unicred"), FECHAMENTO, VENCIMENTO),
         )
 
         for chave, nome, ordem in GRUPOS:

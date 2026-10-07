@@ -91,7 +91,7 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         ],
     )
     cur.execute(
-        "INSERT INTO account_terms (user_id, account_id, vigencia, cycle_start_day, due_day)"
+        "INSERT INTO account_terms (user_id, account_id, vigencia, closing_day, due_day)"
         " VALUES (%s, %s, '[2020-01-01,)', 23, 30)",
         (usuario, cartao),
     )
