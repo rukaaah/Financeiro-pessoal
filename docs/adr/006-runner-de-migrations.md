@@ -66,8 +66,9 @@ container, sem nenhuma instalação.
 
 **A favor:**
 
-- Zero toolchain nova: `uv sync` já traz o runner, e o CI não ganha passo de
-  instalação.
+- Zero toolchain nova: `uv sync --group dev` já traz o runner, e o CI não ganha
+  passo de instalação. (O grupo é explícito porque o `pyproject.toml` não instala
+  nenhum por omissão — ver ADR-002 sobre o boot do Community Cloud.)
 - Um único driver de Postgres no projeto, o mesmo que a aplicação usa.
 - SQL puro nos arquivos, legível para quem for ler o repositório como portfólio.
 - O yoyo aceita *steps* em Python se algum dia uma migration precisar de lógica

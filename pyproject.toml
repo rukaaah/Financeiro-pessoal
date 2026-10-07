@@ -7,7 +7,10 @@ requires-python = "==3.12.*"
 license = { text = "MIT" }
 dependencies = [
     "psycopg[binary,pool]>=3.2",
-    "streamlit>=1.42",  # st.login (OIDC) chegou na 1.42
+    # O extra [auth] traz a Authlib, que o st.login exige. Sem ele, clicar em
+    # "Entrar com Google" levanta StreamlitMissingAuthlibError — e só em
+    # produção, porque nenhum teste chama st.login de verdade.
+    "streamlit[auth]>=1.42",  # st.login (OIDC) chegou na 1.42
 ]
 
 [dependency-groups]
@@ -29,7 +32,12 @@ build-backend = "hatchling.build"
 packages = ["src/financeiro"]
 
 [tool.uv]
-default-groups = ["dev"]
+# Nenhum grupo por omissão: o Streamlit Community Cloud roda `uv sync` a cada
+# boot, e instalar mypy, ruff, pytest, pre-commit, import-linter e yoyo ali é
+# tempo de inicialização gasto com ferramentas que a produção não usa.
+#
+# Em desenvolvimento e no CI, use `uv sync --group dev`.
+default-groups = []
 
 # ---------------------------------------------------------------- ruff
 

@@ -25,7 +25,10 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv sync
+      # --group dev porque o pyproject não traz grupo por omissão: o
+      # Community Cloud roda `uv sync` a cada boot e não deve instalar
+      # ferramentas de desenvolvimento.
+      - run: uv sync --group dev
 
       - name: Formatação (ruff)
         run: uv run ruff format --check .
@@ -80,7 +83,10 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv sync
+      # --group dev porque o pyproject não traz grupo por omissão: o
+      # Community Cloud roda `uv sync` a cada boot e não deve instalar
+      # ferramentas de desenvolvimento.
+      - run: uv sync --group dev
 
       - name: Aplicar migrations
         run: uv run yoyo apply --database "$DATABASE_URL"

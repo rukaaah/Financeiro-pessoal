@@ -22,6 +22,8 @@ Planejamento completo (fonte da verdade): artifact privado no Claude — o link 
 | Login | Google via `st.login` (OIDC). E-mail verificado presente em `app_users` → app real; qualquer outro → modo demo |
 | Jobs | GitHub Actions agendado: cotações (diário), proventos FII (mensal), reset do demo (noturno) |
 | Ferramentas | uv, Python 3.12, ruff, mypy, pytest, pre-commit, import-linter |
+
+`uv sync` **não** instala grupo nenhum por omissão (`default-groups = []`): o Community Cloud roda `uv sync` a cada boot e não deve carregar ferramentas de desenvolvimento. Use `uv sync --group dev` localmente e no CI. O `streamlit` é pedido como `streamlit[auth]`, porque o extra traz a Authlib que o `st.login` exige.
 | Testes de banco | Postgres em Docker (`docker-compose.yml` local; service container no CI) |
 
 Atenção: `neon.ts` foi gerado pelo `neon config init` com `ttl: "7d"` para branches novos. Remover o TTL antes de criar o branch `dev`.
