@@ -56,6 +56,13 @@ select = [
     "RUF",   # regras do próprio ruff
 ]
 
+ignore = [
+    # N818 exige sufixo "Error" em exceções. O código é nomeado em português
+    # (DemoIndisponivel, ErroDeImportacao), e "DemoIndisponivelError" misturaria
+    # os dois idiomas num nome só. A clareza vem do contexto, não do sufixo.
+    "N818",
+]
+
 [tool.ruff.lint.per-file-ignores]
 # Scripts e jobs escrevem no stdout de propósito.
 "scripts/**" = ["T20"]
