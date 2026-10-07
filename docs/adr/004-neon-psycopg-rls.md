@@ -105,6 +105,24 @@ fora do CI (`node_modules/` está no `.gitignore`).
   superusuário, espelhando o `neondb_owner`. Enquanto isso não existe, qualquer
   migration que mexa em papel, privilégio ou extensão merece ser aplicada no branch
   `dev` do Neon antes do merge.
+- **Testar como `owner` esconde bugs de RLS, e já escondeu um em produção.** O
+  `owner` é superusuário no Docker, então nenhuma policy se aplica a ele: um teste
+  que conecte por esse papel confirma que a consulta funciona, não que ela funciona
+  *para quem a aplicação é*.
+
+  O caso concreto: `RepositorioDeUsuariosPsycopg.carregar()` lia `app_users` dentro
+  da transação de login, que ainda não tem `app.user_id`. Pelo papel `app`, a policy
+  escondia a linha — o login do dono caía no demo e o próprio demo falhava em
+  carregar. Toda a suíte passava, porque conectava como `owner`.
+
+  Regra que fica: **todo teste que exercite caminho da aplicação conecta pelo papel
+  `app`**. O `owner` só aparece no preparo dos dados (escrever em `app_users`, por
+  exemplo) e nos testes de schema e constraint, onde a RLS não é o objeto. Os testes
+  definem uma senha local para o papel `app`; em produção ela vem de fora do
+  versionamento.
+
+  O valor disso é mensurável: reintroduzindo aquele bug, com os testes do app
+  conectando como `app`, oito deles falham. Conectando como `owner`, nenhum.
 
 ## Alternativas consideradas
 
