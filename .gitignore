@@ -1,0 +1,24 @@
+.neon
+.env.local
+node_modules/
+
+# segredos e ambiente
+.env
+.env.*
+.streamlit/secrets.toml
+
+# extratos reais nunca entram no repo
+*.pdf
+*.ofx
+!tests/fixtures/**
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# macOS
+.DS_Store

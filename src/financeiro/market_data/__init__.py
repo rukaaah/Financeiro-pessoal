@@ -1,0 +1,1 @@
+"""Módulo `market_data`."""

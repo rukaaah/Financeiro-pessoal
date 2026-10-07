@@ -1,0 +1,107 @@
+# Financeiro pessoal
+
+Sistema de finanças pessoais que substitui uma planilha de orçamento: lançamentos,
+orçamento mensal, faturas de cartão, cofrinhos, valores a receber e carteira de
+investimentos.
+
+Projeto de portfólio, em desenvolvimento. **Fase 0 — fundação do repositório.**
+
+## Como funciona
+
+O app é público, os dados não. Quem acessa sem estar na allowlist cai no **modo
+demo**, com dados fictícios e uma faixa avisando disso. O isolamento entre usuários
+é imposto pelo Postgres, via Row Level Security — não por filtros na aplicação.
+
+## Stack
+
+| Peça | Escolha |
+|---|---|
+| Interface | Streamlit (multipage com `st.navigation`) |
+| Hospedagem | Streamlit Community Cloud |
+| Banco | Postgres no Neon |
+| Acesso ao banco | `psycopg` 3, SQL à mão, transações explícitas |
+| Login | Google via `st.login` (OIDC) + allowlist em `app_users` |
+| Jobs | GitHub Actions agendado |
+| Ferramentas | uv, Python 3.12, ruff, mypy, pytest, pre-commit, import-linter |
+
+As decisões e seus porquês estão em [`docs/adr/`](docs/adr/).
+
+## Arquitetura
+
+Monólito modular com arquitetura hexagonal por módulo ([ADR-001](docs/adr/001-monolito-modular-hexagonal.md)).
+
+```
+src/financeiro/
+├── ledger/          lançamentos: receita, despesa, transferência
+├── budgeting/       orçamento mensal por categoria
+├── cards/           faturas de cartão, fechamento e vencimento
+├── goals/           cofrinhos e objetivos
+├── investments/     carteira
+├── market_data/     cotações e proventos
+├── importing/       extratos (PDF do PicPay, OFX do Inter)
+├── categorization/  classificação automática de lançamentos
+├── identity/        login, allowlist, unit of work
+└── shared/          tipos e utilidades comuns
+```
+
+Cada módulo tem três camadas, com as dependências apontando só para dentro:
+
+```
+adapters  →  application  →  domain
+(psycopg,    (casos de uso    (regras puras,
+ parsers,     e ports como     só stdlib)
+ scrapers)    Protocol)
+```
+
+Três regras, verificadas por import-linter no CI:
+
+1. `app/`, `jobs/` e `scripts/` só chamam casos de uso.
+2. Nenhum módulo lê tabela de outro módulo.
+3. O `domain` não conhece banco nem framework.
+
+## Desenvolvimento
+
+Requer [uv](https://docs.astral.sh/uv/) e Docker (para os testes de integração).
+
+```bash
+uv sync                    # cria o .venv com Python 3.12 e instala tudo
+uv run pre-commit install  # liga os hooks de commit
+```
+
+Durante o trabalho:
+
+```bash
+uv run ruff format .       # formata
+uv run ruff check . --fix  # lint
+uv run mypy                # tipos (strict)
+uv run lint-imports        # fronteiras da arquitetura
+uv run pytest              # testes
+```
+
+Testes de integração precisam do Postgres local e são marcados com `integration`:
+
+```bash
+docker compose up -d       # a partir da T2
+uv run pytest -m integration
+```
+
+## Segurança
+
+O repositório é **público**. Portanto:
+
+- `.env.local`, `.streamlit/secrets.toml` e qualquer URL de conexão ficam fora do
+  Git — e fora de logs, prints e mensagens de commit.
+- Extratos reais (`*.pdf`, `*.ofx`) nunca entram no repositório. Os testes usam
+  apenas fixtures sintéticas em `tests/fixtures/`.
+- Hooks de pre-commit barram os dois casos antes do commit.
+- Valores monetários são `Decimal` no Python e `numeric(14,2)` no banco. Nunca
+  `float`.
+
+## Convenções
+
+- GitHub Flow: branches curtas a partir de `main`, PR com CI verde.
+- [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`,
+  `chore:`, `docs:`, `test:`.
+- TDD no `domain`; fakes dos ports na `application`; integração contra Postgres em
+  Docker.
+- Texto voltado ao usuário em português do Brasil.

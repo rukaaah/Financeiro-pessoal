@@ -1,0 +1,180 @@
+[project]
+name = "financeiro-pessoal"
+version = "0.1.0"
+description = "Sistema de finanças pessoais que substitui a planilha Orçamento Pessoal."
+readme = "README.md"
+requires-python = "==3.12.*"
+license = { text = "MIT" }
+dependencies = [
+    "psycopg[binary,pool]>=3.2",
+    "streamlit>=1.42",  # st.login (OIDC) chegou na 1.42
+]
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.1",
+    "mypy>=1.13",
+    "pre-commit>=4.0",
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/financeiro"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+# ---------------------------------------------------------------- ruff
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "F",     # pyflakes
+    "E",     # pycodestyle
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # bugbear
+    "A",     # builtins shadowing
+    "C4",    # comprehensions
+    "DTZ",   # datetimes sem timezone
+    "T20",   # print()/pprint() esquecidos
+    "SIM",   # simplificações
+    "PTH",   # pathlib em vez de os.path
+    "RUF",   # regras do próprio ruff
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Scripts e jobs escrevem no stdout de propósito.
+"scripts/**" = ["T20"]
+"jobs/**" = ["T20"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+# ---------------------------------------------------------------- mypy
+
+[tool.mypy]
+python_version = "3.12"
+# app/, jobs/ e scripts/ entram nesta lista quando forem criados (T7/T8).
+files = ["src", "tests"]
+strict = true
+warn_unreachable = true
+disallow_any_explicit = false
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = ["streamlit.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------- pytest
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+markers = [
+    "integration: exige Postgres em Docker (docker-compose.yml)",
+]
+
+[tool.coverage.run]
+source = ["src/financeiro"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "\\.\\.\\."]
+
+# ---------------------------------------------------------------- import-linter
+# Fronteiras da arquitetura (ADR-001). Rodado no CI a cada PR.
+
+[tool.importlinter]
+root_packages = ["financeiro"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Camadas dentro de cada módulo: domain <- application <- adapters"
+type = "layers"
+layers = ["adapters", "application", "domain"]
+containers = [
+    "financeiro.ledger",
+    "financeiro.budgeting",
+    "financeiro.cards",
+    "financeiro.goals",
+    "financeiro.investments",
+    "financeiro.market_data",
+    "financeiro.importing",
+    "financeiro.categorization",
+    "financeiro.identity",
+    "financeiro.shared",
+]
+
+[[tool.importlinter.contracts]]
+name = "Módulos de negócio são independentes entre si"
+type = "independence"
+modules = [
+    "financeiro.ledger",
+    "financeiro.budgeting",
+    "financeiro.cards",
+    "financeiro.goals",
+    "financeiro.investments",
+    "financeiro.market_data",
+    "financeiro.importing",
+    "financeiro.categorization",
+    "financeiro.identity",
+]
+
+[[tool.importlinter.contracts]]
+name = "O domain é puro: só stdlib"
+type = "forbidden"
+source_modules = [
+    "financeiro.ledger.domain",
+    "financeiro.budgeting.domain",
+    "financeiro.cards.domain",
+    "financeiro.goals.domain",
+    "financeiro.investments.domain",
+    "financeiro.market_data.domain",
+    "financeiro.importing.domain",
+    "financeiro.categorization.domain",
+    "financeiro.identity.domain",
+    "financeiro.shared.domain",
+]
+forbidden_modules = ["psycopg", "streamlit"]
+unmatched_ignore_imports_alone = true
+
+[[tool.importlinter.contracts]]
+name = "Só os adapters falam com o banco"
+type = "forbidden"
+source_modules = [
+    "financeiro.ledger.application",
+    "financeiro.budgeting.application",
+    "financeiro.cards.application",
+    "financeiro.goals.application",
+    "financeiro.investments.application",
+    "financeiro.market_data.application",
+    "financeiro.importing.application",
+    "financeiro.categorization.application",
+    "financeiro.identity.application",
+    "financeiro.shared.application",
+]
+forbidden_modules = ["psycopg", "streamlit"]
+unmatched_ignore_imports_alone = true

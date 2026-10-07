@@ -1,0 +1,57 @@
+# Instale com: uv run pre-commit install
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+
+  # Trava extratos reais e credenciais antes do commit: o repo é público.
+  - repo: local
+    hooks:
+      - id: sem-extratos-reais
+        name: nenhum extrato real (*.pdf, *.ofx) fora de tests/fixtures
+        entry: >-
+          bash -c 'bad=$(printf "%s\n" "$@" | grep -Ei "\.(pdf|ofx)$" | grep -v "^tests/fixtures/" || true);
+          if [ -n "$bad" ]; then echo "Extrato real barrado:"; echo "$bad"; exit 1; fi' --
+        language: system
+        pass_filenames: true
+      - id: sem-segredos
+        name: nenhum arquivo de segredo versionado
+        entry: >-
+          bash -c 'bad=$(printf "%s\n" "$@" | grep -E "(^|/)(\.env($|\..*)|secrets\.toml|\.neon)$" || true);
+          if [ -n "$bad" ]; then echo "Arquivo de segredo barrado:"; echo "$bad"; exit 1; fi' --
+        language: system
+        pass_filenames: true
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff-format
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        pass_filenames: false
+        args: [--config-file=pyproject.toml]
+        additional_dependencies: [psycopg, pytest]
+
+  - repo: local
+    hooks:
+      - id: import-linter
+        name: fronteiras da arquitetura (import-linter)
+        entry: uv run lint-imports
+        language: system
+        pass_filenames: false
+        types: [python]
