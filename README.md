@@ -21,6 +21,7 @@ demo**, com dados fictícios e uma faixa avisando disso. O isolamento entre usu�
 | Banco | Postgres no Neon |
 | Acesso ao banco | `psycopg` 3, SQL à mão, transações explícitas |
 | Login | Google via `st.login` (OIDC) + allowlist em `app_users` |
+| Migrations | yoyo-migrations, SQL puro |
 | Jobs | GitHub Actions agendado |
 | Ferramentas | uv, Python 3.12, ruff, mypy, pytest, pre-commit, import-linter |
 
@@ -61,11 +62,13 @@ Três regras, verificadas por import-linter no CI:
 
 ## Desenvolvimento
 
-Requer [uv](https://docs.astral.sh/uv/) e Docker (para os testes de integração).
+Requer [uv](https://docs.astral.sh/uv/) e Docker.
 
 ```bash
 uv sync                    # cria o .venv com Python 3.12 e instala tudo
 uv run pre-commit install  # liga os hooks de commit
+cp .env.example .env.local # DATABASE_URL do Postgres local
+docker compose up -d       # sobe o Postgres 17 na porta 5433
 ```
 
 Durante o trabalho:
@@ -78,10 +81,19 @@ uv run lint-imports        # fronteiras da arquitetura
 uv run pytest              # testes
 ```
 
+Migrations ([ADR-006](docs/adr/006-runner-de-migrations.md)), sempre com o papel
+`owner` e com a URL vinda do ambiente:
+
+```bash
+export DATABASE_URL="postgresql+psycopg://owner:dev@localhost:5433/financeiro"
+uv run yoyo apply --database "$DATABASE_URL"   # aplica as pendentes
+uv run yoyo list  --database "$DATABASE_URL"   # o que já está aplicado
+./scripts/dump_schema.sh                        # regenera docs/schema.sql
+```
+
 Testes de integração precisam do Postgres local e são marcados com `integration`:
 
 ```bash
-docker compose up -d       # a partir da T2
 uv run pytest -m integration
 ```
 

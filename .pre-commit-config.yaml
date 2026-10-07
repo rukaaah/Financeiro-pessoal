@@ -26,8 +26,10 @@ repos:
         pass_filenames: true
       - id: sem-segredos
         name: nenhum arquivo de segredo versionado
+        # .env.example / .env.sample são modelos sem credencial e passam.
         entry: >-
-          bash -c 'bad=$(printf "%s\n" "$@" | grep -E "(^|/)(\.env($|\..*)|secrets\.toml|\.neon)$" || true);
+          bash -c 'bad=$(printf "%s\n" "$@" | grep -E "(^|/)(\.env($|\..*)|secrets\.toml|\.neon)$"
+          | grep -vE "(^|/)\.env\.(example|sample|template)$" || true);
           if [ -n "$bad" ]; then echo "Arquivo de segredo barrado:"; echo "$bad"; exit 1; fi' --
         language: system
         pass_filenames: true
