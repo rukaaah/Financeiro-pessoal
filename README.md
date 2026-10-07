@@ -4,7 +4,9 @@ Sistema de finanças pessoais que substitui uma planilha de orçamento: lançame
 orçamento mensal, faturas de cartão, cofrinhos, valores a receber e carteira de
 investimentos.
 
-Projeto de portfólio, em desenvolvimento. **Fase 0 — fundação do repositório.**
+Projeto de portfólio, em desenvolvimento. **Fase 0 concluída** — repositório,
+banco com RLS, CI, identidade e esqueleto do app. A Fase 1 começa pelos casos de
+uso de lançamentos e orçamento.
 
 ## Como funciona
 
@@ -26,7 +28,8 @@ demo**, com dados fictícios e uma faixa avisando disso. O isolamento entre usu�
 | Ferramentas | uv, Python 3.12, ruff, mypy, pytest, pre-commit, import-linter |
 
 As decisões e seus porquês estão em [`docs/adr/`](docs/adr/). Os passos de
-publicação, em [`docs/deploy.md`](docs/deploy.md).
+publicação, em [`docs/deploy.md`](docs/deploy.md), e as medições que dependem do
+app no ar, em [`docs/validacoes.md`](docs/validacoes.md).
 
 ## Arquitetura
 
