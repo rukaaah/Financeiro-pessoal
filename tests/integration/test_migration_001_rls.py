@@ -11,9 +11,9 @@ import uuid
 import psycopg
 import pytest
 
-pytestmark = pytest.mark.integration
+from tests.integration.conftest import Conexao, como_app, define_usuario
 
-Conexao = psycopg.Connection[tuple[object, ...]]
+pytestmark = pytest.mark.integration
 
 ID_A = uuid.UUID("aaaaaaaa-1111-1111-1111-111111111111")
 ID_B = uuid.UUID("bbbbbbbb-2222-2222-2222-222222222222")
@@ -32,23 +32,6 @@ def dois_usuarios(conn: Conexao) -> None:
         )
 
 
-def _define_usuario(cur: psycopg.Cursor[tuple[object, ...]], user_id: uuid.UUID) -> None:
-    """Equivalente a `SET LOCAL app.user_id`, mas parametrizável.
-
-    `SET LOCAL` não aceita parâmetro vinculado, então interpolá-lo seria injeção
-    de SQL. `set_config(..., is_local => true)` tem o mesmo efeito e aceita
-    parâmetro. É esta a forma que a unit of work da T6 deve usar.
-    """
-    cur.execute("SELECT set_config('app.user_id', %s, true)", (str(user_id),))
-
-
-def _como_app(cur: psycopg.Cursor[tuple[object, ...]], user_id: uuid.UUID | None) -> None:
-    """Passa a sessão para o papel `app`, opcionalmente com contexto de usuário."""
-    cur.execute("SET LOCAL ROLE app")
-    if user_id is not None:
-        _define_usuario(cur, user_id)
-
-
 def test_app_nao_tem_bypassrls(conn: Conexao) -> None:
     """Sem isso, nenhuma policy vale: o papel passaria por cima de todas."""
     with conn.cursor() as cur:
@@ -65,14 +48,14 @@ def test_rls_esta_habilitada_em_app_users(conn: Conexao) -> None:
 def test_sem_contexto_o_app_nao_ve_nada(conn: Conexao, dois_usuarios: None) -> None:
     """Esquecer o SET LOCAL devolve vazio, nunca dado de outra pessoa."""
     with conn.cursor() as cur:
-        _como_app(cur, None)
+        como_app(cur, None)
         cur.execute("SELECT count(*) FROM app_users")
         assert cur.fetchone() == (0,)
 
 
 def test_com_contexto_o_app_ve_apenas_a_propria_linha(conn: Conexao, dois_usuarios: None) -> None:
     with conn.cursor() as cur:
-        _como_app(cur, ID_A)
+        como_app(cur, ID_A)
         cur.execute("SELECT id FROM app_users")
         assert cur.fetchall() == [(ID_A,)]
 
@@ -82,7 +65,7 @@ def test_app_nao_alcanca_a_linha_do_outro_nem_pedindo_pelo_id(
 ) -> None:
     """Filtrar explicitamente pelo id alheio também não traz nada."""
     with conn.cursor() as cur:
-        _como_app(cur, ID_A)
+        como_app(cur, ID_A)
         cur.execute("SELECT count(*) FROM app_users WHERE id = %s", (ID_B,))
         assert cur.fetchone() == (0,)
 
@@ -90,7 +73,7 @@ def test_app_nao_alcanca_a_linha_do_outro_nem_pedindo_pelo_id(
 def test_app_nao_escreve_em_app_users(conn: Conexao, dois_usuarios: None) -> None:
     """A allowlist é administrada pelo `owner`; o app só lê."""
     with conn.cursor() as cur:
-        _como_app(cur, ID_A)
+        como_app(cur, ID_A)
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             cur.execute(
                 "INSERT INTO app_users (email, display_name) VALUES (%s, %s)",
@@ -101,7 +84,7 @@ def test_app_nao_escreve_em_app_users(conn: Conexao, dois_usuarios: None) -> Non
 def test_current_app_user_nao_vaza_para_a_transacao_seguinte(conn: Conexao) -> None:
     """A propriedade que torna o pool compartilhado seguro (ADR-004)."""
     with conn.cursor() as cur:
-        _define_usuario(cur, ID_A)
+        define_usuario(cur, ID_A)
         cur.execute("SELECT current_app_user()")
         assert cur.fetchone() == (ID_A,)
 
@@ -114,7 +97,7 @@ def test_current_app_user_nao_vaza_para_a_transacao_seguinte(conn: Conexao) -> N
 
 def test_resolve_app_user_ignora_caixa_do_email(conn: Conexao, dois_usuarios: None) -> None:
     with conn.cursor() as cur:
-        _como_app(cur, None)
+        como_app(cur, None)
         cur.execute("SELECT resolve_app_user(%s)", ("A@Exemplo.COM",))
         assert cur.fetchone() == (ID_A,)
 
@@ -124,7 +107,7 @@ def test_resolve_app_user_devolve_nulo_fora_da_allowlist(
 ) -> None:
     """Quem não está na allowlist vira modo demo (ADR-003), não erro."""
     with conn.cursor() as cur:
-        _como_app(cur, None)
+        como_app(cur, None)
         cur.execute("SELECT resolve_app_user(%s)", ("desconhecido@exemplo.com",))
         assert cur.fetchone() == (None,)
 
@@ -133,7 +116,7 @@ def test_resolve_app_user_ignora_usuario_inativo(conn: Conexao, dois_usuarios: N
     """Revogar acesso é `active = false`, sem deploy."""
     with conn.cursor() as cur:
         cur.execute("UPDATE app_users SET active = false WHERE id = %s", (ID_A,))
-        _como_app(cur, None)
+        como_app(cur, None)
         cur.execute("SELECT resolve_app_user(%s)", ("a@exemplo.com",))
         assert cur.fetchone() == (None,)
 
