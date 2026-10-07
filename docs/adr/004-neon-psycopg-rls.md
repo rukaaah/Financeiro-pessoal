@@ -85,6 +85,26 @@ fora do CI (`node_modules/` está no `.gitignore`).
   cabe folgado, mas o limite existe.
 - Postgres em Docker não é idêntico ao Neon (que separa compute de storage). Os testes
   cobrem schema, constraints e RLS, não o comportamento de hibernação.
+- **O CI aplica as migrations como superusuário, e o Neon não.** No
+  `docker-compose.yml` o papel aplicador é o superusuário do container; no Neon é o
+  `neondb_owner`, que tem `CREATEROLE` e `BYPASSRLS` mas **não** é superusuário.
+  Então toda diferença de permissão passa verde no CI e só aparece no primeiro
+  deploy.
+
+  Já aconteceu uma vez: a migration 001 trazia
+  `ALTER ROLE app NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`, para garantir o
+  estado de um papel que já existisse. Mexer no atributo `SUPERUSER` exige **ser**
+  superusuário, então o comando funcionava no Docker e falharia no Neon com
+  *"Only roles with the SUPERUSER attribute may change the SUPERUSER attribute"*.
+  Foi substituído por um bloco que **verifica** os atributos e interrompe a migration
+  com erro legível se algum for perigoso — o que é melhor de qualquer forma, porque
+  um papel `app` com `BYPASSRLS` anula todas as policies de uma vez e isso não deve
+  ser corrigido em silêncio.
+
+  Mitigação possível, não adotada por ora: criar no CI um papel aplicador sem
+  superusuário, espelhando o `neondb_owner`. Enquanto isso não existe, qualquer
+  migration que mexa em papel, privilégio ou extensão merece ser aplicada no branch
+  `dev` do Neon antes do merge.
 
 ## Alternativas consideradas
 
