@@ -1,0 +1,55 @@
+/* Tokens de design do app (ver .design/app-completo/DESIGN_BRIEF.md).
+ *
+ * Filosofia: sóbrio, denso e legível. Cor só para estado do orçamento
+ * (dentro / perto / fora); o resto é neutro. Os valores de cor repetem os de
+ * .streamlit/config.toml: se mudar um, mude o outro.
+ *
+ * Claro por padrão; escuro pela preferência do sistema, como o tema do
+ * Streamlit (que não fixa `base`).
+ */
+:root {
+  /* Cor: neutros */
+  --fin-bg: #fafaf8;
+  --fin-bg-sunken: #f1f1ec;
+  --fin-text: #1b1f1d;
+  --fin-text-muted: #5b625e;      /* 5.9:1 sobre --fin-bg */
+  --fin-border: #d9dbd5;
+
+  /* Cor: estado do orçamento (contraste >= 4.5:1 sobre --fin-bg) */
+  --fin-ok: #1f6f54;
+  --fin-warn: #8a5a00;
+  --fin-over: #b3261e;
+  --fin-ok-bg: #e3f1ea;
+  --fin-warn-bg: #f6ead2;
+  --fin-over-bg: #f8e1df;
+
+  /* Espaçamento (base 4px) */
+  --fin-space-1: 4px;
+  --fin-space-2: 8px;
+  --fin-space-3: 12px;
+  --fin-space-4: 16px;
+  --fin-space-5: 24px;
+
+  /* Forma e tipografia */
+  --fin-radius: 8px;
+  --fin-radius-pill: 999px;
+  --fin-touch-min: 44px;          /* alvo de toque mínimo no celular */
+  --fin-font-numeric: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fin-bg: #121513;
+    --fin-bg-sunken: #1b201d;
+    --fin-text: #e6e8e5;
+    --fin-text-muted: #a3aaa5;
+    --fin-border: #2d3430;
+
+    --fin-ok: #5fc9a0;
+    --fin-warn: #e0a93b;
+    --fin-over: #f2877e;
+    --fin-ok-bg: #16322a;
+    --fin-warn-bg: #3a2e12;
+    --fin-over-bg: #3d1f1c;
+  }
+}

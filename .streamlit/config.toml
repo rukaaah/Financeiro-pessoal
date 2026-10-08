@@ -1,5 +1,10 @@
 # Configuração do app. Diferente de secrets.toml, este arquivo entra no Git:
 # não tem segredo nenhum.
+#
+# Tema sóbrio e denso (ver .design/app-completo/DESIGN_BRIEF.md). Sem `base`:
+# o Streamlit segue a preferência do sistema, e cada modo tem a sua paleta.
+# Os tokens próprios (estado do orçamento, espaçamento) ficam em
+# app/estilo/tokens.css e usam as mesmas cores.
 [server]
 # O app guarda dado financeiro; não há motivo para aceitar upload grande.
 maxUploadSize = 5
@@ -7,6 +12,16 @@ maxUploadSize = 5
 [browser]
 gatherUsageStats = false
 
-[theme]
-base = "light"
+[theme.light]
 primaryColor = "#1f6f54"
+backgroundColor = "#fafaf8"
+secondaryBackgroundColor = "#f1f1ec"
+textColor = "#1b1f1d"
+baseRadius = "0.5rem"
+
+[theme.dark]
+primaryColor = "#5fc9a0"
+backgroundColor = "#121513"
+secondaryBackgroundColor = "#1b201d"
+textColor = "#e6e8e5"
+baseRadius = "0.5rem"

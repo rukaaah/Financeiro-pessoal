@@ -14,6 +14,7 @@ from pathlib import Path
 import psycopg
 import pytest
 import streamlit as st
+from app.composicao import CHAVE_VER_DEMO
 from streamlit.testing.v1 import AppTest
 
 pytestmark = pytest.mark.integration
@@ -30,6 +31,8 @@ PAGINAS_ESPERADAS = (
     "Cofrinhos",
     "A receber",
     "Investimentos",
+    "Importar",
+    "Configurações",
 )
 
 
@@ -94,7 +97,7 @@ def test_o_app_sobe_sem_erro(app: AppTest) -> None:
     assert not resultado.exception, [str(e) for e in resultado.exception]
 
 
-def test_a_navegacao_tem_as_sete_paginas(app: AppTest) -> None:
+def test_a_navegacao_tem_as_nove_paginas(app: AppTest) -> None:
     """Se uma página tiver caminho errado, o st.navigation falha aqui."""
     from streamlit_app import PAGINAS
 
@@ -103,8 +106,24 @@ def test_a_navegacao_tem_as_sete_paginas(app: AppTest) -> None:
         assert (RAIZ / caminho).is_file(), f"página inexistente: {caminho}"
 
 
-def test_visitante_sem_login_ve_a_faixa_de_dados_ficticios(app: AppTest) -> None:
+def _ver_demonstracao(teste: AppTest) -> None:
+    """Simula o clique em "Ver demonstração" da tela de entrada."""
+    teste.session_state[CHAVE_VER_DEMO] = True
+
+
+def test_visitante_sem_login_ve_a_tela_de_entrada(app: AppTest) -> None:
+    resultado = app.run()
+    assert not resultado.exception, [str(e) for e in resultado.exception]
+    rotulos = [botao.label for botao in resultado.button]
+    assert "Entrar com Google" in rotulos
+    assert "Ver demonstração" in rotulos
+    # Antes de escolher, nenhuma página (e nenhum número) aparece.
+    assert not resultado.sidebar.button
+
+
+def test_visitante_na_demonstracao_ve_a_faixa_de_dados_ficticios(app: AppTest) -> None:
     """O aviso mais importante da tela: o app é público e o visitante vê números inventados."""
+    _ver_demonstracao(app)
     resultado = app.run()
     assert not resultado.exception, [str(e) for e in resultado.exception]
 
@@ -114,7 +133,8 @@ def test_visitante_sem_login_ve_a_faixa_de_dados_ficticios(app: AppTest) -> None
     )
 
 
-def test_visitante_sem_login_recebe_o_botao_de_entrar(app: AppTest) -> None:
+def test_visitante_na_demonstracao_pode_entrar_com_google(app: AppTest) -> None:
+    _ver_demonstracao(app)
     resultado = app.run()
     rotulos = [botao.label for botao in resultado.sidebar.button]
     assert "Entrar com Google" in rotulos
@@ -122,6 +142,7 @@ def test_visitante_sem_login_recebe_o_botao_de_entrar(app: AppTest) -> None:
 
 
 def test_a_pagina_inicial_e_a_visao_geral(app: AppTest) -> None:
+    _ver_demonstracao(app)
     resultado = app.run()
     titulos = [titulo.value for titulo in resultado.title]
     assert titulos == ["Visão geral"]
@@ -135,6 +156,8 @@ def test_sem_configuracao_de_banco_a_falha_e_explicita(monkeypatch: pytest.Monke
     # sozinho, e sem isto o teste conectaria no banco de produção da máquina de
     # quem estivesse rodando.
     teste.secrets["database"] = {"url": ""}
+    # A tela de entrada não toca o banco; é a escolha da demonstração que resolve a sessão.
+    _ver_demonstracao(teste)
     resultado = teste.run()
 
     assert resultado.exception

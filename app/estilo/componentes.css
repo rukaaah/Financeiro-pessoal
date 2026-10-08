@@ -1,0 +1,58 @@
+/* Estilos mínimos que o tema do Streamlit não cobre. Usa só os tokens. */
+
+/* Valores em dinheiro alinham em coluna */
+.fin-valor {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Selo de estado: ícone + rótulo acompanham a cor (nunca só cor) */
+.fin-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fin-space-1);
+  padding: 2px var(--fin-space-3);
+  border-radius: var(--fin-radius-pill);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.fin-selo--ok   { color: var(--fin-ok);   background: var(--fin-ok-bg); }
+.fin-selo--warn { color: var(--fin-warn); background: var(--fin-warn-bg); }
+.fin-selo--over { color: var(--fin-over); background: var(--fin-over-bg); }
+
+/* Barra planejado x realizado */
+.fin-barra {
+  position: relative;
+  height: 10px;
+  background: var(--fin-bg-sunken);
+  border-radius: var(--fin-radius-pill);
+  overflow: hidden;
+}
+.fin-barra > span {
+  display: block;
+  height: 100%;
+  border-radius: var(--fin-radius-pill);
+}
+.fin-barra--ok   > span { background: var(--fin-ok); }
+.fin-barra--warn > span { background: var(--fin-warn); }
+.fin-barra--over > span { background: var(--fin-over); }
+
+.fin-legenda { color: var(--fin-text-muted); font-size: 0.85rem; }
+
+/* Alvos de toque no celular */
+@media (max-width: 640px) {
+  .stButton > button, .stFormSubmitButton > button { min-height: var(--fin-touch-min); }
+}
+
+/* Linha de orçamento: nome, valores, barra e selo */
+.fin-linha { padding: var(--fin-space-3) 0; border-bottom: 1px solid var(--fin-border); }
+.fin-linha:last-child { border-bottom: 0; }
+.fin-linha__topo {
+  display: flex; justify-content: space-between; gap: var(--fin-space-3);
+  margin-bottom: var(--fin-space-2); flex-wrap: wrap;
+}
+.fin-linha__nome { font-weight: 600; }
+.fin-linha__rodape { margin-top: var(--fin-space-2); display: flex; gap: var(--fin-space-3); align-items: center; }
+
+/* Aviso de que a tela mostra dados de exemplo */
+.fin-exemplo { color: var(--fin-text-muted); font-size: 0.85rem; }

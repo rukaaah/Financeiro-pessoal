@@ -18,6 +18,7 @@ from financeiro.identity.domain.usuario import Sessao
 from financeiro.shared.adapters.postgres import UnidadeDeTrabalhoPsycopg, criar_pool
 
 CHAVE_DA_SESSAO = "sessao"
+CHAVE_VER_DEMO = "ver_demonstracao"
 
 
 def _url_do_banco() -> str:
@@ -90,3 +91,22 @@ def sessao_atual() -> Sessao:
 def esquecer_sessao() -> None:
     """Descarta a sessão resolvida, para que o próximo acesso recalcule."""
     st.session_state.pop(CHAVE_DA_SESSAO, None)
+    st.session_state.pop(CHAVE_VER_DEMO, None)
+
+
+def ja_identificado() -> bool:
+    """O provedor OIDC já disse quem está aqui? Não consulta o banco.
+
+    Serve só para decidir se mostra a tela de entrada. Quem é o dono e quem cai no
+    demo continua sendo decidido por `sessao_atual()` (ADR-003).
+    """
+    return credenciais_de(getattr(st, "user", None)).email is not None
+
+
+def visitante_escolheu_demo() -> bool:
+    return bool(st.session_state.get(CHAVE_VER_DEMO))
+
+
+def escolher_demonstracao() -> None:
+    """O visitante pediu para ver a demonstração, sem fazer login."""
+    st.session_state[CHAVE_VER_DEMO] = True
