@@ -32,7 +32,7 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
   - [x] Fatia 2 — Lançar e Lançamentos (PR #19; toque em 26 a 45 ms, `medicoes.md`)
   - [x] Fatia 3 — Mês (PR #20)
   - [x] Fatia 4 — Cartão (PR #21)
-  - [ ] Fatia 5 — recorrentes, entradas previstas e Atenção (em PR)
+  - [x] Fatia 5 — recorrentes, entradas previstas e Atenção (PR #22)
   - [ ] Fatia 6 — Patrimônio
   - [ ] Fatia 7 — Investimentos
   - [ ] Fatia 8 — entrada em lote
