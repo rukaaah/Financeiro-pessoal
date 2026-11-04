@@ -341,3 +341,28 @@ são somados das partes, com asserções no próprio arquivo.
 Regra que o esboço fixou para todas as telas: **um bloco de destaque azul-escuro por
 tela** com o número que responde a pergunta da tela e, quando há, a ação principal
 dentro dele (Pagar fatura, Guardar). Lançamentos não tem bloco de destaque: é lista.
+
+### Investimentos, revisto (Pedro, 2026-11-04: "está pequena, falta gráficos, falta comportamento")
+
+Patrimônio → Investimentos passa a ter um bloco de destaque (investido, variação do mês
+fora o aporte, quanto foi aportado e quanto rendeu, Onde aportar e Perguntar) e quatro
+faces num controle segmentado:
+
+- **Resumo**: rentabilidade acumulada de 12 meses (carteira × CDI × IFIX, valor
+  escrito no fim de cada linha); esforço e rendimento (aportado em cinza, rendimento
+  em azul, mês a mês); próxima marca, renda passiva média, aporte médio, taxa de
+  poupança; Projeção.
+- **Carteira**: alocação × meta; **como cada ativo se comportou no mês** (barras
+  divergentes, verde e vermelho pelo sentido); lista de ativos com P/VP, DY e
+  variação sobre o preço médio. Toque abre o **detalhe do ativo**: preço em 12 meses
+  com o preço médio tracejado, P/VP, DY, último provento, liquidez, peso, proventos
+  por cota em 12 meses e Perguntar.
+- **Proventos**: barras de 12 meses com a média; agenda com data-com, pagamento,
+  anunciado ou estimado e yield on cost.
+- **Movimentos**: aportes, compras e proventos recebidos, com aporte novo separado de
+  realocação.
+
+**Onde aportar** e **Projeção** funcionam no esboço: o primeiro distribui o valor pelas
+regras (classe abaixo da meta, menor P/VP elegível, cota inteira, sobra no CDB Inter)
+e diz quem ficou de fora e por quê; a segunda recalcula com aporte, DY e horizonte e
+mostra a faixa de ±2 p.p.

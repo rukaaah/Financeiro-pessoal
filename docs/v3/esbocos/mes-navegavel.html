@@ -135,6 +135,21 @@ nav.barra .lancar .ms{font-size:30px}
 .nota b{color:var(--tinta)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--tinta);color:var(--papel);border-radius:6px;padding:10px 14px;display:flex;gap:16px;align-items:center;z-index:30;max-width:calc(100% - 32px)}
 .toast button{color:var(--papel);font-weight:700;text-decoration:underline;min-height:36px}
+
+.seg{display:flex;background:var(--sup);border-radius:6px;padding:3px;margin:16px 0 4px;overflow-x:auto}
+.seg button{flex:1;padding:8px 10px;border-radius:4px;font-size:14px;font-weight:600;color:var(--t2);white-space:nowrap;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--papel);color:var(--tinta);box-shadow:0 1px 2px rgb(0 0 0 / 12%)}
+.graf{background:var(--sup);border-radius:6px;padding:12px 14px}
+.graf svg{display:block;width:100%;height:auto}
+.leg{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--t2);margin-top:6px}
+.leg span{display:inline-flex;align-items:center;gap:6px}
+.leg i{width:14px;height:3px;display:inline-block;border-radius:2px}
+.leg i.q{width:10px;height:10px;border-radius:2px}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.kv div{background:var(--sup);border-radius:6px;padding:10px 12px}
+.kv .r{font-size:12px;color:var(--t2)}.kv .v{font-size:17px;font-weight:700}
+.pos{color:var(--dentro)}.neg{color:var(--fora)}
+.ativo{cursor:pointer}
 @media (prefers-reduced-motion:no-preference){.folha{animation:sobe .16s ease-out}@keyframes sobe{from{transform:translateY(24px);opacity:.6}}}
 </style>
 
@@ -345,16 +360,164 @@ function telaPatrimonio(){
       <span class="sub">${meta? `meta ${brl(meta)} · deveria ter ${brl(dev)}${sal<dev?` · atrasado ${brl(dev-sal)}`: sal>dev?` · adiantado ${brl(sal-dev)}`:" · em dia"}` : cdi}</span><span class="sub">${meta?Math.round(sal/meta*100)+"%":""}</span>
       ${meta?`<span class="prog"><i style="width:${sal/meta*100}%"></i><b style="left:${dev/meta*100}%"></b></span>`:""}</div>`).join("")}</div></section>
     <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">add</span>Novo cofrinho</button></div>`;
-  if(aba==="Investimentos") corpo = `<div class="heroi"><div class="rot">Investido</div><div class="grande">${brl(investido)}</div><p class="conta">mais ${brl(207000)} em CDBs, em Cofrinhos · cotações de 04/11</p>
-      <div class="tres"><div><div class="r">Proventos nov</div><div class="v">82,69</div></div><div><div class="r">Média 12m</div><div class="v">60,70</div></div><div><div class="r">12 meses</div><div class="v">+11,0%</div></div></div>
-      <div class="pe"><span>CDI 9,6% · IFIX 7,4%</span><button class="btn-claro" data-acao="chat" data-contexto="inv"><span class="ms" style="font-size:18px">auto_awesome</span>Perguntar</button></div></div>
-    <section><h2>Alocação contra a meta</h2><div class="proj">${fiis.map(([cl,at,meta])=>{const v=soma(at.map(a=>a[1])),p=v/investido*100;return `<div class="aloc"><span>${cl}</span><span class="tr"><i style="width:${p}%"></i><b style="left:${meta}%"></b></span><span style="text-align:right">${Math.round(p)}%</span></div>`}).join("")}<p class="sub">Barra: hoje. Traço: sua meta.</p></div></section>
-    <section><h2>Carteira <span class="lado">tickers fictícios</span></h2>${fiis.map(([cl,at])=>`<div class="grupo"><div class="grupo-cab"><span>${cl}</span><span>${brl(soma(at.map(a=>a[1])))}</span></div>${at.map(a=>`<div class="item"><span class="nome">${a[0]}</span><span class="valor">${brl(a[1])}</span><span class="sub">${a[2]}</span><span class="sub">${Math.round(a[1]/investido*1000)/10}%</span></div>`).join("")}</div>`).join("")}</section>
-    <div class="rodape"><button class="btn" data-acao="breve">Onde aportar</button><button class="btn" data-acao="breve">Projeção</button><button class="btn" data-acao="breve">Importar posição por print</button></div>`;
+  if(aba==="Investimentos") corpo = telaInvest();
   if(aba==="A receber") corpo = `<div class="heroi"><div class="rot">A receber de pessoas</div><div class="grande">${brl(50000)}</div><p class="conta">Fica fora do patrimônio e do gasto do mês.</p></div>
     ${receber.map(([n,t,itens,tom])=>`<section><h2><span class="pessoa"><span class="inicial" style="background:${tom}">${n[0]}</span>${n}</span><span>${brl(t)}</span></h2><div class="lista">${itens.map(i=>`<div class="item"><span class="nome">${i[0]}</span><span class="valor">${brl(i[2])}</span><span class="sub">${i[1]}</span><span></span></div>`).join("")}</div>
       <div class="rodape" style="margin-top:8px"><button class="btn" data-acao="breve">Registrar recebimento</button><button class="btn" data-acao="breve">Perdoar</button></div></section>`).join("")}`;
   return `<header><div><h1>Patrimônio</h1><div class="sub">hoje, 04/11/2026</div></div><button class="icone" data-acao="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button></header>${abas}${corpo}`;
+}
+
+
+// ---- Investimentos: séries fictícias de 12 meses (dez/25 a nov/26), coerentes com o valor investido de hoje
+const MESES = ["dez","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov"];
+const aportes = [40000,50000,45000,60000,50000,45000,70000,50000,45000,65000,50000,75000]; // por mês, centavos
+const baseAportada = 285000; // antes de dez/25
+const aportado = aportes.reduce((a,v,k)=>(a.push((a[k-1]??baseAportada)+v),a),[]);
+const ganhoFinal = investido - aportado[11];
+const ganho = MESES.map((_,k)=>Math.round(ganhoFinal*Math.pow((k+1)/12,1.25)));
+const valorMes = MESES.map((_,k)=>aportado[k]+ganho[k]);
+console.assert(valorMes[11]===investido, "série do patrimônio investido não fecha");
+const rCart=[0.8,1.1,0.4,1.3,0.9,-0.6,1.2,0.7,1.0,0.5,1.4,1.2], rCdi=Array(12).fill(0.766), rIfix=[0.9,-0.4,0.6,1.1,0.2,-0.9,1.3,0.4,0.8,0.7,1.0,1.4];
+const acum = r => r.reduce((a,v,k)=>(a.push(((1+(a[k-1]??0)/100)*(1+v/100)-1)*100),a),[]);
+const aC=acum(rCart), aD=acum(rCdi), aI=acum(rIfix);
+const proventos = [3820,4100,4450,4710,5230,5500,5860,6120,6640,7080,7530,8269];
+const mediaProv = Math.round(soma(proventos)/12);
+const pct1 = v => (v>=0?"+":"−")+Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
+const ativos = { // preço, cotas, preço médio, variação no mês %, P/VP, DY 12m %, provento por cota (centavos) no último mês, liquidez R$ mil/dia
+  "FICTA11":{cl:"Papel",p:9810,q:25,pm:9636,vm:1.8,pvp:1.03,dy:11.9,prov:105,liq:900},
+  "DEMO11":{cl:"Papel",p:962,q:40,pm:985,vm:-2.3,pvp:0.94,dy:12.8,prov:11,liq:650},
+  "TESTE11":{cl:"Tijolo",p:10230,q:12,pm:10802,vm:-5.3,pvp:0.88,dy:8.9,prov:72,liq:720},
+  "EXEMP11":{cl:"Logística",p:15840,q:10,pm:15014,vm:5.5,pvp:0.97,dy:8.4,prov:110,liq:1100},
+  "MODEL11":{cl:"FI-Infra",p:9170,q:30,pm:9503,vm:-3.5,pvp:0.92,dy:13.4,prov:108,liq:350},
+  "Tesouro Selic 2031":{cl:"Tesouro",p:150000,q:1,pm:143000,vm:0.9,pvp:null,dy:null,prov:0,liq:null},
+};
+Object.entries(ativos).forEach(([n,a])=>{ const linha = fiis.flatMap(c=>c[1]).find(x=>x[0]===n); console.assert(linha && linha[1]===a.p*a.q, "preço × cotas ≠ valor de "+n); });
+const agenda = [["DEMO11","06/11","16/11",440,"anunciado"],["TESTE11","09/11","19/11",864,"anunciado"],["FICTA11","13/11","23/11",2625,"estimado"],["EXEMP11","18/11","28/11",1100,"anunciado"],["MODEL11","24/11","04/12",3240,"estimado"]];
+const movimentos = [["03/11","Aporte na carteira","de PicPay",65000,"+"],["31/10","Proventos recebidos","5 fundos",7530,"+"],["18/10","Compra · EXEMP11","2 cotas a R$ 155,20",31040,""],["18/10","Compra · DEMO11","20 cotas a R$ 9,80",19600,""],["02/10","Aporte na carteira","de CDB Inter, realocação",50000,"+"],["30/09","Proventos recebidos","5 fundos",7080,"+"]];
+
+function svgLinhas(series, opts){ // series: [{v:[...], cor, larg, trac}], valores em %
+  const W=330,H=150,pl=34,pr=56,pt=8,pb=20; const all=series.flatMap(s=>s.v); const mn=Math.min(0,...all), mx=Math.max(...all);
+  const top=Math.ceil(mx/5)*5||5, bot=Math.floor(mn/5)*5; const x=k=>pl+k/(series[0].v.length-1)*(W-pl-pr), y=v=>pt+(top-v)/(top-bot)*(H-pt-pb);
+  const ticks=[]; for(let t=bot;t<=top;t+=5) ticks.push(t);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.rotulo}">
+    ${ticks.map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--sup2)"/><text x="${pl-6}" y="${y(t)+4}" font-size="11" fill="var(--t2)" text-anchor="end">${t}%</text>`).join("")}
+    ${(()=>{ const ys = series.map((s,i)=>({i, y:y(s.v[s.v.length-1])+4})).sort((a,b)=>a.y-b.y); for(let k=1;k<ys.length;k++) if(ys[k].y-ys[k-1].y<14) ys[k].y=ys[k-1].y+14; const pos={}; ys.forEach(o=>pos[o.i]=o.y);
+      return series.map((s,i)=>`<polyline fill="none" stroke="${s.cor}" stroke-width="${s.larg||2}" ${s.trac?'stroke-dasharray="4 3"':""} points="${s.v.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ")}"/>
+      <text x="${W-pr+6}" y="${pos[i]}" font-size="12" font-weight="700" fill="${s.cor}">${pct1(s.v[s.v.length-1])}</text>`).join(""); })()}
+    ${[0,4,8,11].map(k=>`<text x="${x(k)}" y="${H-4}" font-size="11" fill="var(--t2)" text-anchor="middle">${MESES[k]}</text>`).join("")}
+  </svg>`;
+}
+function svgBarras(vals, opts){ // centavos; opts.empilha: segunda série
+  const W=330,H=150,pl=48,pr=6,pt=8,pb=20, n=vals.length, mx=Math.max(...vals.map((v,k)=>v+(opts.cima?.[k]||0)));
+  const passo = opts.passo, top=Math.ceil(mx/passo)*passo, bw=(W-pl-pr)/n*0.68, x=k=>pl+k*(W-pl-pr)/n+((W-pl-pr)/n-bw)/2, y=v=>pt+(1-v/top)*(H-pt-pb);
+  const ticks=[0,top/2,top];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.rotulo}">
+    ${ticks.map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--sup2)"/><text x="${pl-6}" y="${y(t)+4}" font-size="11" fill="var(--t2)" text-anchor="end">${opts.fmt(t)}</text>`).join("")}
+    ${vals.map((v,k)=>`<rect x="${x(k)}" y="${y(v)}" width="${bw}" height="${y(0)-y(v)}" fill="${k===n-1&&opts.destacaUltimo?"var(--azul)":opts.cor||"var(--t2)"}"/>${opts.cima?`<rect x="${x(k)}" y="${y(v+opts.cima[k])}" width="${bw}" height="${y(v)-y(v+opts.cima[k])}" fill="var(--azul)"/>`:""}`).join("")}
+    ${opts.media!=null?`<line x1="${pl}" x2="${W-pr}" y1="${y(opts.media)}" y2="${y(opts.media)}" stroke="var(--tinta)" stroke-dasharray="4 3"/><text x="${W-pr}" y="${y(opts.media)-5}" font-size="11" fill="var(--tinta)" text-anchor="end">média ${brl(opts.media)}</text>`:""}
+    ${[0,4,8,11].map(k=>`<text x="${x(k)+bw/2}" y="${H-4}" font-size="11" fill="var(--t2)" text-anchor="middle">${MESES[k]}</text>`).join("")}
+  </svg>`;
+}
+function svgVariacao(){ const lista=Object.entries(ativos).sort((a,b)=>b[1].vm-a[1].vm); const W=330, row=26, H=lista.length*row+6, mid=200, esc=90/6;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Variação no mês por ativo"><line x1="${mid}" x2="${mid}" y1="0" y2="${H}" stroke="var(--regua)"/>
+    ${lista.map(([n,a],k)=>{const w=Math.abs(a.vm)*esc, yy=k*row+4; return `<text x="0" y="${yy+15}" font-size="12" fill="var(--tinta)">${n.replace("Tesouro Selic 2031","Tesouro Selic")}</text>
+      <rect x="${a.vm>=0?mid:mid-w}" y="${yy+4}" width="${w}" height="14" fill="${a.vm>=0?"var(--dentro)":"var(--fora)"}"/>
+      <text x="${a.vm>=0?mid+w+4:mid-w-4}" y="${yy+15}" font-size="12" font-weight="700" fill="var(--tinta)" text-anchor="${a.vm>=0?"start":"end"}">${pct1(a.vm)}</text>`}).join("")}</svg>`;
+}
+
+function telaInvest(){
+  const sub = estadoTela.inv || "Resumo";
+  const varMes = valorMes[11]-valorMes[10]-aportes[11], varPct = varMes/valorMes[10]*100;
+  const marca = 2000000, ritmo = Math.round(soma(aportes)/12), meses = Math.ceil((marca-investido)/(ritmo + investido*0.0075));
+  const seg = `<div class="seg" role="group" aria-label="Investimentos">${["Resumo","Carteira","Proventos","Movimentos"].map(x=>`<button data-acao="inv" data-s="${x}" aria-pressed="${x===sub}">${x}</button>`).join("")}</div>`;
+  const heroi = `<div class="heroi"><div class="rot">Investido hoje</div><div class="grande">${brl(investido)}</div>
+    <p class="conta">${varMes>=0?"+":"−"}${brl(Math.abs(varMes)).replace("R$ ","R$ ")} no mês (${pct1(varPct)}), fora o aporte · mais ${brl(207000)} em CDBs, em Cofrinhos</p>
+    <div class="tres"><div><div class="r">Você aportou</div><div class="v">${num(aportado[11])}</div></div><div><div class="r">Rendeu</div><div class="v">${num(ganhoFinal)}</div></div><div><div class="r">Proventos nov</div><div class="v">${num(proventos[11])}</div></div></div>
+    <div class="acao-heroi"><button class="btn-cheio" data-acao="aportar">Onde aportar</button><button class="btn-claro" data-acao="chat" data-contexto="inv"><span class="ms" style="font-size:18px">auto_awesome</span>Perguntar</button></div></div>`;
+  let c="";
+  if(sub==="Resumo") c = `
+    <section><h2>Estou ganhando do CDI? <span class="lado">12 meses</span></h2><div class="graf">${svgLinhas([{v:aI,cor:"var(--t2)",trac:1},{v:aD,cor:"var(--tinta)",trac:1},{v:aC,cor:"var(--azul)",larg:3}],{rotulo:"Rentabilidade acumulada"})}
+      <div class="leg"><span><i style="background:var(--azul)"></i>Carteira</span><span><i style="background:var(--tinta)"></i>CDI</span><span><i style="background:var(--t2)"></i>IFIX</span></div>
+      <p class="sub">Rentabilidade acumulada, sem contar os aportes. A carteira ficou ${(aC[11]-aD[11]).toLocaleString("pt-BR",{maximumFractionDigits:1})} p.p. acima do CDI; o pior mês foi maio (${pct1(rCart[5])}).</p></div></section>
+    <section><h2>Esforço e rendimento <span class="lado">patrimônio investido</span></h2><div class="graf">${svgBarras(aportado,{cima:ganho,passo:500000,fmt:v=>(v/100000).toLocaleString("pt-BR")+" mil",rotulo:"Aportado e rendimento por mês",cor:"var(--sup2)"})}
+      <div class="leg"><span><i class="q" style="background:var(--sup2)"></i>Aportado ${brl(aportado[11])}</span><span><i class="q" style="background:var(--azul)"></i>Rendimento ${brl(ganhoFinal)}</span></div>
+      <p class="sub">Você colocou ${brl(soma(aportes))} nos últimos 12 meses, ${brl(ritmo)} por mês em média.</p></div></section>
+    <section><h2>Próxima marca</h2><div class="kv"><div><div class="r">R$ 20 mil em</div><div class="v">~${meses} meses</div></div><div><div class="r">Renda passiva média</div><div class="v">${brl(mediaProv)}/mês</div></div><div><div class="r">Aporte médio</div><div class="v">${brl(ritmo)}</div></div><div><div class="r">Taxa de poupança</div><div class="v">31%</div></div></div>
+      <div class="rodape"><button class="btn" data-acao="projecao"><span class="ms" style="font-size:18px">insights</span>Abrir projeção</button></div></section>`;
+  if(sub==="Carteira") c = `
+    <section><h2>Alocação contra a meta</h2><div class="proj">${fiis.map(([cl,at,meta])=>{const v=soma(at.map(a=>a[1])),p=v/investido*100;return `<div class="aloc"><span>${cl}</span><span class="tr"><i style="width:${p}%"></i><b style="left:${meta}%"></b></span><span style="text-align:right">${Math.round(p)}%</span></div>`}).join("")}<p class="sub">Barra: hoje. Traço: sua meta. FI-Infra está ${Math.round(275100/investido*100)-10} p.p. acima; Tesouro, ${25-Math.round(150000/investido*100)} p.p. abaixo.</p></div></section>
+    <section><h2>Como cada ativo se comportou <span class="lado">no mês</span></h2><div class="graf">${svgVariacao()}</div></section>
+    <section><h2>Ativos <span class="lado">tickers fictícios</span></h2>${fiis.map(([cl,at])=>`<div class="grupo"><div class="grupo-cab"><span>${cl}</span><span>${brl(soma(at.map(a=>a[1])))}</span></div>${at.map(x=>{const a=ativos[x[0]], vpm=(a.p/a.pm-1)*100; return `<button class="item ativo" data-acao="ativo" data-n="${esc(x[0])}"><span class="nome">${x[0]}</span><span class="valor">${brl(x[1])}</span>
+      <span class="sub">${a.q} ${a.q>1?"cotas":"título"}${a.pvp?` · P/VP ${a.pvp.toLocaleString("pt-BR",{minimumFractionDigits:2})} · DY ${a.dy.toLocaleString("pt-BR")}%`:""}</span><span class="sub ${vpm>=0?"pos":"neg"}">${pct1(vpm)} s/ PM</span></button>`}).join("")}</div>`).join("")}<p class="sub">Toque num ativo para ver preço, proventos e indicadores. Cotação, P/VP e DY lidos em 04/11.</p></section>
+    <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">photo_camera</span>Importar posição por print</button></div>`;
+  if(sub==="Proventos") c = `
+    <section><h2>Recebido por mês</h2><div class="graf">${svgBarras(proventos,{passo:5000,fmt:v=>"R$ "+(v/100).toFixed(0),destacaUltimo:1,media:mediaProv,rotulo:"Proventos por mês"})}
+      <p class="sub">Novembro: ${brl(proventos[11])} previstos, ${brl(soma(agenda.filter(a=>a[4]==="anunciado").map(a=>a[3])))} já anunciados. Em 12 meses: ${brl(soma(proventos))}, ${pct1((proventos[11]/proventos[0]-1)*100)} do primeiro ao último mês.</p></div></section>
+    <section><h2>Agenda <span class="lado">data-com → pagamento</span></h2><div class="lista">${agenda.map(a=>`<div class="item"><span class="nome">${a[0]}${a[4]==="estimado"?' <span class="selo perto">estimado</span>':""}</span><span class="valor">${brl(a[3])}</span><span class="sub">com em ${a[1]} · paga em ${a[2]}</span><span class="sub">yield on cost ${(ativos[a[0]].prov*12/ativos[a[0]].pm*100).toLocaleString("pt-BR",{maximumFractionDigits:1})}%</span></div>`).join("")}</div></section>`;
+  if(sub==="Movimentos") c = `
+    <section><h2>Últimos movimentos</h2><div class="lista">${movimentos.map(m=>`<div class="item"><span class="nome">${m[1]}</span><span class="valor ${m[4]?"entrada":""}">${m[4]}${brl(m[3])}</span><span class="sub">${m[0]} · ${m[2]}</span><span></span></div>`).join("")}</div>
+    <p class="sub">Aporte novo e realocação aparecem separados: a realocação do CDB Inter não conta como guardado no mês.</p></section>`;
+  return heroi + seg + c;
+}
+
+function detalheAtivo(n){
+  const a = ativos[n]; const serie = MESES.map((_,k)=>Math.round(a.pm*(0.96+0.06*Math.sin(k/1.7+n.length)+ (a.p/a.pm-0.96)*k/11)));
+  serie[11]=a.p; const mx=Math.max(...serie,a.pm), mn=Math.min(...serie,a.pm), W=330,H=130, x=k=>8+k/11*(W-60), y=v=>10+(mx-v)/(mx-mn||1)*(H-30);
+  const provs = MESES.map((_,k)=>Math.round(a.prov*(0.85+0.15*k/11)));
+  abrir(`<div class="topo"><h3>${esc(n)}</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <div class="sub">${a.cl} · ${a.q} ${a.q>1?"cotas":"título"} · ticker fictício</div>
+    <div style="font-size:30px;font-weight:700;letter-spacing:-.02em;margin-top:6px">${brl(a.p*a.q)}</div>
+    <div class="sub"><span class="${a.vm>=0?"pos":"neg"}">${pct1(a.vm)} no mês</span> · <span class="${a.p>=a.pm?"pos":"neg"}">${pct1((a.p/a.pm-1)*100)} sobre o preço médio</span></div>
+    <div class="graf" style="margin-top:10px"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Preço em 12 meses e preço médio">
+      <line x1="8" x2="${W-52}" y1="${y(a.pm)}" y2="${y(a.pm)}" stroke="var(--tinta)" stroke-dasharray="4 3"/><text x="${W-48}" y="${y(a.pm)+4}" font-size="11" fill="var(--tinta)">PM ${num(a.pm)}</text>
+      <polyline fill="none" stroke="var(--azul)" stroke-width="2.5" points="${serie.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ")}"/>
+      <text x="${x(11)+6}" y="${y(a.p)-6}" font-size="12" font-weight="700" fill="var(--azul)">${num(a.p)}</text>
+      ${[0,4,8,11].map(k=>`<text x="${x(k)}" y="${H-2}" font-size="11" fill="var(--t2)" text-anchor="middle">${MESES[k]}</text>`).join("")}</svg>
+      <div class="leg"><span><i style="background:var(--azul)"></i>Preço da cota</span><span><i style="background:var(--tinta)"></i>Seu preço médio</span></div></div>
+    <div class="kv">${a.pvp?`<div><div class="r">P/VP</div><div class="v">${a.pvp.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div><div><div class="r">DY 12 meses</div><div class="v">${a.dy.toLocaleString("pt-BR")}%</div></div>
+      <div><div class="r">Último provento por cota</div><div class="v">${brl(a.prov)}</div></div><div><div class="r">Liquidez</div><div class="v">R$ ${a.liq} mil/dia</div></div>`:`<div><div class="r">Rende</div><div class="v">Selic</div></div><div><div class="r">Vencimento</div><div class="v">2031</div></div>`}
+      <div><div class="r">Peso na carteira</div><div class="v">${(a.p*a.q/investido*100).toLocaleString("pt-BR",{maximumFractionDigits:1})}%</div></div><div><div class="r">Preço médio</div><div class="v">${brl(a.pm)}</div></div></div>
+    ${a.prov?`<section><h2>Proventos por cota <span class="lado">12 meses</span></h2><div class="graf">${svgBarras(provs,{passo:50,fmt:v=>"R$ "+(v/100).toFixed(1).replace(".",","),destacaUltimo:1,rotulo:"Proventos por cota"})}</div></section>`:""}
+    <div class="rodape"><button class="btn" data-acao="chat" data-contexto="inv"><span class="ms" style="font-size:18px">auto_awesome</span>Perguntar sobre ${esc(n)}</button></div>`);
+}
+
+function ondeAportar(valorTxt){
+  const valor = Math.round(parseFloat(String(valorTxt||"500").replace(/\./g,"").replace(",","."))*100) || 50000;
+  const total = investido + valor; const metas = Object.fromEntries(fiis.map(([cl,at,m])=>[cl,{m, v:soma(at.map(a=>a[1]))}]));
+  const gaps = Object.entries(metas).map(([cl,o])=>[cl, Math.max(0, o.m/100*total - o.v)]).filter(g=>g[1]>0);
+  const somaGap = soma(gaps.map(g=>g[1])); let sobra = valor; const linhas=[], fora=[];
+  Object.entries(ativos).forEach(([n,a])=>{ if(a.pvp && a.pvp>1) fora.push([n,`P/VP ${a.pvp.toLocaleString("pt-BR",{minimumFractionDigits:2})} acima do seu máximo (1,00)`]); else if(a.liq && a.liq<500) fora.push([n,`liquidez de R$ ${a.liq} mil/dia, abaixo do mínimo de R$ 500 mil`]); });
+  gaps.forEach(([cl,g])=>{ const parte = Math.floor(valor*g/somaGap); const eleg = Object.entries(ativos).filter(([n,a])=>a.cl===cl && !fora.some(f=>f[0]===n)).sort((x,y)=>(x[1].pvp??0)-(y[1].pvp??0))[0];
+    if(!eleg) return; const [n,a]=eleg; const cotas = cl==="Tesouro"? null : Math.floor(parte/a.p); const gasto = cl==="Tesouro"? parte : cotas*a.p; if(gasto<=0) return; sobra -= gasto;
+    linhas.push([n, gasto, cl==="Tesouro"? "fração do título" : `${cotas} cota${cotas>1?"s":""}`, `${cl} está ${((metas[cl].m/100*investido-metas[cl].v)/investido*100).toLocaleString("pt-BR",{maximumFractionDigits:1})} p.p. abaixo da meta${a.pvp?`; menor P/VP elegível (${a.pvp.toLocaleString("pt-BR",{minimumFractionDigits:2})})`:""}.`]); });
+  if(sobra>0) linhas.push(["CDB Inter", sobra, "o que sobrou", "Não fechou cota inteira."]);
+  console.assert(soma(linhas.map(l=>l[1]))===valor, "distribuição ≠ valor do aporte");
+  abrir(`<div class="topo"><h3>Onde aportar</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <div class="campo"><label for="a-val">Quanto vai aportar (R$)</label><input id="a-val" class="grande-in" inputmode="decimal" value="${num(valor)}"></div>
+    <div class="rodape" style="margin-top:8px"><button class="btn" data-acao="recalcular">Recalcular</button></div>
+    <section><h2>Distribuição <span class="lado">${brl(valor)}</span></h2><div class="lista">${linhas.map(l=>`<div class="item"><span class="nome">${l[0]}</span><span class="valor">${brl(l[1])}</span><span class="sub">${l[3]}</span><span class="sub">${l[2]}</span></div>`).join("")}</div></section>
+    <section><h2>Ficaram de fora</h2><div class="lista">${fora.map(f=>`<div class="item"><span class="nome">${f[0]}</span><span></span><span class="sub">${f[1]}</span><span></span></div>`).join("")}</div></section>
+    <p class="aviso">Sugestão pelas suas regras de Ajustes → Investimentos (metas por classe, P/VP até 1,00, liquidez mínima de R$ 500 mil/dia). Não é recomendação de analista.</p>`);
+}
+
+function projecaoInv(aporteTxt, dyTxt, anos){
+  const ap = Math.round(parseFloat(String(aporteTxt||"537,50").replace(/\./g,"").replace(",","."))*100)||53750, dy = parseFloat(String(dyTxt||"9").replace(",","."))||9; anos = anos||10;
+  const calc = d => { let v=investido; const pts=[v]; for(let m=1;m<=anos*12;m++){ v = v*(1+d/1200) + ap; if(m%12===0) pts.push(v);} return pts; };
+  const meio=calc(dy), baixo=calc(dy-2), alto=calc(dy+2); const fim=meio[meio.length-1];
+  const W=330,H=140, mx=alto[alto.length-1], x=k=>36+k/anos*(W-110), y=v=>10+(1-v/mx)*(H-30);
+  const pl = arr => arr.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  abrir(`<div class="topo"><h3>Projeção</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <p class="sub">Uma conta com premissas visíveis, não previsão de mercado. Proventos reinvestidos.</p>
+    <div class="kv"><div class="campo" style="margin:0;background:none;padding:0"><label for="p-ap">Aporte por mês (R$)</label><input id="p-ap" inputmode="decimal" value="${num(ap)}"></div><div class="campo" style="margin:0;background:none;padding:0"><label for="p-dy">DY ao ano (%)</label><input id="p-dy" inputmode="decimal" value="${String(dy).replace(".",",")}"></div></div>
+    <div class="chips" style="margin-top:10px">${[5,10,20].map(a=>`<button class="chip" data-acao="proj-anos" data-a="${a}" aria-pressed="${a===anos}">${a} anos</button>`).join("")}<button class="chip" data-acao="proj-recalc">Recalcular</button></div>
+    <div class="heroi" style="margin-top:8px"><div class="rot">Em ${anos} anos</div><div class="grande">${brl(Math.round(fim))}</div><p class="conta">Renda de ${brl(Math.round(fim*dy/1200))}/mês com DY de ${String(dy).replace(".",",")}% · faixa de ${brl(Math.round(baixo[baixo.length-1]))} a ${brl(Math.round(mx))} (DY ±2 p.p.)</p></div>
+    <div class="graf" style="margin-top:10px"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Projeção do patrimônio investido">
+      <polygon points="${pl(alto)} ${pl(baixo).split(" ").reverse().join(" ")}" fill="var(--azul)" fill-opacity=".12"/>
+      <polyline fill="none" stroke="var(--azul)" stroke-width="2.5" points="${pl(meio)}"/>
+      <text x="${x(anos)+6}" y="${y(fim)+4}" font-size="12" font-weight="700" fill="var(--azul)">${(fim/100000).toLocaleString("pt-BR",{maximumFractionDigits:0})} mil</text>
+      <text x="${x(0)}" y="${H-4}" font-size="11" fill="var(--t2)">hoje</text><text x="${x(anos)}" y="${H-4}" font-size="11" fill="var(--t2)" text-anchor="end">${anos} anos</text></svg>
+      <div class="leg"><span><i style="background:var(--azul)"></i>DY ${String(dy).replace(".",",")}%</span><span><i class="q" style="background:var(--azul);opacity:.25"></i>faixa ±2 p.p.</span></div></div>`);
+  const f=camada.querySelector(".folha"); f.dataset.anos=anos;
 }
 
 function telaAjustes(){
@@ -425,8 +588,9 @@ const respostas = {
     ["Como melhorar?", `Restaurantes já está ${brl(2500)} acima da média de 3 meses. Segurar a categoria no previsto até o fim do mês mantém o livre em ${brl(livre)}; repetir o ritmo atual o reduziria em cerca de ${brl(Math.round(16500/HOJE*(DIAS-HOJE)) )}.`, `com base em: Restaurantes ${brl(16500)} em ${HOJE} dias, média ${brl(14000)}`],
   ],
   inv: [
-    ["O que mudou na carteira?", `O valor investido subiu R$ 420,79 no mês. EXEMP11 foi o que mais subiu (+5,5% sobre o preço médio) e TESTE11 o que mais caiu (−5,3%). FI-Infra está em 28% da carteira, contra meta de 10%.`, `com base em: variação por ativo e alocação × meta`],
+    ["O que mudou na carteira?", `No mês, EXEMP11 foi o que mais subiu (+5,5%) e TESTE11 o que mais caiu (−5,3%). Você aportou R$ 750,00 e recebeu R$ 82,69 de proventos. FI-Infra está em 28% da carteira, contra meta de 10%, e Tesouro em 15%, contra 25%.`, `com base em: variação no mês por ativo, movimentos e alocação × meta`],
     ["O que é P/VP?", `Preço sobre valor patrimonial: quanto o mercado paga por cada real de patrimônio do fundo. 0,88 (TESTE11) é abaixo do patrimônio; 1,03 (FICTA11), acima. Não diz sozinho se é bom ou ruim.`, `com base em: glossário e P/VP da carteira`],
+    ["Por que TESTE11 caiu?", `A cota foi de R$ 108,02 de preço médio para R$ 102,30 (−5,3% no mês). O provento por cota seguiu em R$ 0,72, então o DY sobre o preço atual subiu. O app não tem o motivo da queda; o relatório do fundo é a fonte.`, `com base em: preço, preço médio e proventos de TESTE11`],
     ["Devo vender TESTE11?", `Não faço recomendação de investimento. O Onde aportar aplica as suas regras.`, `regra fixa do chat`],
   ],
   cat: n => { const c = cats.find(x=>x.n===n); return [
@@ -476,6 +640,13 @@ document.addEventListener("click", ev=>{
   else if(a==="filtro"){ estadoTela.filtro=t.dataset.f; redesenhar(); }
   else if(a==="fatura"){ estadoTela.fatura=+t.dataset.i; redesenhar(); }
   else if(a==="aba"){ estadoTela.aba=t.dataset.a; redesenhar(); }
+  else if(a==="inv"){ estadoTela.inv=t.dataset.s; redesenhar(); }
+  else if(a==="ativo") detalheAtivo(t.dataset.n);
+  else if(a==="aportar") ondeAportar();
+  else if(a==="recalcular") ondeAportar(document.getElementById("a-val").value);
+  else if(a==="projecao") projecaoInv();
+  else if(a==="proj-anos") projecaoInv(document.getElementById("p-ap").value, document.getElementById("p-dy").value, +t.dataset.a);
+  else if(a==="proj-recalc") projecaoInv(document.getElementById("p-ap").value, document.getElementById("p-dy").value, +camada.querySelector(".folha").dataset.anos);
   else if(a==="desfazer"){ document.querySelector(".toast")?.remove(); }
   else if(a==="editar"){ const l=lanc[+t.dataset.i]; abrir(`<div class="topo"><h3>Editar lançamento</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
       <div class="campo"><label for="e-desc">Descrição</label><input id="e-desc" value="${esc(l[1])}"></div><div class="campo"><label for="e-val">Valor (R$)</label><input id="e-val" class="grande-in" value="${num(l[4])}"></div>
