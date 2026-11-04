@@ -25,7 +25,8 @@ function App() {
   return (
     <>
       <div class="app">
-        {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span></div>}
+        {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><a href="/auth/entrar">Entrar com Google</a></div>}
+        {!demo && <div class="sub" style="text-align:right;padding-top:8px"><a href="/auth/sair">Sair</a></div>}
         <h1>Mês</h1>
         <div class="heroi" aria-busy={!saude}>
           <div class="rot">Contas visíveis para {saude ? saude.nome : "…"}</div>

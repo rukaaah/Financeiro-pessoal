@@ -145,5 +145,5 @@ abaixo antes de construir qualquer tela.
 
 - Criar a conta gratuita da Cloudflare e um token de API com permissão só de Workers.
 - Cadastrar no GitHub os secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
-  `DATABASE_URL_APP` e `GOOGLE_CLIENT_SECRET`, e `SESSION_SECRET` gerado na hora.
+  `DATABASE_URL_APP`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `SESSION_SECRET` (gerado por ele com `openssl rand -base64 48`).
 - Acrescentar o endereço novo nos redirecionamentos do OAuth client do Google.
