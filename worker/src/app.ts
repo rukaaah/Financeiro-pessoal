@@ -28,12 +28,12 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
     const { sessao, linhas } = await comSessao(
       deps.banco(c.env),
       await deps.credenciais(c.req.raw, c.env),
-      [consulta("select count(*)::int as contas from accounts")],
+      [consulta("select count(*)::int as contas, current_user as papel from accounts")],
     );
     const ms = Date.now() - inicio;
     c.header("Server-Timing", `db;dur=${ms}`);
     c.header("Cache-Control", "no-store");
-    return c.json({ modo: sessao.modo, nome: sessao.usuario.nome, contas: linhas[0]?.[0]?.contas ?? 0, ms });
+    return c.json({ modo: sessao.modo, nome: sessao.usuario.nome, contas: linhas[0]?.[0]?.contas ?? 0, papel: linhas[0]?.[0]?.papel, ms });
   });
 
   app.get("/api/sessao", async (c) => {

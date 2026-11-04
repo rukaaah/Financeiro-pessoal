@@ -7,7 +7,7 @@ function bancoFalso(usuario: Record<string, unknown> | null) {
   const banco: Banco = {
     async lote(consultas) {
       recebidas.push([...consultas]);
-      return [[{}], usuario ? [usuario] : [], [{ contas: 3 }]];
+      return [[{}], usuario ? [usuario] : [], [{ contas: 3, papel: "app" }]];
     },
   };
   return { banco, recebidas };
