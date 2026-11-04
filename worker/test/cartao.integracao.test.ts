@@ -26,7 +26,7 @@ beforeAll(async () => {
   ids.unicred = await q("insert into accounts (user_id, name, kind) values ($1, 'Unicred', 'credit_card') returning id", [u]);
   await owner.query("insert into account_terms (user_id, account_id, vigencia, closing_day, due_day) values ($1, $2, '[2020-01-01,)', 4, 11)", [u, ids.unicred]);
   // Compra de 300 em 3x feita bem no futuro, para as três faturas ainda estarem por vencer em qualquer data do CI.
-  const grupo = "00000000-0000-4000-8000-" + sufixo.padStart(12, "0");
+  const grupo = crypto.randomUUID();
   for (const n of [1, 2, 3])
     await owner.query("insert into transactions (user_id, kind, account_id, category_id, amount, occurred_on, installment_no, installment_total, installment_group_id) values ($1, 'expense', $2, $3, -100, '2099-03-02', $4, 3, $5)", [u, ids.unicred, k, n, grupo]);
 });
