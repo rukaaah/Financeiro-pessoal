@@ -2,7 +2,7 @@
 // Guarda a casca do app no celular (ADR-015): abrir desenha do cache na hora, mesmo
 // com a rede lenta ou o servidor longe. Dados (/api) nunca são guardados aqui.
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const CACHE = "casca-v7";
+const CACHE = "casca-v8";
 
 sw.addEventListener("install", (e: ExtendableEvent) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/icone.svg"])).then(() => sw.skipWaiting()));

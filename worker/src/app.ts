@@ -10,6 +10,7 @@ import { rotasDaAtencao } from "./atencao.ts";
 import { rotasDoPatrimonio } from "./patrimonio.ts";
 import { rotasDeInvestimentos } from "./investimentos.ts";
 import { rotasDeImportacao } from "./importar.ts";
+import { type ModeloDeIA, rotasDaIA, type RodarComSessao } from "./ia.ts";
 import { comSessao } from "./sessao.ts";
 import type { Consulta, Linha } from "./banco.ts";
 import type { Context } from "hono";
@@ -26,6 +27,8 @@ export interface Dependencias<E> {
   buscar?: Buscar;
   /** PTAX de venda do dia (Banco Central). Sem ela, entrada em dólar fica sem estimativa. */
   ptax?(env: E): Promise<string | null>;
+  /** Workers AI pelo binding; sem ele, a IA fica desligada. */
+  ia?(env: E): ModeloDeIA | null;
 }
 
 export function criarApp<E extends object>(deps: Dependencias<E>) {
@@ -61,6 +64,11 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
   rotasDoPatrimonio(app, rodar);
   rotasDeInvestimentos(app, rodar);
   rotasDeImportacao(app, rodar);
+  const rodarComSessao: RodarComSessao<E> = async (c, consultas) => {
+    c.header("Cache-Control", "no-store");
+    return comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), consultas);
+  };
+  rotasDaIA(app, rodarComSessao, deps.ia ?? (() => null));
 
   app.get("/api/sessao", async (c) => {
     const { sessao } = await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), []);

@@ -1,6 +1,6 @@
 import { conferirSaldos, lerExtrato, lerNotificacao, paraNumeric } from "@financeiro/dominio";
 import { useState } from "preact/hooks";
-import { apiEntrada, brl, hoje, type LinhaImportada, type Opcoes } from "../api.ts";
+import { apiEntrada, apiIA, brl, hoje, type LinhaImportada, type Opcoes } from "../api.ts";
 import { Icone } from "../icone.tsx";
 import type { Inicial } from "./lancar.tsx";
 
@@ -21,7 +21,7 @@ export function ColarNotificacao({ opcoes, aoFechar, aoAbrir }: { opcoes: Opcoes
       <div class="campo"><label for="c-txt">Texto da notificação ou do SMS</label><textarea id="c-txt" rows={4} style="font:inherit;font-size:16px;padding:10px;border-radius:4px;border:1px solid var(--t2);background:var(--sup);color:var(--tinta)" value={texto} onInput={(e) => setTexto(e.currentTarget.value)} onPaste={(e) => setTexto(e.clipboardData?.getData("text") ?? "")} /></div>
       {texto.trim() && (lido
         ? <p class="nota">Li: <b>{brl(paraNumeric(lido.valor))} · {lido.estabelecimento ?? "sem estabelecimento"} · {lido.data ? `${lido.data.slice(8)}/${lido.data.slice(5, 7)}` : "hoje"} · {lido.sentido === "entrada" ? "entrada" : lido.noCartao ? "cartão" : "saída"}{lido.parcelas ? ` · ${lido.parcelas}x` : ""}</b></p>
-        : <p class="erro-campo">Não reconheci este formato. Dá para lançar à mão.</p>)}
+        : <p class="erro-campo">Não reconheci este formato. <button class="link-sub" onClick={() => apiIA.notificacao(texto).then((r) => { if (r.reconheceu && r.valor) aoAbrir({ valor: (Number(r.valor) / 100).toFixed(2).replace(".", ","), descricao: r.estabelecimento ?? "" }, r.sentido === "entrada" ? "recebi" : "gastei"); }).catch(() => {})}>Tentar com a IA</button></p>)}
       <div style="margin-top:12px"><button class="btn-tinta" disabled={!lido} onClick={abrir}>Abrir em {lido?.sentido === "entrada" ? "Recebi" : "Gastei"}</button></div>
     </div></div>
   );

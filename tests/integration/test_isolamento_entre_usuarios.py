@@ -166,6 +166,11 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         (usuario,),
     )
     cur.execute(
+        "INSERT INTO ai_calls (user_id, use_case, input_chars, accepted)"
+        " VALUES (%s, 'chat', 120, true)",
+        (usuario,),
+    )
+    cur.execute(
         "INSERT INTO attention_snoozes (user_id, item_key, until) VALUES (%s, %s, NULL)",
         (usuario, "conta:teste:2026-03"),
     )
