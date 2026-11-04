@@ -15,7 +15,6 @@ const json = { "content-type": "application/json" };
 beforeAll(async () => {
   owner = new pg.Client({ connectionString: URL_OWNER });
   await owner.connect();
-  await owner.query("alter role app login password 'dev'");
   for (const p of ["a", "b"]) {
     const u = (await owner.query("insert into app_users (email, display_name) values ($1, $2) returning id", [`${p}-${sufixo}@teste.dev`, p])).rows[0].id;
     const g = (await owner.query("insert into category_groups (user_id, name) values ($1, 'Alimentação') returning id", [u])).rows[0].id;

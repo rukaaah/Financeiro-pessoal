@@ -300,6 +300,36 @@ COMMENT ON FUNCTION public.invoice_month_for(p_account_id uuid, p_occurred_on da
 
 
 --
+-- Name: mes_do_orcamento(date, date); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.mes_do_orcamento(p_occurred_on date, p_invoice_month date) RETURNS date
+    LANGUAGE sql IMMUTABLE
+    AS $$ SELECT coalesce(p_invoice_month, date_trunc('month', p_occurred_on)::date) $$;
+
+
+--
+-- Name: previsto_do_mes(date); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.previsto_do_mes(p_mes date) RETURNS TABLE(category_id uuid, previsto numeric, ajustado boolean)
+    LANGUAGE sql STABLE
+    AS $$
+    SELECT c.id,
+           coalesce(a.amount, t.amount, 0)::numeric(14, 2),
+           a.amount IS NOT NULL
+      FROM categories c
+      LEFT JOIN budget_adjustments a
+             ON a.category_id = c.id AND a.month = date_trunc('month', p_mes)::date
+      LEFT JOIN LATERAL (
+            SELECT amount FROM budget_templates bt
+             WHERE bt.category_id = c.id AND bt.valid_from <= date_trunc('month', p_mes)::date
+             ORDER BY bt.valid_from DESC LIMIT 1
+      ) t ON true
+$$;
+
+
+--
 -- Name: resolve_app_user(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -642,6 +672,52 @@ COMMENT ON COLUMN public.app_users.is_admin IS 'Pode liberar e desativar acesso 
 
 
 --
+-- Name: budget_adjustments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.budget_adjustments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    category_id uuid NOT NULL,
+    month date NOT NULL,
+    amount numeric(14,2) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT budget_adjustments_primeiro_dia CHECK ((EXTRACT(day FROM month) = (1)::numeric)),
+    CONSTRAINT budget_adjustments_valor_positivo CHECK ((amount >= (0)::numeric))
+);
+
+
+--
+-- Name: TABLE budget_adjustments; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.budget_adjustments IS 'Exceção do previsto num mês específico; ausente, vale o padrão (ADR-019).';
+
+
+--
+-- Name: budget_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.budget_templates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    category_id uuid NOT NULL,
+    amount numeric(14,2) NOT NULL,
+    valid_from date NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT budget_templates_primeiro_dia CHECK ((EXTRACT(day FROM valid_from) = (1)::numeric)),
+    CONSTRAINT budget_templates_valor_positivo CHECK ((amount >= (0)::numeric))
+);
+
+
+--
+-- Name: TABLE budget_templates; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.budget_templates IS 'Previsto padrão de uma categoria, valendo a partir de valid_from até o próximo (ADR-019).';
+
+
+--
 -- Name: categories; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -829,6 +905,38 @@ ALTER TABLE ONLY public.app_users
 
 
 --
+-- Name: budget_adjustments budget_adjustments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_adjustments
+    ADD CONSTRAINT budget_adjustments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: budget_adjustments budget_adjustments_um_por_mes; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_adjustments
+    ADD CONSTRAINT budget_adjustments_um_por_mes UNIQUE (category_id, month);
+
+
+--
+-- Name: budget_templates budget_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_templates
+    ADD CONSTRAINT budget_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: budget_templates budget_templates_uma_vigencia_por_mes; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_templates
+    ADD CONSTRAINT budget_templates_uma_vigencia_por_mes UNIQUE (category_id, valid_from);
+
+
+--
 -- Name: categories categories_nome_unico; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -954,6 +1062,13 @@ CREATE INDEX transactions_custeio ON public.transactions USING btree (funds_expe
 
 
 --
+-- Name: transactions_mes_do_orcamento; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX transactions_mes_do_orcamento ON public.transactions USING btree (user_id, public.mes_do_orcamento(occurred_on, invoice_month)) WHERE (kind = ANY (ARRAY['income'::public.transaction_kind, 'expense'::public.transaction_kind]));
+
+
+--
 -- Name: transactions_parcelamento; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1074,6 +1189,38 @@ ALTER TABLE ONLY public.accounts
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: budget_adjustments budget_adjustments_categoria_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_adjustments
+    ADD CONSTRAINT budget_adjustments_categoria_fk FOREIGN KEY (user_id, category_id) REFERENCES public.categories(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: budget_adjustments budget_adjustments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_adjustments
+    ADD CONSTRAINT budget_adjustments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: budget_templates budget_templates_categoria_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_templates
+    ADD CONSTRAINT budget_templates_categoria_fk FOREIGN KEY (user_id, category_id) REFERENCES public.categories(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: budget_templates budget_templates_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_templates
+    ADD CONSTRAINT budget_templates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
 
 
 --
@@ -1212,6 +1359,32 @@ CREATE POLICY app_users_isolamento ON public.app_users TO app USING ((id = publi
 
 
 --
+-- Name: budget_adjustments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.budget_adjustments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: budget_adjustments budget_adjustments_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY budget_adjustments_isolamento ON public.budget_adjustments TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
+-- Name: budget_templates; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.budget_templates ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: budget_templates budget_templates_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY budget_templates_isolamento ON public.budget_templates TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: categories; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1301,6 +1474,20 @@ GRANT ALL ON FUNCTION public.demo_app_user() TO app;
 
 
 --
+-- Name: FUNCTION mes_do_orcamento(p_occurred_on date, p_invoice_month date); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.mes_do_orcamento(p_occurred_on date, p_invoice_month date) TO app;
+
+
+--
+-- Name: FUNCTION previsto_do_mes(p_mes date); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.previsto_do_mes(p_mes date) TO app;
+
+
+--
 -- Name: FUNCTION resolve_app_user(p_email text); Type: ACL; Schema: public; Owner: -
 --
 
@@ -1327,6 +1514,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.accounts TO app;
 --
 
 GRANT SELECT ON TABLE public.app_users TO app;
+
+
+--
+-- Name: TABLE budget_adjustments; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.budget_adjustments TO app;
+
+
+--
+-- Name: TABLE budget_templates; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.budget_templates TO app;
 
 
 --

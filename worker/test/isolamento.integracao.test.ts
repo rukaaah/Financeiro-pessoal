@@ -19,7 +19,6 @@ let demoTinhaContas = 0;
 beforeAll(async () => {
   owner = new pg.Client({ connectionString: URL_OWNER });
   await owner.connect();
-  await owner.query("alter role app login password 'dev'");
   await owner.query("begin");
   const ins = async (email: string, nome: string, ativo = true) =>
     (await owner.query("insert into app_users (email, display_name, active) values ($1, $2, $3) returning id", [email, nome, ativo])).rows[0].id as string;

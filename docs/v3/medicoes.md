@@ -20,3 +20,18 @@ atingido** (ADR-015).
 
 Ainda não medido: cold start do Neon pelo Worker (o compute estava acordado) e o
 tempo de toque, que só existe a partir da fatia 2.
+
+## Fatia 2 — 2026-11-04, Lançar e Lançamentos no ar
+
+Script: `scripts/medir_toque_v3.mjs`, mesmo perfil (4G lento, CPU 4×, 375 × 812).
+
+| Métrica | Meta | Medido |
+|---|---|---|
+| Troca de tela (Mês → Lançamentos) | ≤ 300 ms | **35 ms** |
+| Abrir o Lançar | ≤ 200 ms de feedback | **45 ms** |
+| Salvar: a folha fecha e aparece "Lançando…" | ≤ 200 ms de feedback | **26 ms** |
+| Salvar: "Lançado." com a lista já atualizada | — | 546 ms (gravação + releitura da lista, duas idas ao Worker) |
+| Desfazer | — | 331 ms |
+
+O feedback do toque não depende da rede: a resposta visual é local e a gravação
+acontece por trás.

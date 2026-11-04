@@ -30,3 +30,16 @@ export function brl(texto: string, comSinal = false): string {
 }
 
 export const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+export interface CategoriaDoMes { id: string; nome: string; grupo: string; previsto: string; gasto: string; media3m: string; ajustado: boolean; estado: "dentro" | "perto" | "fora" }
+export interface Mes { mes: string; previsto: string; gasto: string; a_pagar: string; livre: string; por_dia: string; dia_do_mes: number; dias_no_mes: number; dias_restantes: number; renda: string; renda_prevista: string; guardado: string; sobra: string; descoberta: string | null; categorias: CategoriaDoMes[] }
+export interface DetalheCategoria { serie: { mes: string; gasto: string; previsto: string | null }[]; lancamentos: { id: string; data: string; descricao: string; valor: string; conta: string }[] }
+
+export const apiMes = {
+  mes: (mes: string) => pedir<Mes>(`/api/mes?mes=${mes}`),
+  categoria: (id: string, mes: string) => pedir<DetalheCategoria>(`/api/categoria/${id}?mes=${mes}`),
+  previsto: (corpo: { categoria_id: string; mes: string; valor: string; padrao: boolean }) => pedir("/api/previsto", { method: "PUT", body: JSON.stringify(corpo) }),
+};
+
+/** Centavos a partir do texto de numeric, só para comparar e desenhar barras. */
+export const num = (t: string) => Number(t);

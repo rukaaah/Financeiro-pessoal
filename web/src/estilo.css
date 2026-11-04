@@ -156,3 +156,5 @@ a{color:var(--azul)}
 .erro-campo{color:var(--fora);font-size:14px;margin-top:8px}
 .btn-tinta[disabled]{opacity:.7}
 nav.barra button:active,.btn:active,.chip:active,.item:active{transform:scale(.98)}
+.achado > span[aria-hidden]{font-weight:800;color:var(--fora);width:20px;text-align:center}
+.btn[disabled]{opacity:.5;cursor:default}
