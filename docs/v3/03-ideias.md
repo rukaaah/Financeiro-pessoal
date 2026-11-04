@@ -12,16 +12,17 @@ Tentei três caminhos e os três foram recusados pelo ambiente desta sessão:
 | Buscar e ler a página do Reddit (`www.reddit.com`) | A ferramenta de leitura não acessa o Reddit |
 | Abrir no navegador embutido (`old.reddit.com`) | Bloqueado pelo navegador embutido por política de segurança |
 | Ler espelhos públicos das mesmas discussões | Recusado pelo controle de permissões, por contornar a proteção do site |
+| Abrir no Chrome do Pedro (Claude in Chrome, 2026-11-04) | `reddit.com` e `old.reddit.com` recusados pela política de segurança da extensão |
 
 As buscas devolveram títulos e trechos de discussões, mas o pedido exige fonte
 aberta e lida ("snippet de busca não é fonte"), então nada do Reddit entrou aqui.
 
 **Caminhos possíveis** (decisão do Pedro):
 
-1. **Claude in Chrome**: eu leio as discussões no Chrome do Pedro, onde o Reddit abre
-   normalmente. Precisa da extensão conectada e da autorização para usar o Chrome.
-2. **Liberar a leitura de espelhos** do Reddit para esta sessão, nas permissões do
-   Claude Code. Os espelhos mostram o mesmo conteúdo, com o link original.
+1. ~~Claude in Chrome~~: tentado, o Reddit também é bloqueado ali.
+2. **O Pedro cola o conteúdo**: abrir as discussões no próprio navegador e salvar o
+   texto (ou o PDF da página) numa pasta fora do repositório; eu leio de lá e cito o
+   link original.
 3. **Seguir sem o Reddit**: a coluna "repetições" fica vazia e a origem das ideias
    fica restrita a produtos e diagnóstico.
 
