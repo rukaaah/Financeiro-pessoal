@@ -43,15 +43,28 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
           wranglerVersion: "4.151.2"
-          # Um secret vazio no GitHub não sobe: o Worker fica sem login e todo
-          # mundo cai no demo, que é o comportamento seguro.
           secrets: |
             DATABASE_URL
-            GOOGLE_CLIENT_ID
-            GOOGLE_CLIENT_SECRET
-            SESSION_SECRET
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_APP }}
+      # Os do login são opcionais: o wrangler-action falha com valor vazio, então
+      # cada um só sobe se existir. Sem eles o Worker fica sem login e todo mundo
+      # cai no demo, que é o comportamento seguro (ADR-017).
+      - name: Secrets do login, se cadastrados
+        if: steps.tem.outputs.ok == 'true'
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        run: |
+          for nome in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET SESSION_SECRET; do
+            if [ -n "${!nome}" ]; then
+              printf '%s' "${!nome}" | npx wrangler secret put "$nome" >/dev/null
+              echo "$nome enviado."
+            else
+              echo "::notice::$nome não cadastrado; login desligado."
+            fi
+          done

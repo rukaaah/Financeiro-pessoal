@@ -45,7 +45,7 @@ function app(email: string | null, verificado = true) {
 async function saude(email: string | null, verificado = true) {
   const { banco, app: a } = app(email, verificado);
   try {
-    return (await (await a.request("/api/saude")).json()) as { modo: string; contas: number; nome: string };
+    return (await (await a.request("/api/saude")).json()) as { modo: string; contas: number; nome: string; papel: string };
   } finally {
     await banco.fechar();
   }
@@ -53,7 +53,7 @@ async function saude(email: string | null, verificado = true) {
 
 describe("isolamento entre usuários pelo Worker, como papel app", () => {
   it("cada pessoa da allowlist vê só as próprias contas", async () => {
-    expect(await saude(emails.a)).toMatchObject({ modo: "dono", contas: 2 });
+    expect(await saude(emails.a)).toMatchObject({ modo: "dono", contas: 2, papel: "app" });
     expect(await saude(emails.b)).toMatchObject({ modo: "dono", contas: 5 });
   });
 
