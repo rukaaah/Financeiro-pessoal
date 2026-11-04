@@ -70,6 +70,38 @@ diário de uma pessoa. "Apêndice A" diz se o requisito já existe.
 | 19 | **Ação que não grava não mostra confirmação** (enquanto houver dado de exemplo) | Diagnóstico | `st.toast` confirma o que não aconteceu | P | médio | não |
 | 20 | **Data da última atualização** em todo saldo e cotação | Diagnóstico | Saber se o número é de hoje | P | médio | parcial (RF10 para cotações) |
 
+| 21 | **Freelance em dólar a receber**: valor em USD, data prevista de recebimento e conversão estimada para reais como o PicPay faz; entra na projeção do mês pela data prevista | Pedro, no Portão 1 | Renda variável em moeda estrangeira não aparece no planejamento | M | alto | não (novo) |
+
+## Resultado do Portão 1 (Pedro, 2026-11-04)
+
+| # | Decisão | Observação do Pedro |
+|---|---|---|
+| 1 | **não**, na forma proposta | "preciso saber o quanto é previsto desse mês, preciso saber quantas contas tenho que gastar." Leitura: não fundir em um número; o previsto do mês e as contas a pagar ficam **visíveis cada um**. A inconsistência entre telas continua sendo defeito: os números separados precisam vir da mesma conta em todas as telas |
+| 2 | sim | |
+| 3 | sim, ajustado | Patrimônio líquido **sem** os valores a receber, e com as partes também visíveis separadas |
+| 4 a 20 | sim | |
+| 21 | sim (pedido novo) | Freelance em dólar, previsão de quando recebe e conversão pelo cálculo do PicPay |
+
+Pendências do ADR-013, RF20 e RF23: o Pedro não respondeu; seguem com a recomendação
+abaixo até ele dizer o contrário, e voltam no Portão 2.
+
+### Sobre a conversão do PicPay (ideia 21)
+
+O PicPay não publica a fórmula de conversão de recebimentos do exterior. O que foi
+lido:
+
+- A Conta Global do PicPay, lançada em 10/11/2025, tem "taxa adicional sobre o câmbio"
+  que "pode chegar a zero" conforme o perfil do cliente, tendo a PTAX como referência
+  ([Canaltech, 11/11/2025](https://canaltech.com.br/mercado/picpay-estreia-conta-global-integrada-ao-brasil-com-spread-zero-e-rendimento-de/)).
+- Spread, taxa de serviço e IOF do **recebimento** no PicPay: **não confirmados** em
+  fonte oficial.
+
+Proposta para a Etapa 5: estimativa = USD × PTAX do dia (Banco Central, fonte
+oficial e gratuita) × (1 − spread) − IOF, com spread e IOF editáveis e **calibrados
+pelo primeiro recebimento real** (o Pedro informa quanto entrou em reais, e o app
+deduz a taxa efetiva). Depois que o dinheiro cai, o valor em reais é o do extrato,
+nunca a estimativa.
+
 ## Decisões pendentes que entram junto no Portão 1
 
 | Pendência | Recomendação |
