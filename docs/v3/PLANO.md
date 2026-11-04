@@ -27,9 +27,9 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
 - [x] 🔒 **Portão 3** — aprovado em 2026-11-04 (ADRs 015 a 019 aceitos)
 - [x] **Etapa 8** — Plano de construção → `08-plano-de-construcao.md`
 - [ ] **Etapa 9** — Construção, uma fatia por PR (👤 = precisa do Pedro)
-  - [ ] Fatia 0 — prova da stack 👤 conta Cloudflare e secrets · código e isolamento pelo Worker ✓ (PR #15); falta o deploy e a medição no 4G
+  - [x] Fatia 0 — prova da stack (PRs #15, #17, #18; medição em `medicoes.md`: API p50 164 ms no 4G lento)
   - [ ] Fatia 1 — login, demo e allowlist 👤 redirect do OAuth · login OIDC ✓ (PR #16); falta testar com o Google de verdade e reescrever o seed do demo
-  - [ ] Fatia 2 — Lançar e Lançamentos
+  - [ ] Fatia 2 — Lançar e Lançamentos (PR #19)
   - [ ] Fatia 3 — Mês
   - [ ] Fatia 4 — Cartão
   - [ ] Fatia 5 — recorrentes, entradas previstas e Atenção
