@@ -1,0 +1,8 @@
+{
+  "name": "@financeiro/web",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "vite build", "dev": "vite" },
+  "dependencies": { "preact": "10.29.8" },
+  "devDependencies": { "@preact/preset-vite": "2.10.6", "vite": "6.4.5" }
+}

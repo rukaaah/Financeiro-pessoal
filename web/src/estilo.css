@@ -1,0 +1,27 @@
+/* Tokens do 06a-estilo.md e do esboço aprovado (docs/v3/esbocos/mes-navegavel.html). */
+:root{
+  --papel:#fbfbf9;--sup:#f1f2ee;--sup2:#e6e8e2;--tinta:#181b1a;--t2:#585f5c;--regua:#cdd0ca;
+  --azul:#2b55d0;--heroi:#18264f;--heroi-t:#fff;--heroi-t2:#c9d3f3;--heroi-linha:#33437a;
+  --fora:#b3261e;--fora-f:#f9e2e0;--tarja:#322d1f;--tarja-t:#f6e7c4;
+  --fonte:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--papel:#111413;--sup:#1a1e1c;--sup2:#262b28;--tinta:#e7e9e6;--t2:#a6ada8;--regua:#2f3532;--azul:#7d9bff;--heroi:#1b2a5c;--heroi-linha:#34477f;--fora:#ff8a80;--fora-f:#3a1d1b;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--papel);color:var(--tinta);font:16px/1.45 var(--fonte);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--azul);outline-offset:2px;border-radius:4px}
+button:active{transform:scale(.98)}
+.app{max-width:440px;margin:0 auto;padding:env(safe-area-inset-top,0) max(16px,env(safe-area-inset-right,0px)) calc(96px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.tarja{background:var(--tarja);color:var(--tarja-t);font-size:13px;padding:8px 14px;border-radius:0 0 6px 6px;display:flex;justify-content:space-between}
+h1{font-size:24px;margin:14px 0 8px}
+.heroi{background:var(--heroi);color:var(--heroi-t);border-radius:6px;padding:18px}
+.heroi .rot{font-size:13px;color:var(--heroi-t2)}
+.heroi .grande{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin:4px 0}
+.esqueleto{display:inline-block;background:var(--heroi-linha);border-radius:4px;height:1em;width:8em;vertical-align:middle}
+.sub{font-size:14px;color:var(--t2)}
+.erro{background:var(--fora-f);color:var(--fora);border-radius:6px;padding:12px 14px;margin-top:12px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--papel);border-top:1px solid var(--regua);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav .in{max-width:440px;margin:0 auto;height:64px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;text-align:center;font-size:12px;color:var(--t2)}
+nav [aria-current="page"]{color:var(--tinta);font-weight:700}
+nav .lancar{width:56px;height:56px;border-radius:50%;background:var(--azul);color:#fff;font-size:30px;margin:-20px auto 0;display:grid;place-items:center}

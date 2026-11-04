@@ -1,0 +1,7 @@
+{
+  "name": "@financeiro/dominio",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "teste": "vitest run" }
+}

@@ -1,0 +1,20 @@
+# Worker da v3 (ADR-015): serve a PWA de web/dist e a API em /api.
+# Segredos (DATABASE_URL, GOOGLE_CLIENT_SECRET, SESSION_SECRET) não ficam aqui:
+# chegam pelo `secrets:` do cloudflare/wrangler-action no deploy (ADR-018).
+name = "financeiro-pessoal"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Põe o Worker perto do banco (Neon, sa-east-1), não perto de quem pede.
+[placement]
+mode = "smart"
+
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/auth/*"]
+
+[observability]
+enabled = true

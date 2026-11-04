@@ -1,0 +1,49 @@
+name: Deploy da v3 (Cloudflare Worker)
+
+# ADR-015 e ADR-018: o deploy sai daqui, e os secrets do GitHub chegam ao Worker
+# pelo `secrets:` do wrangler-action. Até o corte (fatia 11) o Worker vive em
+# *.workers.dev e não toca no app do Community Cloud.
+on:
+  push:
+    branches: [replanejamento/v3]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-v3
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Secrets da Cloudflare cadastrados?
+        id: tem
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN ainda não cadastrado; deploy pulado (ADR-015, passo a passo)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.tem.outputs.ok == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.tem.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci && npm run build
+        if: steps.tem.outputs.ok == 'true'
+      - uses: cloudflare/wrangler-action@v3
+        if: steps.tem.outputs.ok == 'true'
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          wranglerVersion: "4.151.2"
+          secrets: |
+            DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_APP }}

@@ -33,3 +33,12 @@ __pycache__/
 
 # área de trabalho da skill de design
 .taste-skill/
+
+# v3: Node, Worker e PWA
+node_modules/
+web/dist/
+.wrangler/
+*.tsbuildinfo
+packages/*/dist/
+worker/.dev.vars
+web/dist-tipos/
