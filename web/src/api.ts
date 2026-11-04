@@ -90,3 +90,10 @@ export const apiInvest = {
   ver: (aporte?: string) => pedir<Investimentos>(`/api/investimentos${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),
   comprar: (corpo: object) => pedir<{ valor: string }>("/api/comprar-ativo", { method: "POST", body: JSON.stringify(corpo) }),
 };
+
+export interface LinhaImportada { data: string; descricao: string; valor: string; duplicada?: boolean; categoria_id?: string | null }
+export const apiEntrada = {
+  sugerir: (descricao: string, tipo: "income" | "expense") => pedir<{ categoria_id: string | null }>(`/api/sugerir-categoria?descricao=${encodeURIComponent(descricao)}&tipo=${tipo}`),
+  previa: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ linhas: LinhaImportada[] }>("/api/importar/previa", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
+  importar: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ importadas: number }>("/api/importar", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
+};

@@ -34,7 +34,7 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
   - [x] Fatia 4 — Cartão (PR #21)
   - [x] Fatia 5 — recorrentes, entradas previstas e Atenção (PR #22)
   - [x] Fatia 6 — Patrimônio (PR #23)
-  - [ ] Fatia 7 — Investimentos
+  - [x] Fatia 7 — Investimentos (PR #24; o job de cotações só roda pelo agendador depois do corte, porque o GitHub agenda workflows apenas no `main`)
   - [ ] Fatia 8 — entrada em lote
   - [ ] Fatia 9 — IA
   - [ ] Fatia 10 — Ajustes, acesso e RF23 👤 prints de exemplo

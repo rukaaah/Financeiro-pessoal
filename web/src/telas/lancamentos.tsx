@@ -8,7 +8,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 const nomeDoDia = (d: string) => { const x = new Date(`${d}T12:00:00`); return `${DIAS[x.getDay()]}, ${x.getDate()} de ${MESES[x.getMonth()]}`; };
 const FILTROS = { Tudo: () => true, Gastos: (l: Lancamento) => l.tipo === "expense", Entradas: (l: Lancamento) => l.tipo === "income", Transferências: (l: Lancamento) => l.tipo === "transfer" } as const;
 
-export function Lancamentos({ lista, ocultos, aoEditar, aoAbrirLancar }: { lista: ListaDoMes | null; ocultos: Set<string>; aoEditar(l: Lancamento): void; aoAbrirLancar(): void }) {
+export function Lancamentos({ lista, ocultos, aoEditar, aoAbrirLancar, aoColar, aoImportar }: { lista: ListaDoMes | null; ocultos: Set<string>; aoEditar(l: Lancamento): void; aoAbrirLancar(): void; aoColar(): void; aoImportar(): void }) {
   const [filtro, setFiltro] = useState<keyof typeof FILTROS>("Tudo");
   const visiveis = (lista?.lancamentos ?? []).filter((l) => !ocultos.has(l.id)).filter(FILTROS[filtro]);
   const dias = [...new Set(visiveis.map((l) => l.data))];
@@ -27,8 +27,8 @@ export function Lancamentos({ lista, ocultos, aoEditar, aoAbrirLancar }: { lista
     <>
       <header><div><h1>Lançamentos</h1><div class="sub">{lista ? `${lista.lancamentos.length} lançamentos no mês` : <span class="esqueleto" />}</div></div></header>
       <div class="lote">
-        <button class="btn" disabled title="Fatia 8"><Icone nome="importar" tamanho={20} />Importar extrato</button>
-        <button class="btn" disabled title="Fatia 8"><Icone nome="colar" tamanho={20} />Colar notificação</button>
+        <button class="btn" onClick={aoImportar}><Icone nome="importar" tamanho={20} />Importar extrato</button>
+        <button class="btn" onClick={aoColar}><Icone nome="colar" tamanho={20} />Colar notificação</button>
       </div>
       <div class="chips" role="group" aria-label="Filtro">
         {(Object.keys(FILTROS) as (keyof typeof FILTROS)[]).map((f) => <button class="chip" aria-pressed={f === filtro} onClick={() => setFiltro(f)}>{f}</button>)}
