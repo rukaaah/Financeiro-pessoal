@@ -1,12 +1,14 @@
 import { useState } from "preact/hooks";
 import { brl, type Cofrinho, hoje, num, type Patrimonio as Dados } from "../api.ts";
 import { Icone } from "../icone.tsx";
+import { Investimentos } from "./investimentos.tsx";
+import type { Opcoes } from "../api.ts";
 
 type Aba = "Visão" | "Cofrinhos" | "Investimentos" | "A receber";
 const dm = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "—");
 export type Movimento = { tipo: "guardar" | "resgatar"; cofrinho: Cofrinho } | { tipo: "conciliar" } | { tipo: "receber-de"; id: string; nome: string; saldo: string };
 
-export function Patrimonio({ dados, aoMover }: { dados: Dados | null; aoMover(m: Movimento): void }) {
+export function Patrimonio({ dados, opcoes, aoMover, aoAvisar }: { dados: Dados | null; opcoes: Opcoes | null; aoMover(m: Movimento): void; aoAvisar(t: string): void }) {
   const [aba, setAba] = useState<Aba>("Visão");
   const d = dados;
   const heroi = (rot: string, valor: string | undefined, conta: string, acoes?: preact.ComponentChildren) => (
@@ -61,12 +63,7 @@ export function Patrimonio({ dados, aoMover }: { dados: Dados | null; aoMover(m:
           </section>
         </>
       )}
-      {aba === "Investimentos" && (
-        <>
-          {heroi("Investido", d?.partes.investimentos, "carteira, proventos, Onde aportar e Projeção chegam na fatia 7")}
-          <section><h2>Contas de investimento</h2><div class="lista">{d?.contas.filter((k) => k.tipo === "investment").map((k) => <div class="item"><span class="nome">{k.nome}</span><span class="valor">{brl(k.saldo)}</span><span class="sub">pelo que foi aportado</span><span /></div>)}</div></section>
-        </>
-      )}
+      {aba === "Investimentos" && <Investimentos opcoes={opcoes} aoAvisar={aoAvisar} />}
       {aba === "A receber" && (
         <>
           {heroi("A receber de pessoas", d?.a_receber, "Fica fora do patrimônio e do gasto do mês.")}
