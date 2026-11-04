@@ -82,6 +82,18 @@ CREATE TYPE public.category_nature AS ENUM (
 
 
 --
+-- Name: goal_movement; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.goal_movement AS ENUM (
+    'use',
+    'loan',
+    'withdrawal',
+    'repayment'
+);
+
+
+--
 -- Name: transaction_kind; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -864,6 +876,39 @@ COMMENT ON TABLE public.goal_contributions IS 'Quanto do salário vai para o cof
 
 
 --
+-- Name: goal_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.goal_settings (
+    account_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    target numeric(14,2),
+    target_date date,
+    started_on date DEFAULT CURRENT_DATE NOT NULL,
+    cdi_percent numeric(6,2),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT goal_settings_cdi CHECK (((cdi_percent IS NULL) OR ((cdi_percent >= (0)::numeric) AND (cdi_percent <= (300)::numeric)))),
+    CONSTRAINT goal_settings_datas CHECK (((target_date IS NULL) OR (target_date > started_on))),
+    CONSTRAINT goal_settings_meta_positiva CHECK (((target IS NULL) OR (target > (0)::numeric)))
+);
+
+
+--
+-- Name: reconciliations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reconciliations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    account_id uuid NOT NULL,
+    reconciled_on date NOT NULL,
+    bank_balance numeric(14,2) NOT NULL,
+    app_balance numeric(14,2) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: recurring_bills; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -910,7 +955,10 @@ CREATE TABLE public.transactions (
     settles_invoice_month date,
     funds_expense_id uuid,
     recurring_bill_id uuid,
+    goal_movement public.goal_movement,
     CONSTRAINT transactions_categoria_exceto_transferencia CHECK (((kind = 'transfer'::public.transaction_kind) = (category_id IS NULL))),
+    CONSTRAINT transactions_finalidade_casa_com_sinal CHECK (((goal_movement IS NULL) OR ((goal_movement = 'repayment'::public.goal_movement) AND (amount > (0)::numeric)) OR ((goal_movement = ANY (ARRAY['use'::public.goal_movement, 'loan'::public.goal_movement, 'withdrawal'::public.goal_movement])) AND (amount < (0)::numeric)))),
+    CONSTRAINT transactions_finalidade_so_em_transferencia CHECK (((goal_movement IS NULL) OR (kind = 'transfer'::public.transaction_kind))),
     CONSTRAINT transactions_invoice_month_e_primeiro_dia CHECK (((invoice_month IS NULL) OR (EXTRACT(day FROM invoice_month) = (1)::numeric))),
     CONSTRAINT transactions_parcelamento_coerente CHECK ((((installment_no IS NULL) = (installment_total IS NULL)) AND ((installment_no IS NULL) = (installment_group_id IS NULL)) AND ((installment_no IS NULL) OR ((installment_no >= 1) AND (installment_total >= 2) AND (installment_no <= installment_total))))),
     CONSTRAINT transactions_settles_invoice_month_e_primeiro_dia CHECK (((settles_invoice_month IS NULL) OR (EXTRACT(day FROM settles_invoice_month) = (1)::numeric))),
@@ -932,6 +980,13 @@ COMMENT ON COLUMN public.transactions.settles_invoice_month IS 'Mês de vencimen
 --
 
 COMMENT ON COLUMN public.transactions.funds_expense_id IS 'Na perna de saída de um cofrinho: a despesa que este resgate pagou (modalidade "do cofrinho", ADR-014). Nulo em todo o resto.';
+
+
+--
+-- Name: COLUMN transactions.goal_movement; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.transactions.goal_movement IS 'Na perna que mexe no cofrinho: saída com finalidade (use, loan, withdrawal) ou entrada que devolve um empréstimo (repayment). RF18.';
 
 
 --
@@ -1124,6 +1179,22 @@ ALTER TABLE ONLY public.goal_contributions
 
 ALTER TABLE ONLY public.goal_contributions
     ADD CONSTRAINT goal_contributions_sem_sobreposicao EXCLUDE USING gist (account_id WITH =, vigencia WITH &&);
+
+
+--
+-- Name: goal_settings goal_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.goal_settings
+    ADD CONSTRAINT goal_settings_pkey PRIMARY KEY (account_id);
+
+
+--
+-- Name: reconciliations reconciliations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reconciliations
+    ADD CONSTRAINT reconciliations_pkey PRIMARY KEY (id);
 
 
 --
@@ -1430,6 +1501,38 @@ ALTER TABLE ONLY public.goal_contributions
 
 
 --
+-- Name: goal_settings goal_settings_conta_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.goal_settings
+    ADD CONSTRAINT goal_settings_conta_fk FOREIGN KEY (user_id, account_id) REFERENCES public.accounts(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: goal_settings goal_settings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.goal_settings
+    ADD CONSTRAINT goal_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reconciliations reconciliations_conta_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reconciliations
+    ADD CONSTRAINT reconciliations_conta_fk FOREIGN KEY (user_id, account_id) REFERENCES public.accounts(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: reconciliations reconciliations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reconciliations
+    ADD CONSTRAINT reconciliations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: recurring_bills recurring_bills_categoria_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1645,6 +1748,32 @@ CREATE POLICY goal_contributions_isolamento ON public.goal_contributions TO app 
 
 
 --
+-- Name: goal_settings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.goal_settings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: goal_settings goal_settings_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY goal_settings_isolamento ON public.goal_settings TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
+-- Name: reconciliations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.reconciliations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: reconciliations reconciliations_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY reconciliations_isolamento ON public.reconciliations TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: recurring_bills; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1791,6 +1920,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.expected_incomes TO app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_contributions TO app;
+
+
+--
+-- Name: TABLE goal_settings; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_settings TO app;
+
+
+--
+-- Name: TABLE reconciliations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.reconciliations TO app;
 
 
 --
