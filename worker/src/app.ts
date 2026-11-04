@@ -3,7 +3,13 @@ import { Hono } from "hono";
 import type { Banco } from "./banco.ts";
 import { consulta } from "./banco.ts";
 import { apagarCookie, type Buscar, COOKIE_LOGIN, COOKIE_SESSAO, concluirLogin, criarCookieSessao, iniciarLogin } from "./auth.ts";
+import { rotasDeLancamentos } from "./lancamentos.ts";
 import { comSessao } from "./sessao.ts";
+import type { Consulta, Linha } from "./banco.ts";
+import type { Context } from "hono";
+
+/** Roda consultas de uma rota já com o usuário da sessão fixado; devolve só as linhas delas. */
+export type Rodar<E extends object> = (c: Context<{ Bindings: E }>, consultas: readonly Consulta[]) => Promise<Linha[][]>;
 
 export interface Dependencias<E> {
   banco(env: E): Banco;
@@ -35,6 +41,12 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
     c.header("Cache-Control", "no-store");
     return c.json({ modo: sessao.modo, nome: sessao.usuario.nome, contas: linhas[0]?.[0]?.contas ?? 0, papel: linhas[0]?.[0]?.papel, ms });
   });
+
+  const rodar: Rodar<E> = async (c, consultas) => {
+    c.header("Cache-Control", "no-store");
+    return (await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), consultas)).linhas;
+  };
+  rotasDeLancamentos(app, rodar);
 
   app.get("/api/sessao", async (c) => {
     const { sessao } = await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), []);
