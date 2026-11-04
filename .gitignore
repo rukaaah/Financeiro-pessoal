@@ -42,3 +42,4 @@ web/dist/
 packages/*/dist/
 worker/.dev.vars
 web/dist-tipos/
+worker/dist/
