@@ -686,6 +686,21 @@ CREATE TABLE public.accounts (
 
 
 --
+-- Name: ai_calls; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ai_calls (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    use_case text NOT NULL,
+    input_chars integer NOT NULL,
+    accepted boolean NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT ai_calls_uso CHECK ((use_case = ANY (ARRAY['chat'::text, 'notificacao'::text, 'categoria'::text])))
+);
+
+
+--
 -- Name: allocation_targets; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1135,6 +1150,14 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: ai_calls ai_calls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_calls
+    ADD CONSTRAINT ai_calls_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: allocation_targets allocation_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1391,6 +1414,13 @@ ALTER TABLE ONLY public.transactions
 
 
 --
+-- Name: ai_calls_do_dia; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ai_calls_do_dia ON public.ai_calls USING btree (user_id, created_at);
+
+
+--
 -- Name: app_users_um_demo_ativo; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1539,6 +1569,14 @@ ALTER TABLE ONLY public.accounts
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ai_calls ai_calls_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_calls
+    ADD CONSTRAINT ai_calls_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
 
 
 --
@@ -1840,6 +1878,19 @@ CREATE POLICY accounts_isolamento ON public.accounts TO app USING ((user_id = pu
 
 
 --
+-- Name: ai_calls; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.ai_calls ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: ai_calls ai_calls_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY ai_calls_isolamento ON public.ai_calls TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: allocation_targets; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -2126,6 +2177,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_terms TO app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.accounts TO app;
+
+
+--
+-- Name: TABLE ai_calls; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT ON TABLE public.ai_calls TO app;
 
 
 --
