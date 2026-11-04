@@ -16,7 +16,6 @@ type Mes = { previsto: string; gasto: string; livre: string; renda: string; cate
 beforeAll(async () => {
   owner = new pg.Client({ connectionString: URL_OWNER });
   await owner.connect();
-  await owner.query("alter role app login password 'dev'");
   const q = async (sql: string, p: unknown[]) => (await owner.query(sql, p)).rows[0]?.id as string;
   const u = await q("insert into app_users (email, display_name) values ($1, 'A') returning id", [email("a")]);
   await q("insert into app_users (email, display_name) values ($1, 'B') returning id", [email("b")]);
