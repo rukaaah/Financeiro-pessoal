@@ -50,6 +50,17 @@ CREATE TYPE public.account_kind AS ENUM (
 
 
 --
+-- Name: bill_urgency; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.bill_urgency AS ENUM (
+    'essential',
+    'important',
+    'deferrable'
+);
+
+
+--
 -- Name: category_kind; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -672,6 +683,25 @@ COMMENT ON COLUMN public.app_users.is_admin IS 'Pode liberar e desativar acesso 
 
 
 --
+-- Name: attention_snoozes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.attention_snoozes (
+    user_id uuid NOT NULL,
+    item_key text NOT NULL,
+    until date,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: COLUMN attention_snoozes.until; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.attention_snoozes.until IS 'Escondido até esta data; NULL é resolvido de vez.';
+
+
+--
 -- Name: budget_adjustments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -780,6 +810,37 @@ CREATE TABLE public.counterparties (
 
 
 --
+-- Name: expected_incomes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.expected_incomes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    description text NOT NULL,
+    currency text DEFAULT 'BRL'::text NOT NULL,
+    amount numeric(14,2) NOT NULL,
+    expected_on date NOT NULL,
+    account_id uuid NOT NULL,
+    category_id uuid NOT NULL,
+    transaction_id uuid,
+    received_brl numeric(14,2),
+    reference_rate numeric(12,5),
+    fee_brl numeric(14,2),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT expected_incomes_moeda CHECK ((currency = ANY (ARRAY['BRL'::text, 'USD'::text]))),
+    CONSTRAINT expected_incomes_recebido_completo CHECK (((transaction_id IS NULL) = (received_brl IS NULL))),
+    CONSTRAINT expected_incomes_valor_positivo CHECK ((amount > (0)::numeric))
+);
+
+
+--
+-- Name: COLUMN expected_incomes.fee_brl; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.expected_incomes.fee_brl IS 'Quanto o intermediário (PayPal) ficou: amount × reference_rate (PTAX de venda do dia) − received_brl.';
+
+
+--
 -- Name: goal_contributions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -800,6 +861,30 @@ CREATE TABLE public.goal_contributions (
 --
 
 COMMENT ON TABLE public.goal_contributions IS 'Quanto do salário vai para o cofrinho por mês, com vigência (ADR-014).';
+
+
+--
+-- Name: recurring_bills; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recurring_bills (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    name text NOT NULL,
+    amount numeric(14,2) NOT NULL,
+    due_day smallint NOT NULL,
+    category_id uuid NOT NULL,
+    account_id uuid NOT NULL,
+    urgency public.bill_urgency DEFAULT 'important'::public.bill_urgency NOT NULL,
+    varies boolean DEFAULT false NOT NULL,
+    valid_from date NOT NULL,
+    valid_until date,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT recurring_bills_dia_valido CHECK (((due_day >= 1) AND (due_day <= 31))),
+    CONSTRAINT recurring_bills_nome_nao_vazio CHECK ((length(btrim(name)) > 0)),
+    CONSTRAINT recurring_bills_valor_positivo CHECK ((amount > (0)::numeric)),
+    CONSTRAINT recurring_bills_vigencia CHECK (((valid_until IS NULL) OR (valid_until >= valid_from)))
+);
 
 
 --
@@ -824,6 +909,7 @@ CREATE TABLE public.transactions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     settles_invoice_month date,
     funds_expense_id uuid,
+    recurring_bill_id uuid,
     CONSTRAINT transactions_categoria_exceto_transferencia CHECK (((kind = 'transfer'::public.transaction_kind) = (category_id IS NULL))),
     CONSTRAINT transactions_invoice_month_e_primeiro_dia CHECK (((invoice_month IS NULL) OR (EXTRACT(day FROM invoice_month) = (1)::numeric))),
     CONSTRAINT transactions_parcelamento_coerente CHECK ((((installment_no IS NULL) = (installment_total IS NULL)) AND ((installment_no IS NULL) = (installment_group_id IS NULL)) AND ((installment_no IS NULL) OR ((installment_no >= 1) AND (installment_total >= 2) AND (installment_no <= installment_total))))),
@@ -902,6 +988,14 @@ ALTER TABLE ONLY public.app_users
 
 ALTER TABLE ONLY public.app_users
     ADD CONSTRAINT app_users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: attention_snoozes attention_snoozes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attention_snoozes
+    ADD CONSTRAINT attention_snoozes_pkey PRIMARY KEY (user_id, item_key);
 
 
 --
@@ -1009,6 +1103,14 @@ ALTER TABLE ONLY public.counterparties
 
 
 --
+-- Name: expected_incomes expected_incomes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expected_incomes
+    ADD CONSTRAINT expected_incomes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: goal_contributions goal_contributions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1022,6 +1124,22 @@ ALTER TABLE ONLY public.goal_contributions
 
 ALTER TABLE ONLY public.goal_contributions
     ADD CONSTRAINT goal_contributions_sem_sobreposicao EXCLUDE USING gist (account_id WITH =, vigencia WITH &&);
+
+
+--
+-- Name: recurring_bills recurring_bills_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recurring_bills
+    ADD CONSTRAINT recurring_bills_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: recurring_bills recurring_bills_user_id_id; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recurring_bills
+    ADD CONSTRAINT recurring_bills_user_id_id UNIQUE (user_id, id);
 
 
 --
@@ -1192,6 +1310,14 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: attention_snoozes attention_snoozes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attention_snoozes
+    ADD CONSTRAINT attention_snoozes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: budget_adjustments budget_adjustments_categoria_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1264,6 +1390,30 @@ ALTER TABLE ONLY public.counterparties
 
 
 --
+-- Name: expected_incomes expected_incomes_categoria_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expected_incomes
+    ADD CONSTRAINT expected_incomes_categoria_fk FOREIGN KEY (user_id, category_id) REFERENCES public.categories(user_id, id) ON DELETE RESTRICT;
+
+
+--
+-- Name: expected_incomes expected_incomes_conta_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expected_incomes
+    ADD CONSTRAINT expected_incomes_conta_fk FOREIGN KEY (user_id, account_id) REFERENCES public.accounts(user_id, id) ON DELETE RESTRICT;
+
+
+--
+-- Name: expected_incomes expected_incomes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expected_incomes
+    ADD CONSTRAINT expected_incomes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: goal_contributions goal_contributions_account_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1277,6 +1427,30 @@ ALTER TABLE ONLY public.goal_contributions
 
 ALTER TABLE ONLY public.goal_contributions
     ADD CONSTRAINT goal_contributions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recurring_bills recurring_bills_categoria_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recurring_bills
+    ADD CONSTRAINT recurring_bills_categoria_fk FOREIGN KEY (user_id, category_id) REFERENCES public.categories(user_id, id) ON DELETE RESTRICT;
+
+
+--
+-- Name: recurring_bills recurring_bills_conta_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recurring_bills
+    ADD CONSTRAINT recurring_bills_conta_fk FOREIGN KEY (user_id, account_id) REFERENCES public.accounts(user_id, id) ON DELETE RESTRICT;
+
+
+--
+-- Name: recurring_bills recurring_bills_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recurring_bills
+    ADD CONSTRAINT recurring_bills_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
 
 
 --
@@ -1309,6 +1483,14 @@ ALTER TABLE ONLY public.transactions
 
 ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_funds_expense_fk FOREIGN KEY (user_id, funds_expense_id) REFERENCES public.transactions(user_id, id) ON DELETE RESTRICT;
+
+
+--
+-- Name: transactions transactions_recurring_bill_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_recurring_bill_fk FOREIGN KEY (user_id, recurring_bill_id) REFERENCES public.recurring_bills(user_id, id) ON DELETE SET NULL (recurring_bill_id);
 
 
 --
@@ -1356,6 +1538,19 @@ ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY app_users_isolamento ON public.app_users TO app USING ((id = public.current_app_user())) WITH CHECK ((id = public.current_app_user()));
+
+
+--
+-- Name: attention_snoozes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.attention_snoozes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: attention_snoozes attention_snoozes_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY attention_snoozes_isolamento ON public.attention_snoozes TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
 
 
 --
@@ -1424,6 +1619,19 @@ CREATE POLICY counterparties_isolamento ON public.counterparties TO app USING ((
 
 
 --
+-- Name: expected_incomes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.expected_incomes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: expected_incomes expected_incomes_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY expected_incomes_isolamento ON public.expected_incomes TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: goal_contributions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1434,6 +1642,19 @@ ALTER TABLE public.goal_contributions ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY goal_contributions_isolamento ON public.goal_contributions TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
+-- Name: recurring_bills; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.recurring_bills ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: recurring_bills recurring_bills_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY recurring_bills_isolamento ON public.recurring_bills TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
 
 
 --
@@ -1517,6 +1738,13 @@ GRANT SELECT ON TABLE public.app_users TO app;
 
 
 --
+-- Name: TABLE attention_snoozes; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.attention_snoozes TO app;
+
+
+--
 -- Name: TABLE budget_adjustments; Type: ACL; Schema: public; Owner: -
 --
 
@@ -1552,10 +1780,24 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.counterparties TO app;
 
 
 --
+-- Name: TABLE expected_incomes; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.expected_incomes TO app;
+
+
+--
 -- Name: TABLE goal_contributions; Type: ACL; Schema: public; Owner: -
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_contributions TO app;
+
+
+--
+-- Name: TABLE recurring_bills; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.recurring_bills TO app;
 
 
 --
