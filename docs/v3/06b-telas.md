@@ -293,3 +293,21 @@ Escritos como asserções, no arquivo do seed (ideia 18):
 dados fictícios do diagnóstico: tarja, mês, a descoberta do dia, a régua com os quatro
 números, a Atenção e o começo do saldo projetado acima da barra inferior. É esboço
 estático, não código do app.
+
+### Revisão do esboço (Pedro, 2026-11-04)
+
+Retorno: "um pouco sem destaque, tudo com texto muito regularizado". O esboço v2
+muda três coisas, e esta é a direção que vale para as outras telas:
+
+1. **Um bloco de destaque por tela**, num campo de azul-escuro (`#18264f`, texto
+   branco), que é o único campo de cor da tela. No Mês, ele contém **Livre** como o
+   número que lidera (34 px) e, logo abaixo, a régua e os outros três números
+   (Previsto, Gasto, A pagar) separados e legíveis, como o Pedro pediu no Portão 1.
+   Isto se afasta do Achromatic ledger puro (que não tem campo de cor) de propósito.
+2. **A descoberta do dia vira faixa** com fundo do estado (vermelho claro quando é
+   estouro), e não mais uma linha cinza.
+3. **Listas em blocos com fundo** (`--fin-superficie`) em vez de linhas soltas no
+   papel; nome em 600, valor em 700, ação em azul e em negrito.
+
+Nas outras telas, o bloco de destaque leva: Cartão → total da fatura e Pagar;
+Patrimônio → patrimônio líquido e as partes; Lançamentos não tem (é lista).

@@ -1,69 +1,93 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mês · esboço</title>
+<title>Mês · esboço v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
 <style>
-:root{--fundo:#fbfbf9;--sup:#f4f4f1;--texto:#181b1a;--t2:#585f5c;--regua:#cdd0ca;--forte:#b8bcb5;--azul:#2b55d0;--azul-claro:#aebdf0;--fora:#b3261e;--fora-f:#f9e2e0;--perto:#8a5a00;--perto-f:#f7ead1;--tarja:#322d1f;--tarja-t:#f6e7c4}
+:root{--fundo:#fbfbf9;--sup:#f1f2ee;--sup2:#e8eae5;--texto:#181b1a;--t2:#585f5c;--regua:#cdd0ca;--azul:#2b55d0;--azul-claro:#a9b9ef;--azul-f:#e6ecfb;--fora:#b3261e;--fora-f:#f9e2e0;--perto:#8a5a00;--perto-f:#f7ead1;--tarja:#322d1f;--tarja-t:#f6e7c4}
 *{box-sizing:border-box;margin:0}
-html{width:390px;overflow:hidden}body{width:390px;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);font-variant-numeric:tabular-nums;padding-bottom:80px}
-.tarja{background:var(--tarja);color:var(--tarja-t);font-size:14px;padding:8px 16px}
-.tarja b{font-weight:600}
-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px 0}
-h1{font-size:24px;font-weight:700}
-.mes{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-weight:600}
-.mes span{color:var(--t2);font-size:20px;width:44px;text-align:center}
-.achado{margin:0 16px 16px;font-size:14px;color:var(--t2)}
-.achado b{color:var(--fora);font-weight:600}
-.regua{padding:0 16px 20px;border-bottom:1px solid var(--forte)}
-.grade{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:14px}
-.rot{font-size:12px;color:var(--t2)}
-.val{font-size:18px;font-weight:600}
-.val.livre{font-weight:700}
-.trilho{height:10px;border-radius:999px;background:var(--sup);display:flex;overflow:hidden;outline:1px solid var(--regua)}
+html{width:390px;overflow:hidden}
+body{width:390px;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);font-variant-numeric:tabular-nums;padding-bottom:84px}
+.ms{font-family:"Material Symbols Outlined";font-size:24px;line-height:1;vertical-align:middle}
+.tarja{background:var(--tarja);color:var(--tarja-t);font-size:13px;padding:7px 16px;display:flex;justify-content:space-between}
+.tarja b{font-weight:600}.tarja u{text-decoration:none;font-weight:600}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 2px}
+h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.mes{display:flex;align-items:center;gap:6px;color:var(--t2);font-size:15px;font-weight:500}
+/* bloco herói: fundo azul escuro, o único campo de cor da tela */
+.heroi{margin:10px 16px 0;background:#18264f;color:#fff;border-radius:6px;padding:18px 18px 16px}
+.heroi .rot{font-size:13px;color:#c9d3f3}
+.heroi .livre{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin:2px 0 4px}
+.heroi .conta{font-size:13px;color:#c9d3f3;margin-bottom:14px}
+.trilho{height:14px;border-radius:999px;background:#33437a;display:flex;overflow:hidden}
 .trilho i{display:block;height:100%}
-.legenda{font-size:12px;color:var(--t2);margin-top:8px;display:flex;justify-content:space-between}
-section{padding:16px;border-bottom:1px solid var(--regua)}
-h2{font-size:16px;font-weight:600;display:flex;justify-content:space-between;margin-bottom:8px}
-h2 a{font-size:14px;color:var(--azul);font-weight:400;text-decoration:none}
-.item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-top:1px solid var(--sup)}
-.item:first-of-type{border-top:0}
+.tres{display:grid;grid-template-columns:repeat(3,1fr);margin-top:14px;border-top:1px solid #33437a;padding-top:12px}
+.tres div+div{border-left:1px solid #33437a;padding-left:12px}
+.tres .r{font-size:12px;color:#c9d3f3;display:flex;align-items:center;gap:6px}
+.tres .v{font-size:17px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:2px;display:inline-block}
+/* achado */
+.achado{margin:12px 16px 0;background:var(--fora-f);color:#6d1712;border-radius:6px;padding:12px 14px;display:flex;gap:10px;font-size:15px}
+.achado .ms{color:var(--fora)}
+.achado b{font-weight:700}
+section{margin:20px 16px 0}
+h2{font-size:18px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+h2 a{font-size:14px;color:var(--azul);font-weight:600;text-decoration:none}
+.lista{background:var(--sup);border-radius:6px;padding:0 14px}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 0;border-top:1px solid var(--sup2)}
+.item:first-child{border-top:0}
+.nome{font-weight:600}
+.valor{font-weight:700;text-align:right}
 .sub{font-size:14px;color:var(--t2)}
-.selo{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:1px 8px;margin-right:6px}
+.acao{font-size:14px;font-weight:700;color:var(--azul);text-align:right}
+.selo{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 8px;margin-right:6px}
 .selo.f{background:var(--fora-f);color:var(--fora)}.selo.p{background:var(--perto-f);color:var(--perto)}
-.acao{font-size:14px;color:var(--texto);font-weight:600;text-align:right}
-nav{position:fixed;bottom:0;left:0;width:390px;height:64px;background:var(--fundo);border-top:1px solid var(--forte);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;text-align:center;font-size:12px;color:var(--t2)}
-nav .ativo{color:var(--texto);font-weight:600}
-nav .lancar{width:56px;height:56px;border-radius:50%;background:var(--azul);color:#fff;font-size:28px;line-height:56px;margin:-20px auto 0}
+.proj{background:var(--sup);border-radius:6px;padding:12px 14px}
+.proj .fim{display:flex;justify-content:space-between;align-items:baseline}
+.proj .fim b{font-size:22px;letter-spacing:-.01em}
+nav{position:fixed;bottom:0;left:0;width:390px;height:68px;background:var(--fundo);border-top:1px solid var(--regua);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;text-align:center;font-size:12px;color:var(--t2)}
+nav .ativo{color:var(--texto);font-weight:700}
+nav .lancar{width:56px;height:56px;border-radius:50%;background:var(--azul);color:#fff;display:flex;align-items:center;justify-content:center;margin:-22px auto 0}
+nav .lancar .ms{font-size:30px}
 </style></head><body>
-<div class="tarja"><b>Dados fictícios.</b> Modo demonstração · Entrar com Google</div>
-<header><h1>Mês</h1><span aria-label="Ajustes">⚙</span></header>
-<div class="mes"><span>‹</span>Novembro de 2026<span>›</span></div>
-<p class="achado"><b>Restaurantes passou R$ 15,00 do previsto</b> e está R$ 25,00 acima da média de 3 meses.</p>
-<div class="regua">
-  <div class="grade">
-    <div><div class="rot">Previsto</div><div class="val">R$ 2.675,00</div></div>
-    <div><div class="rot">Gasto</div><div class="val">R$ 1.865,01</div></div>
-    <div><div class="rot">A pagar</div><div class="val">R$ 475,00</div></div>
-    <div><div class="rot">Livre</div><div class="val livre">R$ 334,99</div></div>
+<div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><u>Entrar</u></div>
+<header><div><h1>Mês</h1><div class="mes"><span class="ms" style="font-size:20px">chevron_left</span>Novembro de 2026<span class="ms" style="font-size:20px">chevron_right</span></div></div><span class="ms" aria-label="Ajustes">settings</span></header>
+
+<div class="heroi">
+  <div class="rot">Livre para gastar até 30/11</div>
+  <div class="livre">R$ 334,99</div>
+  <div class="conta">R$ 12,41 por dia · previsto − gasto − a pagar</div>
+  <div class="trilho" role="img" aria-label="Gasto 70%, a pagar 18%, livre 12% do previsto"><i style="width:69.7%;background:#fff"></i><i style="width:17.8%;background:var(--azul-claro)"></i></div>
+  <div class="tres">
+    <div><div class="r">Previsto</div><div class="v">2.675,00</div></div>
+    <div><div class="r"><span class="dot" style="background:#fff"></span>Gasto</div><div class="v">1.865,01</div></div>
+    <div><div class="r"><span class="dot" style="background:var(--azul-claro)"></span>A pagar</div><div class="v">475,00</div></div>
   </div>
-  <div class="trilho" role="img" aria-label="Gasto 70%, a pagar 18%, livre 12% do previsto"><i style="width:69.7%;background:var(--azul)"></i><i style="width:17.8%;background:var(--azul-claro)"></i></div>
-  <div class="legenda"><span>70% do previsto gasto</span><span>dia 4 de 30</span></div>
 </div>
+
+<div class="achado"><span class="ms">error</span><div><b>Restaurantes passou R$ 15,00</b> do previsto e está R$ 25,00 acima da média de 3 meses.</div></div>
+
 <section>
-  <h2>Atenção (8) <a href="#">Ver todos</a></h2>
-  <div class="item"><div><span class="selo f">fora</span>Presentes passou do previsto</div><div class="acao">R$ 120,75</div><div class="sub">de R$ 100,00 · Compras</div><div class="acao">Ver</div></div>
-  <div class="item"><div><span class="selo p">atenção</span>Fatura Unicred vence em 7 dias</div><div class="acao">R$ 843,40</div><div class="sub">11/11 · Essencial</div><div class="acao">Pagar</div></div>
-  <div class="item"><div><span class="selo p">atenção</span>Devolver ao cofrinho Reserva</div><div class="acao">R$ 100,00</div><div class="sub">empréstimo de 29/10</div><div class="acao">Guardar</div></div>
+  <h2>Atenção · 8 <a href="#">Ver todos</a></h2>
+  <div class="lista">
+    <div class="item"><div class="nome">Fatura Unicred</div><div class="valor">R$ 843,40</div><div class="sub"><span class="selo p">vence em 7 dias</span>11/11</div><div class="acao">Pagar</div></div>
+    <div class="item"><div class="nome">Presentes</div><div class="valor">R$ 120,75</div><div class="sub"><span class="selo f">fora</span>de R$ 100,00</div><div class="acao">Ver</div></div>
+    <div class="item"><div class="nome">Devolver ao Reserva</div><div class="valor">R$ 100,00</div><div class="sub">empréstimo de 29/10</div><div class="acao">Guardar</div></div>
+  </div>
 </section>
+
 <section>
   <h2>Saldo projetado <span class="sub">PicPay</span></h2>
-  <svg viewBox="0 0 343 120" width="100%" role="img" aria-label="Saldo de R$ 1.840,35 hoje até R$ 412,30 em 30/11">
-    <line x1="0" y1="100" x2="343" y2="100" stroke="#ecece9"/><line x1="0" y1="60" x2="343" y2="60" stroke="#ecece9"/><line x1="0" y1="20" x2="343" y2="20" stroke="#ecece9"/>
-    <polyline fill="none" stroke="#181b1a" stroke-width="2" points="0,40 30,38 46,38"/>
-    <polyline fill="none" stroke="#181b1a" stroke-width="2" stroke-dasharray="4 3" points="46,38 70,48 80,72 160,74 210,78 250,62 300,84 343,86"/>
-    <text x="250" y="56" font-size="11" fill="#585f5c">freelance</text>
-    <text x="70" y="92" font-size="11" fill="#585f5c">fatura</text>
-    <text x="343" y="112" font-size="12" text-anchor="end" fill="#181b1a">R$ 412,30 em 30/11</text>
-  </svg>
+  <div class="proj">
+    <div class="fim"><span class="sub">em 30/11</span><b>R$ 412,30</b></div>
+    <svg viewBox="0 0 330 90" width="100%" role="img" aria-label="Saldo projetado">
+      <line x1="0" y1="80" x2="330" y2="80" stroke="#d9dbd5"/><line x1="0" y1="45" x2="330" y2="45" stroke="#e8eae5"/><line x1="0" y1="10" x2="330" y2="10" stroke="#e8eae5"/>
+      <polyline fill="none" stroke="#181b1a" stroke-width="2.5" points="0,22 30,20 44,20"/>
+      <polyline fill="none" stroke="#2b55d0" stroke-width="2.5" stroke-dasharray="5 4" points="44,20 68,30 78,56 155,58 205,62 240,44 290,66 330,68"/>
+      <text x="240" y="38" font-size="11" fill="#585f5c" text-anchor="middle">freelance</text>
+      <text x="78" y="72" font-size="11" fill="#585f5c">fatura</text>
+    </svg>
+  </div>
 </section>
-<nav><div class="ativo">▦<br>Mês</div><div>☰<br>Lançamentos</div><div><div class="lancar" aria-label="Lançar">+</div></div><div>▭<br>Cartão</div><div>◫<br>Patrimônio</div></nav>
+
+<nav><div class="ativo"><span class="ms">calendar_month</span><br>Mês</div><div><span class="ms">receipt_long</span><br>Lançamentos</div><div><div class="lancar" aria-label="Lançar"><span class="ms">add</span></div></div><div><span class="ms">credit_card</span><br>Cartão</div><div><span class="ms">account_balance</span><br>Patrimônio</div></nav>
 </body></html>
