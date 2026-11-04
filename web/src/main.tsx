@@ -10,6 +10,7 @@ import { Atencao, NovaConta, Receber } from "./telas/atencao.tsx";
 import type { Inicial } from "./telas/lancar.tsx";
 import { Mover, type Movimento, Patrimonio } from "./telas/patrimonio.tsx";
 import { ColarNotificacao, ImportarExtrato } from "./telas/entrada.tsx";
+import { Chat } from "./telas/chat.tsx";
 import "./estilo.css";
 
 type Tela = "mes" | "lancamentos" | "cartao" | "patrimonio";
@@ -22,7 +23,7 @@ function App() {
   const [opcoes, setOpcoes] = useState<Opcoes | null>(null);
   const [lista, setLista] = useState<ListaDoMes | null>(null);
   const [ocultos, setOcultos] = useState<Set<string>>(new Set());
-  const [folha, setFolha] = useState<null | { tipo: "lancar"; inicial?: Inicial; intencao?: "gastei" | "recebi" } | { tipo: "colar" } | { tipo: "importar" } | { tipo: "atencao" } | { tipo: "nova-conta" } | { tipo: "receber"; id: string } | { tipo: "mover"; m: Movimento } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
+  const [folha, setFolha] = useState<null | { tipo: "lancar"; inicial?: Inicial; intencao?: "gastei" | "recebi" } | { tipo: "colar" } | { tipo: "importar" } | { tipo: "chat"; contexto: "mes" | "categoria" | "investimentos"; titulo: string; categoriaId?: string } | { tipo: "atencao" } | { tipo: "nova-conta" } | { tipo: "receber"; id: string } | { tipo: "mover"; m: Movimento } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
   const [dadosCartao, setDadosCartao] = useState<{ cartoes: CartaoDados[]; compras: Compra[] } | null>(null);
   const [dadosPatrimonio, setDadosPatrimonio] = useState<PatrimonioDados | null>(null);
   const recarregarPatrimonio = () => apiPatrimonio.ver().then(setDadosPatrimonio).catch(() => {});
@@ -99,8 +100,8 @@ function App() {
       <div class="app">
         {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><a href="/auth/entrar">Entrar</a></div>}
         <main>
-          {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} />
-            : tela === "patrimonio" ? <Patrimonio dados={dadosPatrimonio} opcoes={opcoes} aoMover={(m) => setFolha({ tipo: "mover", m })} aoAvisar={(texto) => avisar({ texto })} />
+          {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "mes", titulo: "Orçamento do mês" })} />
+            : tela === "patrimonio" ? <Patrimonio dados={dadosPatrimonio} opcoes={opcoes} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "investimentos", titulo: "Investimentos" })} aoMover={(m) => setFolha({ tipo: "mover", m })} aoAvisar={(texto) => avisar({ texto })} />
             : tela === "cartao" ? <Cartao dados={dadosCartao} aoPagar={(c, f) => setFolha({ tipo: "pagar", c, f })} />
             : tela === "lancamentos" ? <Lancamentos lista={lista} ocultos={ocultos} aoEditar={(l) => setFolha({ tipo: "editar", l })} aoAbrirLancar={() => setFolha({ tipo: "lancar" })} aoColar={() => setFolha({ tipo: "colar" })} aoImportar={() => setFolha({ tipo: "importar" })} />
             : <>
@@ -123,7 +124,7 @@ function App() {
         apiAtencao.receber(e.id, { recebido, data: new Date().toISOString().slice(0, 10) }).then((r) => { recarregar(); avisar({ texto: r.desconto ? `Recebido. O PayPal ficou com R$ ${r.desconto.replace(".", ",")} contra a PTAX.` : "Recebido." }); }).catch((x: Error) => avisar({ texto: x.message }));
       }} /> : null; })()}
       {folha?.tipo === "editar" && <Editar l={folha.l} aoFechar={() => setFolha(null)} aoSalvar={(c) => salvarEdicao(folha.l, c)} aoExcluir={() => excluir(folha.l)} />}
-      {folha?.tipo === "categoria" && <DetalheDaCategoria c={folha.c} mes={mes} aoFechar={() => setFolha(null)} aoSalvar={(valor, padrao) => {
+      {folha?.tipo === "categoria" && <DetalheDaCategoria c={folha.c} mes={mes} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "categoria", titulo: `${folha.c.nome} · ${mes}`, categoriaId: folha.c.id })} aoFechar={() => setFolha(null)} aoSalvar={(valor, padrao) => {
         setFolha(null);
         apiMes.previsto({ categoria_id: folha.c.id, mes, valor, padrao }).then(() => recarregarMes()).then(() => avisar({ texto: "Previsto salvo." })).catch((e: Error) => avisar({ texto: e.message }));
       }} />}
@@ -140,6 +141,7 @@ function App() {
           : apiPatrimonio.conciliar(corpo).then((r) => { avisar({ texto: r.diferenca === "0.00" ? "Conferido: o saldo bate com o banco." : `Diferença de R$ ${r.diferenca.replace(".", ",")} contra o banco.` }); return r; });
         feito.then(() => recarregar()).then(() => { if (m.tipo !== "conciliar") avisar({ texto: "Salvo." }); }).catch((e: Error) => avisar({ texto: e.message }));
       }} />}
+      {folha?.tipo === "chat" && <Chat contexto={folha.contexto} titulo={folha.titulo} mes={mes} {...(folha.categoriaId ? { categoriaId: folha.categoriaId } : {})} aoFechar={() => setFolha(null)} />}
       {folha?.tipo === "colar" && <ColarNotificacao opcoes={opcoes} aoFechar={() => setFolha(null)} aoAbrir={(inicial, intencao) => setFolha({ tipo: "lancar", inicial, intencao })} />}
       {folha?.tipo === "importar" && <ImportarExtrato opcoes={opcoes} aoFechar={() => setFolha(null)} aoImportado={(n) => { setFolha(null); recarregar(); avisar({ texto: `${n} lançamentos importados.` }); }} />}
       {aviso && <div class="toast" role="status"><span>{aviso.texto}</span>{aviso.desfazer && <button onClick={() => { const d = aviso.desfazer!; setAviso(null); d(); }}>Desfazer</button>}</div>}

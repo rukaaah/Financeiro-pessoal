@@ -97,3 +97,9 @@ export const apiEntrada = {
   previa: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ linhas: LinhaImportada[] }>("/api/importar/previa", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
   importar: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ importadas: number }>("/api/importar", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
 };
+
+export interface RespostaChat { resposta: string; perguntas_seguintes?: string[]; demo?: boolean; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
+export const apiIA = {
+  chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
+  notificacao: (texto: string) => pedir<{ regra?: boolean; reconheceu?: boolean; valor?: string | null; data?: string | null; estabelecimento?: string | null; sentido?: string; motivo?: string }>("/api/ia/notificacao", { method: "POST", body: JSON.stringify({ texto }) }),
+};

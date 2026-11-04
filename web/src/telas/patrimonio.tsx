@@ -8,7 +8,7 @@ type Aba = "Visão" | "Cofrinhos" | "Investimentos" | "A receber";
 const dm = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "—");
 export type Movimento = { tipo: "guardar" | "resgatar"; cofrinho: Cofrinho } | { tipo: "conciliar" } | { tipo: "receber-de"; id: string; nome: string; saldo: string };
 
-export function Patrimonio({ dados, opcoes, aoMover, aoAvisar }: { dados: Dados | null; opcoes: Opcoes | null; aoMover(m: Movimento): void; aoAvisar(t: string): void }) {
+export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { dados: Dados | null; opcoes: Opcoes | null; aoMover(m: Movimento): void; aoAvisar(t: string): void; aoPerguntar(): void }) {
   const [aba, setAba] = useState<Aba>("Visão");
   const d = dados;
   const heroi = (rot: string, valor: string | undefined, conta: string, acoes?: preact.ComponentChildren) => (
@@ -63,7 +63,7 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar }: { dados: Dados 
           </section>
         </>
       )}
-      {aba === "Investimentos" && <Investimentos opcoes={opcoes} aoAvisar={aoAvisar} />}
+      {aba === "Investimentos" && <Investimentos opcoes={opcoes} aoAvisar={aoAvisar} aoPerguntar={aoPerguntar} />}
       {aba === "A receber" && (
         <>
           {heroi("A receber de pessoas", d?.a_receber, "Fica fora do patrimônio e do gasto do mês.")}

@@ -15,7 +15,7 @@ function Barras({ vals, destacaUltimo, rotulo }: { vals: { mes: string; v: numbe
   );
 }
 
-export function Investimentos({ opcoes, aoAvisar }: { opcoes: Opcoes | null; aoAvisar(t: string): void }) {
+export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoes | null; aoAvisar(t: string): void; aoPerguntar(): void }) {
   const [d, setD] = useState<Dados | null>(null);
   const [face, setFace] = useState<"Resumo" | "Carteira" | "Proventos">("Resumo");
   const [folha, setFolha] = useState<null | "comprar" | "aportar">(null);
@@ -29,7 +29,7 @@ export function Investimentos({ opcoes, aoAvisar }: { opcoes: Opcoes | null; aoA
         <div class="grande">{d ? brl(d.total) : <span class="esqueleto" />}</div>
         <p class="conta">{d ? `${brl(d.variacao_mes, true)} no mês pela cotação · custo ${brl(d.custo)}` : " "}</p>
         {d && <div class="tres"><div><div class="r">Proventos 12m</div><div class="v">{brl(proventos12.toFixed(2)).replace("R$ ", "")}</div></div><div><div class="r">Média/mês</div><div class="v">{brl((proventos12 / 12).toFixed(2)).replace("R$ ", "")}</div></div><div><div class="r">Rendeu</div><div class="v">{brl((num(d.total) - num(d.custo)).toFixed(2)).replace("R$ ", "")}</div></div></div>}
-        <div class="acao-heroi"><button class="btn-cheio" onClick={() => setFolha("aportar")}>Onde aportar</button><button class="btn-claro" onClick={() => setFolha("comprar")}>Comprei</button></div>
+        <div class="acao-heroi"><button class="btn-cheio" onClick={() => setFolha("aportar")}>Onde aportar</button><button class="btn-claro" onClick={() => setFolha("comprar")}>Comprei</button><button class="btn-claro" onClick={aoPerguntar}>Perguntar</button></div>
       </div>
       <div class="seg" role="group" aria-label="Investimentos">{(["Resumo", "Carteira", "Proventos"] as const).map((f) => <button aria-pressed={f === face} onClick={() => setFace(f)}>{f}</button>)}</div>
       {d && face === "Resumo" && (
