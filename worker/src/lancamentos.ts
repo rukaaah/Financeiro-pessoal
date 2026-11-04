@@ -14,14 +14,15 @@ function ehErroDeDado(e: unknown): boolean {
 
 export function rotasDeLancamentos<E extends object>(app: Hono<{ Bindings: E }>, rodar: Rodar<E>) {
   app.get("/api/opcoes", async (c) => {
-    const [contas, categorias] = await rodar(c, [
+    const [contas, categorias, investimentos] = await rodar(c, [
       consulta(`select id, name as nome, kind as tipo from accounts
                  where active and kind in ('checking','credit_card','cash') order by kind, name`),
       consulta(`select c.id, c.name as nome, c.kind as tipo, g.name as grupo from categories c
                   join category_groups g on g.id = c.group_id
                  where c.active order by g.sort_order, g.name, c.name`),
+      consulta("select id, name as nome from accounts where active and kind = 'investment' order by name"),
     ]);
-    return c.json({ contas, categorias });
+    return c.json({ contas, categorias, investimentos });
   });
 
   app.get("/api/lancamentos", async (c) => {

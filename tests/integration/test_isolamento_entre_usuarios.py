@@ -144,6 +144,27 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         " VALUES (%s, %s, %s, %s, %s)",
         (usuario, corrente, date(2026, 3, 1), Decimal("100.00"), Decimal("100.00")),
     )
+    investimento = uuid.uuid4()
+    ativo = uuid.uuid4()
+    cur.execute(
+        "INSERT INTO accounts (id, user_id, name, kind) VALUES (%s, %s, 'Inter', 'investment')",
+        (investimento, usuario),
+    )
+    cur.execute(
+        "INSERT INTO assets (id, user_id, ticker, name, class, account_id)"
+        " VALUES (%s, %s, 'TESTE11', 'Teste', 'brick', %s)",
+        (ativo, usuario, investimento),
+    )
+    cur.execute(
+        "INSERT INTO asset_trades (user_id, asset_id, traded_on, quantity, unit_price)"
+        " VALUES (%s, %s, %s, 10, 100)",
+        (usuario, ativo, date(2026, 3, 1)),
+    )
+    cur.execute("INSERT INTO investment_rules (user_id) VALUES (%s)", (usuario,))
+    cur.execute(
+        "INSERT INTO allocation_targets (user_id, class, percent) VALUES (%s, 'brick', 50)",
+        (usuario,),
+    )
     cur.execute(
         "INSERT INTO attention_snoozes (user_id, item_key, until) VALUES (%s, %s, NULL)",
         (usuario, "conta:teste:2026-03"),

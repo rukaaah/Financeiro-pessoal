@@ -1,0 +1,106 @@
+import { useEffect, useState } from "preact/hooks";
+import { apiInvest, brl, hoje, type Investimentos as Dados, num, type Opcoes } from "../api.ts";
+import { Icone } from "../icone.tsx";
+
+const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const pct = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1).replace(".", ",")}%`);
+
+function Barras({ vals, destacaUltimo, rotulo }: { vals: { mes: string; v: number }[]; destacaUltimo?: boolean; rotulo: string }) {
+  const mx = Math.max(1, ...vals.map((x) => x.v)), W = 330, H = 120, bw = (W - 10) / vals.length;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={rotulo}>
+      {vals.map((x, i) => <rect x={5 + i * bw + bw * 0.15} y={H - 18 - (x.v / mx) * (H - 30)} width={bw * 0.7} height={(x.v / mx) * (H - 30)} fill={destacaUltimo && i === vals.length - 1 ? "var(--azul)" : "var(--t2)"} />)}
+      {[0, Math.floor(vals.length / 2), vals.length - 1].map((i) => vals[i] && <text x={5 + i * bw + bw / 2} y={H - 4} font-size="11" fill="var(--t2)" text-anchor="middle">{CURTOS[Number(vals[i]!.mes.slice(5)) - 1]}</text>)}
+    </svg>
+  );
+}
+
+export function Investimentos({ opcoes, aoAvisar }: { opcoes: Opcoes | null; aoAvisar(t: string): void }) {
+  const [d, setD] = useState<Dados | null>(null);
+  const [face, setFace] = useState<"Resumo" | "Carteira" | "Proventos">("Resumo");
+  const [folha, setFolha] = useState<null | "comprar" | "aportar">(null);
+  const carregar = (aporte?: string) => apiInvest.ver(aporte).then(setD).catch((e: Error) => aoAvisar(e.message));
+  useEffect(() => { carregar(); }, []);
+  const proventos12 = d?.series.reduce((s, x) => s + num(x.proventos), 0) ?? 0;
+  return (
+    <>
+      <div class="heroi" aria-busy={!d}>
+        <div class="rot">Investido hoje</div>
+        <div class="grande">{d ? brl(d.total) : <span class="esqueleto" />}</div>
+        <p class="conta">{d ? `${brl(d.variacao_mes, true)} no mês pela cotação · custo ${brl(d.custo)}` : " "}</p>
+        {d && <div class="tres"><div><div class="r">Proventos 12m</div><div class="v">{brl(proventos12.toFixed(2)).replace("R$ ", "")}</div></div><div><div class="r">Média/mês</div><div class="v">{brl((proventos12 / 12).toFixed(2)).replace("R$ ", "")}</div></div><div><div class="r">Rendeu</div><div class="v">{brl((num(d.total) - num(d.custo)).toFixed(2)).replace("R$ ", "")}</div></div></div>}
+        <div class="acao-heroi"><button class="btn-cheio" onClick={() => setFolha("aportar")}>Onde aportar</button><button class="btn-claro" onClick={() => setFolha("comprar")}>Comprei</button></div>
+      </div>
+      <div class="seg" role="group" aria-label="Investimentos">{(["Resumo", "Carteira", "Proventos"] as const).map((f) => <button aria-pressed={f === face} onClick={() => setFace(f)}>{f}</button>)}</div>
+      {d && face === "Resumo" && (
+        <>
+          <section><h2>Aportes por mês <span class="lado">12 meses</span></h2><div class="graf"><Barras vals={d.series.map((x) => ({ mes: x.mes, v: num(x.aporte) }))} destacaUltimo rotulo="Aportes por mês" />
+            <p class="sub">Você colocou {brl(d.series.reduce((s, x) => s + num(x.aporte), 0).toFixed(2))} em 12 meses. Comparação com CDI e IFIX entra com o job do CDI.</p></div></section>
+          <section><h2>Alocação contra a meta</h2><div class="proj">{d.classes.map((k) => (
+            <div class="aloc"><span>{k.nome}</span><span class="tr"><i style={`width:${k.peso}%`} />{k.meta != null && <b style={`left:${k.meta}%`} />}</span><span style="text-align:right">{Math.round(k.peso)}%</span></div>
+          ))}<p class="sub">Barra: hoje. Traço: sua meta.</p></div></section>
+        </>
+      )}
+      {d && face === "Carteira" && (
+        <section><h2>Ativos <span class="lado">variação no mês · sobre o preço médio</span></h2>
+          {d.ativos.length === 0 && <div class="vazio">Nenhum ativo ainda. Toque em "Comprei" para registrar a primeira compra.</div>}
+          {d.classes.filter((k) => num(k.valor) > 0).map((k) => (
+            <div class="grupo"><div class="grupo-cab"><span>{k.nome}</span><span>{brl(k.valor)}</span></div>
+              {d.ativos.filter((a) => a.classe === k.classe).map((a) => (
+                <div class="item"><span class="nome">{a.ticker}</span><span class="valor">{brl(a.valor)}</span>
+                  <span class="sub">{a.quantidade.toLocaleString("pt-BR")} cotas · PM {brl(a.preco_medio)}{a.pvp != null ? ` · P/VP ${a.pvp.toFixed(2).replace(".", ",")}` : ""}{a.dy != null ? ` · DY ${a.dy.toFixed(1).replace(".", ",")}%` : ""}</span>
+                  <span class={`sub ${a.variacao_pm >= 0 ? "pos" : "neg"}`}>{pct(a.variacao_mes)} · {pct(a.variacao_pm)}</span></div>
+              ))}</div>
+          ))}
+          <p class="sub">{d.ativos[0]?.cotado_em ? `Cotação, P/VP e DY lidos em ${d.ativos[0].cotado_em.slice(8, 10)}/${d.ativos[0].cotado_em.slice(5, 7)} (Investidor10).` : "Sem cotação ainda: o valor mostrado é o custo."}</p>
+        </section>
+      )}
+      {d && face === "Proventos" && (
+        <section><h2>Recebido por mês</h2><div class="graf"><Barras vals={d.series.map((x) => ({ mes: x.mes, v: num(x.proventos) }))} destacaUltimo rotulo="Proventos por mês" />
+          <p class="sub">{brl(proventos12.toFixed(2))} em 12 meses. Proventos são as receitas lançadas na conta de investimento.</p></div></section>
+      )}
+      {folha === "aportar" && d && <OndeAportar d={d} aoFechar={() => setFolha(null)} aoRecalcular={(v) => carregar(v)} />}
+      {folha === "comprar" && <Comprar opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => { setFolha(null); apiInvest.comprar(corpo).then(() => carregar()).then(() => aoAvisar("Compra registrada.")).catch((e: Error) => aoAvisar(e.message)); }} />}
+    </>
+  );
+}
+
+function OndeAportar({ d, aoFechar, aoRecalcular }: { d: Dados; aoFechar(): void; aoRecalcular(v: string): void }) {
+  const [valor, setValor] = useState(brl(d.onde_aportar.aporte).replace("R$ ", ""));
+  const o = d.onde_aportar;
+  return (
+    <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}><div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-oa">
+      <div class="topo"><h3 id="t-oa">Onde aportar</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
+      <form onSubmit={(e) => { e.preventDefault(); aoRecalcular(valor); }}>
+        <div class="campo"><label for="oa-v">Quanto vai aportar (R$)</label><input id="oa-v" class="grande-in" inputMode="decimal" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
+        <div class="rodape" style="margin-top:8px"><button class="btn" type="submit">Recalcular</button></div>
+      </form>
+      <section><h2>Distribuição <span class="lado">{brl(o.aporte)}</span></h2><div class="lista">
+        {o.sugestoes.map((s) => <div class="item"><span class="nome">{s.ticker}</span><span class="valor">{brl(s.valor)}</span><span class="sub">{s.motivo}</span><span class="sub">{s.cotas != null ? `${s.cotas} cotas` : ""}</span></div>)}
+        {num(o.sobra) > 0 && <div class="item"><span class="nome">Sobra</span><span class="valor">{brl(o.sobra)}</span><span class="sub">Não fechou cota inteira.</span><span /></div>}
+      </div></section>
+      {o.fora.length > 0 && <section><h2>Ficaram de fora</h2><div class="lista">{o.fora.map((f) => <div class="item"><span class="nome">{f.ticker}</span><span /><span class="sub">{f.motivo}</span><span /></div>)}</div></section>}
+      <p class="aviso">Sugestão pelas suas regras (metas por classe, P/VP até {d.regras.maxPvp.toFixed(2).replace(".", ",")}, peso até {d.regras.maxPeso}%, liquidez mínima). Não é recomendação de analista.</p>
+    </div></div>
+  );
+}
+
+function Comprar({ opcoes, aoFechar, aoSalvar }: { opcoes: Opcoes | null; aoFechar(): void; aoSalvar(corpo: object): void }) {
+  const origens = opcoes?.contas.filter((c) => c.tipo !== "credit_card") ?? [];
+  const [f, setF] = useState({ ticker: "", classe: "paper", quantidade: "", preco: "", conta_id: origens[0]?.id ?? "", investimento_id: opcoes?.investimentos?.[0]?.id ?? "", data: hoje() });
+  const set = (k: string) => (e: Event) => setF({ ...f, [k]: (e.currentTarget as HTMLInputElement).value });
+  return (
+    <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}><div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-cp">
+      <div class="topo"><h3 id="t-cp">Comprei um ativo</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
+      <form onSubmit={(e) => { e.preventDefault(); aoSalvar(f); }}>
+        <div class="campo"><label for="cp-t">Ativo</label><input id="cp-t" value={f.ticker} placeholder="MXRF11" onInput={set("ticker")} /></div>
+        <div class="campo"><label for="cp-c">Classe</label><select id="cp-c" value={f.classe} onChange={set("classe")}>{[["paper", "Papel"], ["brick", "Tijolo"], ["logistics", "Logística"], ["infra", "FI-Infra"], ["treasury", "Tesouro"], ["other", "Outros"]].map(([v, r]) => <option value={v}>{r}</option>)}</select></div>
+        <div class="kv"><div class="campo" style="margin:0;background:none;padding:0"><label for="cp-q">Quantidade</label><input id="cp-q" inputMode="decimal" value={f.quantidade} onInput={set("quantidade")} /></div><div class="campo" style="margin:0;background:none;padding:0"><label for="cp-p">Preço por cota (R$)</label><input id="cp-p" inputMode="decimal" value={f.preco} onInput={set("preco")} /></div></div>
+        <div class="campo"><label for="cp-o">Saiu de</label><select id="cp-o" value={f.conta_id} onChange={set("conta_id")}>{origens.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
+        <div class="campo"><label for="cp-i">Entrou em</label>{opcoes?.investimentos?.length ? <select id="cp-i" value={f.investimento_id} onChange={set("investimento_id")}>{opcoes.investimentos.map((c) => <option value={c.id}>{c.nome}</option>)}</select> : <p class="nota">Cadastre uma conta de investimento em Ajustes (fatia 10).</p>}</div>
+        <p class="nota">É transferência, não gasto: o dinheiro sai da conta e entra na carteira.</p>
+        <div style="margin-top:12px"><button type="submit" class="btn-tinta">Registrar compra</button></div>
+      </form>
+    </div></div>
+  );
+}

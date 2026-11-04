@@ -33,7 +33,7 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
   - [x] Fatia 3 — Mês (PR #20)
   - [x] Fatia 4 — Cartão (PR #21)
   - [x] Fatia 5 — recorrentes, entradas previstas e Atenção (PR #22)
-  - [ ] Fatia 6 — Patrimônio
+  - [x] Fatia 6 — Patrimônio (PR #23)
   - [ ] Fatia 7 — Investimentos
   - [ ] Fatia 8 — entrada em lote
   - [ ] Fatia 9 — IA

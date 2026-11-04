@@ -91,7 +91,19 @@ CONTAS = (
     ("unicred", "Unicred", "credit_card", None),
     ("cofrinho", "Cofrinho da viagem", "goal", None),
     ("receber_ana", "A receber de Ana", "receivable", "ana"),
+    ("inter", "Inter Investimentos", "investment", None),
 )
+
+# Carteira fictícia (RF09): tickers inventados de propósito, com cotação "demo".
+# Nenhum indicador de fundo real aparece no modo demonstração.
+ATIVOS = (
+    ("FICTA11", "Fundo Fictício de Papel", "paper", "25", "96.36", "98.10", "1.03", "11.9", 900000),
+    ("DEMO11", "Demo Recebíveis", "paper", "40", "9.85", "9.62", "0.94", "12.8", 650000),
+    ("TESTE11", "Teste Lajes", "brick", "12", "108.02", "102.30", "0.88", "8.9", 720000),
+    ("EXEMP11", "Exemplo Logística", "logistics", "10", "150.14", "158.40", "0.97", "8.4", 1100000),
+    ("MODEL11", "Modelo Infra", "infra", "30", "95.03", "91.70", "0.92", "13.4", 350000),
+)
+METAS = (("paper", 30), ("brick", 20), ("logistics", 15), ("infra", 10), ("treasury", 25))
 
 GRUPOS = (("essenciais", "Essenciais", 1), ("pessoal", "Pessoal", 2), ("renda", "Renda", 3))
 
@@ -261,6 +273,47 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                     primeiro_dia(hoje, 2),
                 ),
             )
+        compra = primeiro_dia(hoje, 2).replace(day=15)
+        total_compras = Decimal("0")
+        for ticker, nome, classe, qtd, pm, preco, pvp, dy, liquidez in ATIVOS:
+            cur.execute(
+                "INSERT INTO assets (id, user_id, ticker, name, class, account_id)"
+                " VALUES (%s, %s, %s, %s, %s, %s)",
+                (ident(f"ativo:{ticker}"), USUARIO, ticker, nome, classe, ident("inter")),
+            )
+            cur.execute(
+                "INSERT INTO asset_trades (user_id, asset_id, traded_on, quantity, unit_price)"
+                " VALUES (%s, %s, %s, %s, %s)",
+                (USUARIO, ident(f"ativo:{ticker}"), compra, Decimal(qtd), Decimal(pm)),
+            )
+            total_compras += Decimal(qtd) * Decimal(pm)
+            for quando, preco_do_dia in (
+                (primeiro_dia(hoje, 1), Decimal(pm)),
+                (hoje, Decimal(preco)),
+            ):
+                cur.execute(
+                    "INSERT INTO asset_quotes"
+                    " (ticker, quoted_on, price, pvp, dy_12m, liquidity, source)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, 'demo') ON CONFLICT (ticker, quoted_on)"
+                    " DO UPDATE SET price = excluded.price, pvp = excluded.pvp,"
+                    " dy_12m = excluded.dy_12m, liquidity = excluded.liquidity",
+                    (ticker, quando, preco_do_dia, Decimal(pvp), Decimal(dy), liquidez),
+                )
+        _transferencia(
+            cur,
+            de=ident("picpay"),
+            para=ident("inter"),
+            valor=total_compras.quantize(Decimal("0.01")),
+            quando=compra,
+            descricao="Compra de cotas",
+            chave="compra:cotas",
+        )
+        for classe, meta in METAS:
+            cur.execute(
+                "INSERT INTO allocation_targets (user_id, class, percent) VALUES (%s, %s, %s)",
+                (USUARIO, classe, meta),
+            )
+        cur.execute("INSERT INTO investment_rules (user_id) VALUES (%s)", (USUARIO,))
         # Meta do cofrinho da viagem (RF14) e um empréstimo dele ainda não devolvido (RF18).
         cur.execute(
             "INSERT INTO goal_settings (account_id, user_id, target, target_date, started_on)"

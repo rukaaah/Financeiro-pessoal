@@ -50,6 +50,20 @@ CREATE TYPE public.account_kind AS ENUM (
 
 
 --
+-- Name: asset_class; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.asset_class AS ENUM (
+    'paper',
+    'brick',
+    'logistics',
+    'infra',
+    'treasury',
+    'other'
+);
+
+
+--
 -- Name: bill_urgency; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -372,6 +386,16 @@ COMMENT ON FUNCTION public.resolve_app_user(p_email text) IS 'E-mail verificado 
 
 
 --
+-- Name: tickers_em_carteira(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.tickers_em_carteira() RETURNS SETOF text
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$ SELECT DISTINCT ticker FROM assets WHERE class <> 'treasury' ORDER BY 1 $$;
+
+
+--
 -- Name: transactions_custeio_tg(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -662,6 +686,18 @@ CREATE TABLE public.accounts (
 
 
 --
+-- Name: allocation_targets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.allocation_targets (
+    user_id uuid NOT NULL,
+    class public.asset_class NOT NULL,
+    percent numeric(5,2) NOT NULL,
+    CONSTRAINT allocation_targets_percentual CHECK (((percent >= (0)::numeric) AND (percent <= (100)::numeric)))
+);
+
+
+--
 -- Name: app_users; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -692,6 +728,62 @@ COMMENT ON TABLE public.app_users IS 'Allowlist de acesso (ADR-003). E-mail ause
 --
 
 COMMENT ON COLUMN public.app_users.is_admin IS 'Pode liberar e desativar acesso de outras pessoas (RF19). A regra vale no banco, por função SECURITY DEFINER: esconder a tela não protege nada.';
+
+
+--
+-- Name: asset_quotes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.asset_quotes (
+    ticker text NOT NULL,
+    quoted_on date NOT NULL,
+    price numeric(14,6) NOT NULL,
+    pvp numeric(8,4),
+    dy_12m numeric(8,4),
+    liquidity numeric(18,2),
+    source text NOT NULL,
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: asset_trades; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.asset_trades (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
+    traded_on date NOT NULL,
+    quantity numeric(18,6) NOT NULL,
+    unit_price numeric(14,6) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT asset_trades_preco_positivo CHECK ((unit_price > (0)::numeric)),
+    CONSTRAINT asset_trades_quantidade_nao_zero CHECK ((quantity <> (0)::numeric))
+);
+
+
+--
+-- Name: COLUMN asset_trades.quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.asset_trades.quantity IS 'Positiva na compra, negativa na venda.';
+
+
+--
+-- Name: assets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    ticker text NOT NULL,
+    name text NOT NULL,
+    class public.asset_class NOT NULL,
+    account_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT assets_ticker_formato CHECK ((ticker ~ '^[A-Z0-9 ]{3,30}$'::text))
+);
 
 
 --
@@ -894,6 +986,19 @@ CREATE TABLE public.goal_settings (
 
 
 --
+-- Name: investment_rules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.investment_rules (
+    user_id uuid NOT NULL,
+    max_pvp numeric(6,3) DEFAULT 1.00 NOT NULL,
+    max_weight numeric(5,2) DEFAULT 20.00 NOT NULL,
+    min_liquidity numeric(18,2) DEFAULT 500000 NOT NULL,
+    leftover_account_id uuid
+);
+
+
+--
 -- Name: reconciliations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1030,6 +1135,14 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: allocation_targets allocation_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.allocation_targets
+    ADD CONSTRAINT allocation_targets_pkey PRIMARY KEY (user_id, class);
+
+
+--
 -- Name: app_users app_users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1043,6 +1156,46 @@ ALTER TABLE ONLY public.app_users
 
 ALTER TABLE ONLY public.app_users
     ADD CONSTRAINT app_users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: asset_quotes asset_quotes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_quotes
+    ADD CONSTRAINT asset_quotes_pkey PRIMARY KEY (ticker, quoted_on);
+
+
+--
+-- Name: asset_trades asset_trades_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_trades
+    ADD CONSTRAINT asset_trades_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: assets assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: assets assets_ticker_unico; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_ticker_unico UNIQUE (user_id, ticker);
+
+
+--
+-- Name: assets assets_user_id_id; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_user_id_id UNIQUE (user_id, id);
 
 
 --
@@ -1187,6 +1340,14 @@ ALTER TABLE ONLY public.goal_contributions
 
 ALTER TABLE ONLY public.goal_settings
     ADD CONSTRAINT goal_settings_pkey PRIMARY KEY (account_id);
+
+
+--
+-- Name: investment_rules investment_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.investment_rules
+    ADD CONSTRAINT investment_rules_pkey PRIMARY KEY (user_id);
 
 
 --
@@ -1381,6 +1542,46 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: allocation_targets allocation_targets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.allocation_targets
+    ADD CONSTRAINT allocation_targets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_trades asset_trades_ativo_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_trades
+    ADD CONSTRAINT asset_trades_ativo_fk FOREIGN KEY (user_id, asset_id) REFERENCES public.assets(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_trades asset_trades_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_trades
+    ADD CONSTRAINT asset_trades_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: assets assets_conta_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_conta_fk FOREIGN KEY (user_id, account_id) REFERENCES public.accounts(user_id, id) ON DELETE RESTRICT;
+
+
+--
+-- Name: assets assets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: attention_snoozes attention_snoozes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1517,6 +1718,14 @@ ALTER TABLE ONLY public.goal_settings
 
 
 --
+-- Name: investment_rules investment_rules_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.investment_rules
+    ADD CONSTRAINT investment_rules_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: reconciliations reconciliations_conta_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1631,6 +1840,19 @@ CREATE POLICY accounts_isolamento ON public.accounts TO app USING ((user_id = pu
 
 
 --
+-- Name: allocation_targets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.allocation_targets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: allocation_targets allocation_targets_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY allocation_targets_isolamento ON public.allocation_targets TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: app_users; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1641,6 +1863,32 @@ ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY app_users_isolamento ON public.app_users TO app USING ((id = public.current_app_user())) WITH CHECK ((id = public.current_app_user()));
+
+
+--
+-- Name: asset_trades; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.asset_trades ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: asset_trades asset_trades_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY asset_trades_isolamento ON public.asset_trades TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
+-- Name: assets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.assets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: assets assets_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY assets_isolamento ON public.assets TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
 
 
 --
@@ -1761,6 +2009,19 @@ CREATE POLICY goal_settings_isolamento ON public.goal_settings TO app USING ((us
 
 
 --
+-- Name: investment_rules; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.investment_rules ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: investment_rules investment_rules_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY investment_rules_isolamento ON public.investment_rules TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: reconciliations; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1846,6 +2107,14 @@ GRANT ALL ON FUNCTION public.resolve_app_user(p_email text) TO app;
 
 
 --
+-- Name: FUNCTION tickers_em_carteira(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.tickers_em_carteira() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.tickers_em_carteira() TO jobs;
+
+
+--
 -- Name: TABLE account_terms; Type: ACL; Schema: public; Owner: -
 --
 
@@ -1860,10 +2129,39 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.accounts TO app;
 
 
 --
+-- Name: TABLE allocation_targets; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.allocation_targets TO app;
+
+
+--
 -- Name: TABLE app_users; Type: ACL; Schema: public; Owner: -
 --
 
 GRANT SELECT ON TABLE public.app_users TO app;
+
+
+--
+-- Name: TABLE asset_quotes; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.asset_quotes TO app;
+GRANT SELECT,INSERT,UPDATE ON TABLE public.asset_quotes TO jobs;
+
+
+--
+-- Name: TABLE asset_trades; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.asset_trades TO app;
+
+
+--
+-- Name: TABLE assets; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.assets TO app;
 
 
 --
@@ -1927,6 +2225,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_contributions TO app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_settings TO app;
+
+
+--
+-- Name: TABLE investment_rules; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.investment_rules TO app;
 
 
 --

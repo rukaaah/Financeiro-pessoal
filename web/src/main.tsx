@@ -99,7 +99,7 @@ function App() {
         {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><a href="/auth/entrar">Entrar</a></div>}
         <main>
           {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} />
-            : tela === "patrimonio" ? <Patrimonio dados={dadosPatrimonio} aoMover={(m) => setFolha({ tipo: "mover", m })} />
+            : tela === "patrimonio" ? <Patrimonio dados={dadosPatrimonio} opcoes={opcoes} aoMover={(m) => setFolha({ tipo: "mover", m })} aoAvisar={(texto) => avisar({ texto })} />
             : tela === "cartao" ? <Cartao dados={dadosCartao} aoPagar={(c, f) => setFolha({ tipo: "pagar", c, f })} />
             : tela === "lancamentos" ? <Lancamentos lista={lista} ocultos={ocultos} aoEditar={(l) => setFolha({ tipo: "editar", l })} aoAbrirLancar={() => setFolha({ tipo: "lancar" })} />
             : <>
