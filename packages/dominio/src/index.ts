@@ -5,3 +5,4 @@ export * from "./orcamento.ts";
 export * from "./cartao.ts";
 export * from "./conversao.ts";
 export * from "./atencao.ts";
+export * from "./patrimonio.ts";

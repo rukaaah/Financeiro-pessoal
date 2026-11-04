@@ -134,6 +134,17 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         (usuario, Decimal("300.00"), date(2026, 3, 25), corrente, categoria),
     )
     cur.execute(
+        "INSERT INTO goal_settings (account_id, user_id, target, target_date, started_on)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        (cofrinho, usuario, Decimal("3000.00"), date(2027, 1, 1), date(2026, 1, 1)),
+    )
+    cur.execute(
+        "INSERT INTO reconciliations"
+        " (user_id, account_id, reconciled_on, bank_balance, app_balance)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        (usuario, corrente, date(2026, 3, 1), Decimal("100.00"), Decimal("100.00")),
+    )
+    cur.execute(
         "INSERT INTO attention_snoozes (user_id, item_key, until) VALUES (%s, %s, NULL)",
         (usuario, "conta:teste:2026-03"),
     )

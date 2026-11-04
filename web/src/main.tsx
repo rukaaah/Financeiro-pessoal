@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { api, apiAtencao, apiCartao, apiMes, type ItemAtencao, type Cartao as CartaoDados, type Compra, type Fatura, type CategoriaDoMes, type Lancamento, type ListaDoMes, type Mes as MesDados, type Opcoes } from "./api.ts";
+import { api, apiAtencao, apiPatrimonio, type Patrimonio as PatrimonioDados, apiCartao, apiMes, type ItemAtencao, type Cartao as CartaoDados, type Compra, type Fatura, type CategoriaDoMes, type Lancamento, type ListaDoMes, type Mes as MesDados, type Opcoes } from "./api.ts";
 import { Icone } from "./icone.tsx";
 import { Lancar } from "./telas/lancar.tsx";
 import { Editar, Lancamentos } from "./telas/lancamentos.tsx";
@@ -8,6 +8,7 @@ import { DetalheDaCategoria, Mes } from "./telas/mes.tsx";
 import { Cartao, PagarFatura } from "./telas/cartao.tsx";
 import { Atencao, NovaConta, Receber } from "./telas/atencao.tsx";
 import type { Inicial } from "./telas/lancar.tsx";
+import { Mover, type Movimento, Patrimonio } from "./telas/patrimonio.tsx";
 import "./estilo.css";
 
 type Tela = "mes" | "lancamentos" | "cartao" | "patrimonio";
@@ -20,8 +21,10 @@ function App() {
   const [opcoes, setOpcoes] = useState<Opcoes | null>(null);
   const [lista, setLista] = useState<ListaDoMes | null>(null);
   const [ocultos, setOcultos] = useState<Set<string>>(new Set());
-  const [folha, setFolha] = useState<null | { tipo: "lancar"; inicial?: Inicial } | { tipo: "atencao" } | { tipo: "nova-conta" } | { tipo: "receber"; id: string } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
+  const [folha, setFolha] = useState<null | { tipo: "lancar"; inicial?: Inicial } | { tipo: "atencao" } | { tipo: "nova-conta" } | { tipo: "receber"; id: string } | { tipo: "mover"; m: Movimento } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
   const [dadosCartao, setDadosCartao] = useState<{ cartoes: CartaoDados[]; compras: Compra[] } | null>(null);
+  const [dadosPatrimonio, setDadosPatrimonio] = useState<PatrimonioDados | null>(null);
+  const recarregarPatrimonio = () => apiPatrimonio.ver().then(setDadosPatrimonio).catch(() => {});
   const recarregarCartao = () => apiCartao.cartao().then(setDadosCartao).catch(() => {});
   const [mes, setMes] = useState(mesAtual());
   const [dadosMes, setDadosMes] = useState<MesDados | null>(null);
@@ -30,13 +33,14 @@ function App() {
 
   const avisar = (a: Aviso) => { clearTimeout(relogio.current); setAviso(a); relogio.current = window.setTimeout(() => setAviso(null), 5000); };
   const recarregarMes = (m = mes) => apiMes.mes(m).then((d) => d.mes === m && setDadosMes(d)).catch((e: Error) => avisar({ texto: e.message }));
-  const recarregar = () => { recarregarMes(); recarregarCartao(); return api.lancamentos(mes).then(setLista).catch((e: Error) => avisar({ texto: e.message })); };
+  const recarregar = () => { recarregarMes(); recarregarCartao(); recarregarPatrimonio(); return api.lancamentos(mes).then(setLista).catch((e: Error) => avisar({ texto: e.message })); };
   useEffect(() => { setDadosMes(null); setLista(null); recarregarMes(mes); api.lancamentos(mes).then(setLista).catch(() => {}); }, [mes]);
 
   useEffect(() => {
     api.sessao().then(setSessao).catch(() => setSessao({ modo: "demo", nome: "Visitante" }));
     api.opcoes().then(setOpcoes).catch(() => {});
     recarregarCartao();
+    recarregarPatrimonio();
     if (new URLSearchParams(location.search).get("lancar") === "gastei") setFolha({ tipo: "lancar" });
   }, []);
 
@@ -95,6 +99,7 @@ function App() {
         {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><a href="/auth/entrar">Entrar</a></div>}
         <main>
           {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} />
+            : tela === "patrimonio" ? <Patrimonio dados={dadosPatrimonio} aoMover={(m) => setFolha({ tipo: "mover", m })} />
             : tela === "cartao" ? <Cartao dados={dadosCartao} aoPagar={(c, f) => setFolha({ tipo: "pagar", c, f })} />
             : tela === "lancamentos" ? <Lancamentos lista={lista} ocultos={ocultos} aoEditar={(l) => setFolha({ tipo: "editar", l })} aoAbrirLancar={() => setFolha({ tipo: "lancar" })} />
             : <>
@@ -125,6 +130,14 @@ function App() {
         setFolha(null);
         avisar({ texto: "Pagando…" });
         apiCartao.pagar(corpo).then(recarregar).then(() => avisar({ texto: "Pagamento registrado." })).catch((e: Error) => avisar({ texto: e.message }));
+      }} />}
+      {folha?.tipo === "mover" && <Mover m={folha.m} contas={(opcoes?.contas ?? []).filter((c) => c.tipo !== "credit_card")} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => {
+        const m = folha.m; setFolha(null);
+        const feito = m.tipo === "guardar" ? apiPatrimonio.guardar({ ...corpo, cofrinho_id: m.cofrinho.id })
+          : m.tipo === "resgatar" ? apiPatrimonio.resgatar({ ...corpo, cofrinho_id: m.cofrinho.id })
+          : m.tipo === "receber-de" ? apiPatrimonio.receberDe({ ...corpo, receber_id: m.id })
+          : apiPatrimonio.conciliar(corpo).then((r) => { avisar({ texto: r.diferenca === "0.00" ? "Conferido: o saldo bate com o banco." : `Diferença de R$ ${r.diferenca.replace(".", ",")} contra o banco.` }); return r; });
+        feito.then(() => recarregar()).then(() => { if (m.tipo !== "conciliar") avisar({ texto: "Salvo." }); }).catch((e: Error) => avisar({ texto: e.message }));
       }} />}
       {aviso && <div class="toast" role="status"><span>{aviso.texto}</span>{aviso.desfazer && <button onClick={() => { const d = aviso.desfazer!; setAviso(null); d(); }}>Desfazer</button>}</div>}
     </>

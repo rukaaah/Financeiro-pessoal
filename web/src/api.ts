@@ -63,3 +63,17 @@ export const apiAtencao = {
   receber: (id: string, corpo: { recebido: string; data: string }) => pedir<{ desconto: string | null; ptax: string | null }>(`/api/entradas-previstas/${id}/receber`, { method: "POST", body: JSON.stringify(corpo) }),
   adiar: (chave: string, ate: string | null) => pedir("/api/atencao/adiar", { method: "POST", body: JSON.stringify({ chave, ate }) }),
 };
+
+export interface Cofrinho { id: string; nome: string; saldo: string; meta: string | null; data_meta: string | null; cdi: string | null; deveria: string | null; a_devolver: string; progresso: number | null }
+export interface Patrimonio {
+  patrimonio: string; partes: { contas: string; cofrinhos: string; investimentos: string; cartao: string }; a_receber: string; paypal: { total: string; recebimentos: number };
+  contas: { id: string; nome: string; tipo: string; saldo: string; ultimo: string | null; conciliado: string | null }[];
+  cofrinhos: Cofrinho[]; receber: { id: string; nome: string; pessoa: string | null; saldo: string; itens: { data: string; descricao: string; valor: string }[] }[];
+}
+export const apiPatrimonio = {
+  ver: () => pedir<Patrimonio>("/api/patrimonio"),
+  guardar: (corpo: object) => pedir("/api/guardar", { method: "POST", body: JSON.stringify(corpo) }),
+  resgatar: (corpo: object) => pedir("/api/resgatar", { method: "POST", body: JSON.stringify(corpo) }),
+  receberDe: (corpo: object) => pedir("/api/receber-de", { method: "POST", body: JSON.stringify(corpo) }),
+  conciliar: (corpo: object) => pedir<{ diferenca: string }>("/api/conciliar", { method: "POST", body: JSON.stringify(corpo) }),
+};

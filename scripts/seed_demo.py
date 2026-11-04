@@ -261,6 +261,18 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                     primeiro_dia(hoje, 2),
                 ),
             )
+        # Meta do cofrinho da viagem (RF14) e um empréstimo dele ainda não devolvido (RF18).
+        cur.execute(
+            "INSERT INTO goal_settings (account_id, user_id, target, target_date, started_on)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (
+                ident("cofrinho"),
+                USUARIO,
+                Decimal("3000.00"),
+                primeiro_dia(hoje, -8),
+                primeiro_dia(hoje, 2),
+            ),
+        )
         # Freelance em dólar pelo PayPal (ideia 21): o do mês passado já chegou, com o
         # desconto medido contra a PTAX; o deste mês está previsto para o dia 25.
         recebido_em = primeiro_dia(hoje, 1).replace(day=25)
@@ -424,6 +436,35 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 chave="devolucao:ana",
             )
 
+        emprestimo_cofrinho = primeiro_dia(hoje, 1).replace(day=20)
+        transfer_id = ident("transfer:emprestimo:cofrinho")
+        cur.executemany(
+            "INSERT INTO transactions (id, user_id, kind, account_id, amount, occurred_on,"
+            " description, transfer_id, goal_movement)"
+            " VALUES (%s, %s, 'transfer', %s, %s, %s, %s, %s, %s)",
+            [
+                (
+                    ident("emprestimo:cofrinho:saida"),
+                    USUARIO,
+                    ident("cofrinho"),
+                    Decimal("-150.00"),
+                    emprestimo_cofrinho,
+                    "Empréstimo do cofrinho",
+                    transfer_id,
+                    "loan",
+                ),
+                (
+                    ident("emprestimo:cofrinho:entrada"),
+                    USUARIO,
+                    ident("picpay"),
+                    Decimal("150.00"),
+                    emprestimo_cofrinho,
+                    "Empréstimo do cofrinho",
+                    transfer_id,
+                    None,
+                ),
+            ],
+        )
         # Uma segunda vez, ainda em aberto: sem ela a tela de valores a receber
         # ficaria zerada, e é justamente o saldo pendente que ela precisa mostrar.
         em_aberto = primeiro_dia(hoje, 0).replace(day=2)
