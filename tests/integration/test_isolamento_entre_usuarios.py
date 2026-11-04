@@ -111,6 +111,16 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         " VALUES (%s, %s, %s, %s, 'expense')",
         (categoria, usuario, grupo, "Mercado"),
     )
+    cur.execute(
+        "INSERT INTO budget_templates (user_id, category_id, amount, valid_from)"
+        " VALUES (%s, %s, %s, %s)",
+        (usuario, categoria, Decimal("600.00"), date(2026, 1, 1)),
+    )
+    cur.execute(
+        "INSERT INTO budget_adjustments (user_id, category_id, month, amount)"
+        " VALUES (%s, %s, %s, %s)",
+        (usuario, categoria, date(2026, 3, 1), Decimal("700.00")),
+    )
 
     transfer = uuid.uuid4()
     cur.executemany(

@@ -104,6 +104,19 @@ CATEGORIAS = (
     ("salario", "Salário", "renda", "income"),
 )
 
+# Previsto padrão por categoria (ADR-019), valendo desde o primeiro mês do
+# histórico. Mercado ganha um ajuste no mês corrente para o demo mostrar a
+# diferença entre padrão e exceção.
+PREVISTO = {
+    "mercado": "1100.00",
+    "moradia": "1900.00",
+    "transporte": "150.00",
+    "lazer": "120.00",
+    "saude": "150.00",
+    "salario": "4200.00",
+}
+AJUSTE_DO_MES = ("mercado", "1250.00")
+
 
 def primeiro_dia(referencia: date, meses_atras: int) -> date:
     """Primeiro dia do mês `meses_atras` antes de `referencia`."""
@@ -189,6 +202,29 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 (ident(chave), USUARIO, ident(grupo), nome, tipo),
             )
 
+        for chave, previsto in PREVISTO.items():
+            cur.execute(
+                "INSERT INTO budget_templates (id, user_id, category_id, amount, valid_from)"
+                " VALUES (%s, %s, %s, %s, %s)",
+                (
+                    ident(f"previsto:{chave}"),
+                    USUARIO,
+                    ident(chave),
+                    Decimal(previsto),
+                    primeiro_dia(hoje, 2),
+                ),
+            )
+        cur.execute(
+            "INSERT INTO budget_adjustments (id, user_id, category_id, month, amount)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (
+                ident("ajuste:mercado"),
+                USUARIO,
+                ident(AJUSTE_DO_MES[0]),
+                primeiro_dia(hoje, 0),
+                Decimal(AJUSTE_DO_MES[1]),
+            ),
+        )
         # Três meses de histórico, terminando no mês corrente.
         for meses_atras in (2, 1, 0):
             mes = primeiro_dia(hoje, meses_atras)
