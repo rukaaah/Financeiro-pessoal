@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mês · esboço</title>
+<style>
+:root{--fundo:#fbfbf9;--sup:#f4f4f1;--texto:#181b1a;--t2:#585f5c;--regua:#cdd0ca;--forte:#b8bcb5;--azul:#2b55d0;--azul-claro:#aebdf0;--fora:#b3261e;--fora-f:#f9e2e0;--perto:#8a5a00;--perto-f:#f7ead1;--tarja:#322d1f;--tarja-t:#f6e7c4}
+*{box-sizing:border-box;margin:0}
+html{width:390px;overflow:hidden}body{width:390px;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);font-variant-numeric:tabular-nums;padding-bottom:80px}
+.tarja{background:var(--tarja);color:var(--tarja-t);font-size:14px;padding:8px 16px}
+.tarja b{font-weight:600}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px 0}
+h1{font-size:24px;font-weight:700}
+.mes{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-weight:600}
+.mes span{color:var(--t2);font-size:20px;width:44px;text-align:center}
+.achado{margin:0 16px 16px;font-size:14px;color:var(--t2)}
+.achado b{color:var(--fora);font-weight:600}
+.regua{padding:0 16px 20px;border-bottom:1px solid var(--forte)}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:14px}
+.rot{font-size:12px;color:var(--t2)}
+.val{font-size:18px;font-weight:600}
+.val.livre{font-weight:700}
+.trilho{height:10px;border-radius:999px;background:var(--sup);display:flex;overflow:hidden;outline:1px solid var(--regua)}
+.trilho i{display:block;height:100%}
+.legenda{font-size:12px;color:var(--t2);margin-top:8px;display:flex;justify-content:space-between}
+section{padding:16px;border-bottom:1px solid var(--regua)}
+h2{font-size:16px;font-weight:600;display:flex;justify-content:space-between;margin-bottom:8px}
+h2 a{font-size:14px;color:var(--azul);font-weight:400;text-decoration:none}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-top:1px solid var(--sup)}
+.item:first-of-type{border-top:0}
+.sub{font-size:14px;color:var(--t2)}
+.selo{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:1px 8px;margin-right:6px}
+.selo.f{background:var(--fora-f);color:var(--fora)}.selo.p{background:var(--perto-f);color:var(--perto)}
+.acao{font-size:14px;color:var(--texto);font-weight:600;text-align:right}
+nav{position:fixed;bottom:0;left:0;width:390px;height:64px;background:var(--fundo);border-top:1px solid var(--forte);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;text-align:center;font-size:12px;color:var(--t2)}
+nav .ativo{color:var(--texto);font-weight:600}
+nav .lancar{width:56px;height:56px;border-radius:50%;background:var(--azul);color:#fff;font-size:28px;line-height:56px;margin:-20px auto 0}
+</style></head><body>
+<div class="tarja"><b>Dados fictícios.</b> Modo demonstração · Entrar com Google</div>
+<header><h1>Mês</h1><span aria-label="Ajustes">⚙</span></header>
+<div class="mes"><span>‹</span>Novembro de 2026<span>›</span></div>
+<p class="achado"><b>Restaurantes passou R$ 15,00 do previsto</b> e está R$ 25,00 acima da média de 3 meses.</p>
+<div class="regua">
+  <div class="grade">
+    <div><div class="rot">Previsto</div><div class="val">R$ 2.675,00</div></div>
+    <div><div class="rot">Gasto</div><div class="val">R$ 1.865,01</div></div>
+    <div><div class="rot">A pagar</div><div class="val">R$ 475,00</div></div>
+    <div><div class="rot">Livre</div><div class="val livre">R$ 334,99</div></div>
+  </div>
+  <div class="trilho" role="img" aria-label="Gasto 70%, a pagar 18%, livre 12% do previsto"><i style="width:69.7%;background:var(--azul)"></i><i style="width:17.8%;background:var(--azul-claro)"></i></div>
+  <div class="legenda"><span>70% do previsto gasto</span><span>dia 4 de 30</span></div>
+</div>
+<section>
+  <h2>Atenção (8) <a href="#">Ver todos</a></h2>
+  <div class="item"><div><span class="selo f">fora</span>Presentes passou do previsto</div><div class="acao">R$ 120,75</div><div class="sub">de R$ 100,00 · Compras</div><div class="acao">Ver</div></div>
+  <div class="item"><div><span class="selo p">atenção</span>Fatura Unicred vence em 7 dias</div><div class="acao">R$ 843,40</div><div class="sub">11/11 · Essencial</div><div class="acao">Pagar</div></div>
+  <div class="item"><div><span class="selo p">atenção</span>Devolver ao cofrinho Reserva</div><div class="acao">R$ 100,00</div><div class="sub">empréstimo de 29/10</div><div class="acao">Guardar</div></div>
+</section>
+<section>
+  <h2>Saldo projetado <span class="sub">PicPay</span></h2>
+  <svg viewBox="0 0 343 120" width="100%" role="img" aria-label="Saldo de R$ 1.840,35 hoje até R$ 412,30 em 30/11">
+    <line x1="0" y1="100" x2="343" y2="100" stroke="#ecece9"/><line x1="0" y1="60" x2="343" y2="60" stroke="#ecece9"/><line x1="0" y1="20" x2="343" y2="20" stroke="#ecece9"/>
+    <polyline fill="none" stroke="#181b1a" stroke-width="2" points="0,40 30,38 46,38"/>
+    <polyline fill="none" stroke="#181b1a" stroke-width="2" stroke-dasharray="4 3" points="46,38 70,48 80,72 160,74 210,78 250,62 300,84 343,86"/>
+    <text x="250" y="56" font-size="11" fill="#585f5c">freelance</text>
+    <text x="70" y="92" font-size="11" fill="#585f5c">fatura</text>
+    <text x="343" y="112" font-size="12" text-anchor="end" fill="#181b1a">R$ 412,30 em 30/11</text>
+  </svg>
+</section>
+<nav><div class="ativo">▦<br>Mês</div><div>☰<br>Lançamentos</div><div><div class="lancar" aria-label="Lançar">+</div></div><div>▭<br>Cartão</div><div>◫<br>Patrimônio</div></nav>
+</body></html>

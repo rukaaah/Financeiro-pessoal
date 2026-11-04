@@ -30,3 +30,6 @@ __pycache__/
 *~
 .idea/
 .vscode/
+
+# área de trabalho da skill de design
+.taste-skill/
