@@ -1,0 +1,50 @@
+name: Migrations no Neon
+
+# Aplica as migrations (yoyo) num branch do Neon e, no dev, reconstrói o demo.
+# No branch `dev` roda sozinho a cada push na integração da v3 (yoyo é
+# idempotente). Produção só por gatilho manual, depois do corte (fatia 11).
+# O gatilho manual só aparece depois que este arquivo chegar ao `main`.
+on:
+  push:
+    branches: [replanejamento/v3]
+    paths: ["migrations/**", "scripts/seed_demo.py", ".github/workflows/migrar-banco.yml"]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Qual banco migrar
+        type: choice
+        options: [dev, production]
+        default: dev
+
+concurrency:
+  group: migrar-${{ inputs.ambiente || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  migrar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --group dev
+      - name: Aplicar migrations
+        env:
+          # Papel `owner` do branch escolhido. Nunca impresso.
+          DATABASE_URL: >-
+            ${{ (inputs.ambiente || 'dev') == 'dev'
+                && secrets.DATABASE_URL_OWNER_DEV
+                || secrets.DATABASE_URL_OWNER }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::Secret de conexão do papel owner ausente para ${{ inputs.ambiente || 'dev' }}."
+            exit 1
+          fi
+          uv run yoyo apply --batch --database "postgresql+psycopg://${DATABASE_URL#*://}"
+      - name: Reconstruir o demo (só dev)
+        if: (inputs.ambiente || 'dev') == 'dev'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_OWNER_DEV }}
+        run: uv run python scripts/seed_demo.py
