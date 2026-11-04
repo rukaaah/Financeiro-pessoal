@@ -1,6 +1,6 @@
 # ADR-016 — TypeScript na API e na interface; Python nos jobs, migrations e testes de banco
 
-- **Status:** Proposto (Portão 3 do replanejamento v3)
+- **Status:** Aceito (Portão 3 do replanejamento v3, aprovado pelo Pedro em 2026-11-04)
 - **Data:** 2026-11-04
 - **Complementa:** [ADR-001](001-monolito-modular-hexagonal.md) (o monólito modular e a
   hexagonal por módulo continuam, agora em TypeScript) e o [ADR-012](012-decimal-e-a-borda-de-renderizacao.md).

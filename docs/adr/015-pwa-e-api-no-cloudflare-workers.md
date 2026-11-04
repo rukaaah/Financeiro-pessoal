@@ -1,8 +1,8 @@
 # ADR-015 — PWA com API num Cloudflare Worker, no lugar do Streamlit
 
-- **Status:** Proposto (Portão 3 do replanejamento v3)
+- **Status:** Aceito (Portão 3 do replanejamento v3, aprovado pelo Pedro em 2026-11-04)
 - **Data:** 2026-11-04
-- **Substitui, se aceito:** a hospedagem do app no [ADR-002](002-hospedagem-community-cloud.md)
+- **Substitui:** a hospedagem do app no [ADR-002](002-hospedagem-community-cloud.md)
   (os jobs no GitHub Actions continuam), o [ADR-009](009-aceitar-a-hibernacao-do-app.md)
   e as decisões de navegação do [ADR-011](011-arquitetura-da-interface.md) (1, 3 e o
   adendo da barra própria). Detalhes e medições em `docs/v3/07-arquitetura.md`.

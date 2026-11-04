@@ -1,6 +1,6 @@
 # ADR-003 — Login Google via `st.login` com allowlist em `app_users`
 
-- **Status:** Aceito
+- **Status:** Mecanismo `st.login` substituído pelo [ADR-017](017-login-google-no-worker.md) em 2026-11-04; a regra da allowlist continua
 - **Data:** 2026-10-07
 
 ## Contexto

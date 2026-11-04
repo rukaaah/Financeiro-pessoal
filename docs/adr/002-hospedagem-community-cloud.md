@@ -1,6 +1,6 @@
 # ADR-002 — Hospedagem no Streamlit Community Cloud com jobs no GitHub Actions
 
-- **Status:** Aceito
+- **Status:** Hospedagem do app substituída pelo [ADR-015](015-pwa-e-api-no-cloudflare-workers.md) em 2026-11-04; jobs no GitHub Actions continuam
 - **Data:** 2026-10-07
 
 ## Contexto

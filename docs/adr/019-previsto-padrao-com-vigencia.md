@@ -1,6 +1,6 @@
 # ADR-019 — Previsto: padrão por categoria com vigência, ajuste do mês como exceção
 
-- **Status:** Proposto (Portão 3 do replanejamento v3). Substitui, se aceito, o
+- **Status:** Aceito (Portão 3 do replanejamento v3, aprovado pelo Pedro em 2026-11-04). Substitui o
   [ADR-013](013-modelo-recorrente-de-previsto.md), que estava pendente.
 - **Data:** 2026-11-04
 

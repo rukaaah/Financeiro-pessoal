@@ -1,8 +1,8 @@
 # ADR-017 — Login Google por OIDC no Worker, com sessão em cookie assinado
 
-- **Status:** Proposto (Portão 3 do replanejamento v3)
+- **Status:** Aceito (Portão 3 do replanejamento v3, aprovado pelo Pedro em 2026-11-04)
 - **Data:** 2026-11-04
-- **Substitui, se aceito:** o mecanismo `st.login` do [ADR-003](003-login-google-app-users.md).
+- **Substitui:** o mecanismo `st.login` do [ADR-003](003-login-google-app-users.md).
   A regra do ADR-003 **não muda**: e-mail verificado e ativo em `app_users` → modo real;
   qualquer outro → demo.
 

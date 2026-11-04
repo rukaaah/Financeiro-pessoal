@@ -1,6 +1,6 @@
 # ADR-011 — Arquitetura da interface: sete destinos, mês global e intenção antes de contabilidade
 
-- **Status:** Aceito
+- **Status:** Navegação (decisões 1 e 3 e o adendo da barra) substituída pelo [ADR-015](015-pwa-e-api-no-cloudflare-workers.md) e por `docs/v3/05-arquitetura-de-informacao.md` em 2026-11-04
 - **Data:** 2026-10-08
 - **Decidido em:** grill-me de 2026-10-08; detalhes em
   `.design/interface-v2/DESIGN_BRIEF.md` e

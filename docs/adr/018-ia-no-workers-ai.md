@@ -1,6 +1,6 @@
 # ADR-018 — IA no Cloudflare Workers AI, chamada pelo binding do Worker
 
-- **Status:** Proposto (Portão 3 do replanejamento v3)
+- **Status:** Aceito (Portão 3 do replanejamento v3, aprovado pelo Pedro em 2026-11-04)
 - **Data:** 2026-11-04
 - **Detalhes:** `docs/v3/04-ia.md` e `prompts/ia/`.
 

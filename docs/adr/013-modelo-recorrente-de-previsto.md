@@ -1,6 +1,6 @@
 # ADR-013 — Modelo recorrente de previsto
 
-- **Status:** **Pendente** — a decisão **não** está tomada. Este ADR registra o
+- **Status:** Substituído pelo [ADR-019](019-previsto-padrao-com-vigencia.md) em 2026-11-04.
   problema, o que já foi descartado e as perguntas que precisam de resposta antes
   de existir migration. Nenhuma coluna ou tabela foi criada.
 - **Data:** 2026-10-08

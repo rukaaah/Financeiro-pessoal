@@ -1,6 +1,6 @@
 # ADR-009 — Aceitar a hibernação do app e dispensar o monitor externo
 
-- **Status:** Aceito
+- **Status:** Substituído pelo [ADR-015](015-pwa-e-api-no-cloudflare-workers.md)
 - **Data:** 2026-10-07
 - **Substitui:** a decisão de monitoramento do
   [ADR-002](002-hospedagem-community-cloud.md). O resto daquele ADR —

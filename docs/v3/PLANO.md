@@ -24,13 +24,25 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
 - [x] **Etapa 6b** — Telas (`/design-taste-frontend`) → `06b-telas.md`
 - [x] 🔒 **Portão 2** — aprovado em 2026-11-04 (esboço navegável em `esbocos/mes-navegavel.html`)
 - [x] **Etapa 7** — Arquitetura técnica → `07-arquitetura.md` + ADRs
-- [ ] 🔒 **Portão 3** — stack aprovada
-- [ ] **Etapa 8** — Plano de construção → `08-plano-de-construcao.md`
-- [ ] **Etapa 9** — Construção, uma fatia por PR
+- [x] 🔒 **Portão 3** — aprovado em 2026-11-04 (ADRs 015 a 019 aceitos)
+- [x] **Etapa 8** — Plano de construção → `08-plano-de-construcao.md`
+- [ ] **Etapa 9** — Construção, uma fatia por PR (👤 = precisa do Pedro)
+  - [ ] Fatia 0 — prova da stack 👤 conta Cloudflare e secrets
+  - [ ] Fatia 1 — login, demo e allowlist 👤 redirect do OAuth
+  - [ ] Fatia 2 — Lançar e Lançamentos
+  - [ ] Fatia 3 — Mês
+  - [ ] Fatia 4 — Cartão
+  - [ ] Fatia 5 — recorrentes, entradas previstas e Atenção
+  - [ ] Fatia 6 — Patrimônio
+  - [ ] Fatia 7 — Investimentos
+  - [ ] Fatia 8 — entrada em lote
+  - [ ] Fatia 9 — IA
+  - [ ] Fatia 10 — Ajustes, acesso e RF23 👤 prints de exemplo
+  - [ ] Fatia 11 — corte e entrega 👤 desligar o Community Cloud
 - [ ] **Etapa 10** — Auditoria (`/web-design-guidelines`) e entrega → `10-auditoria.md`
 
 ## Pendências abertas que precisam ir a um portão
 
-- ADR-013 (modelo recorrente de previsto) — levar ao Portão 1 como item de decisão
+- ~~ADR-013~~ decidido no ADR-019
 - RF20: nomes de urgência e prazos padrão (3 dias, 5 para fatura, 80% de orçamento)
 - RF23: prints de exemplo das telas de investimento do Inter e do PicPay
