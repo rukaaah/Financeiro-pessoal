@@ -160,3 +160,5 @@ nav.barra button:active,.btn:active,.chip:active,.item:active{transform:scale(.9
 .btn[disabled]{opacity:.5;cursor:default}
 .link-sub{color:var(--azul);font-weight:600;font-size:14px;min-height:32px}
 .item .acao{background:none;border:0;min-height:32px}
+.app{position:relative}
+.ajustes-topo{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 52px);z-index:2}

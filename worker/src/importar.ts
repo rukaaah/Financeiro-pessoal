@@ -6,12 +6,13 @@ import { consulta } from "./banco.ts";
 const UUID = /^[0-9a-f-]{36}$/i, DATA = /^\d{4}-\d{2}-\d{2}$/;
 type Linha = { data: string; descricao: string; valor: string; categoria_id?: string };
 
-/** Histórico de descrição → categoria, para sugerir sem IA (ideia 13). */
+/** Regras do usuário primeiro (RF05), depois o histórico de descrição → categoria (ideia 13). */
+const SQL_REGRAS = "select contains as contem, category_id as categoria from categorization_rules order by priority, length(contains) desc";
 const SQL_HISTORICO = `
   select description as descricao, category_id as categoria, kind as tipo from transactions
    where kind in ('income','expense') and category_id is not null order by occurred_on desc limit 1000`;
 
-function sugeridor(historico: Record<string, unknown>[]) {
+function sugeridor(historico: Record<string, unknown>[], regras: Record<string, unknown>[] = []) {
   const contagem = new Map<string, Map<string, number>>();
   for (const h of historico) {
     const chave = `${h.tipo}|${normalizarEstabelecimento(String(h.descricao))}`;
@@ -21,6 +22,8 @@ function sugeridor(historico: Record<string, unknown>[]) {
     contagem.set(chave, m);
   }
   return (descricao: string, tipo: "income" | "expense") => {
+    const porRegra = regras.find((r) => descricao.toUpperCase().includes(String(r.contem)));
+    if (porRegra) return String(porRegra.categoria);
     const m = contagem.get(`${tipo}|${normalizarEstabelecimento(descricao)}`);
     return m ? [...m.entries()].sort((a, b) => b[1] - a[1])[0]![0] : null;
   };
@@ -29,8 +32,8 @@ function sugeridor(historico: Record<string, unknown>[]) {
 export function rotasDeImportacao<E extends object>(app: Hono<{ Bindings: E }>, rodar: Rodar<E>) {
   app.get("/api/sugerir-categoria", async (c) => {
     const descricao = (c.req.query("descricao") ?? "").slice(0, 120), tipo = c.req.query("tipo") === "income" ? "income" : "expense";
-    const [h = []] = await rodar(c, [consulta(SQL_HISTORICO)]);
-    return c.json({ categoria_id: sugeridor(h)(descricao, tipo) });
+    const [h = [], r = []] = await rodar(c, [consulta(SQL_HISTORICO), consulta(SQL_REGRAS)]);
+    return c.json({ categoria_id: sugeridor(h, r)(descricao, tipo) });
   });
 
   /** Prévia: marca duplicadas e sugere categoria. Nada é gravado. */
@@ -38,11 +41,12 @@ export function rotasDeImportacao<E extends object>(app: Hono<{ Bindings: E }>, 
     const b = await c.req.json<{ conta_id?: string; linhas?: Linha[] }>().catch(() => ({}) as { conta_id?: string; linhas?: Linha[] });
     const linhas = (b.linhas ?? []).slice(0, 500);
     if (!UUID.test(String(b.conta_id)) || !linhas.length) return c.json({ erro: "Escolha a conta e envie o extrato." }, 400);
-    const [h = [], existentes = []] = await rodar(c, [
+    const [h = [], regras = [], existentes = []] = await rodar(c, [
       consulta(SQL_HISTORICO),
+      consulta(SQL_REGRAS),
       consulta("select occurred_on::text as data, amount::text as valor, description as descricao from transactions where account_id = $1 and occurred_on >= $2::date", b.conta_id, linhas.map((l) => l.data).sort()[0]),
     ]);
-    const sugerir = sugeridor(h);
+    const sugerir = sugeridor(h, regras);
     const ja = new Set(existentes.map((e) => chaveDeDuplicidade({ data: String(e.data), valor: deNumeric(String(e.valor)), descricao: String(e.descricao) })));
     return c.json({
       linhas: linhas.map((l) => {

@@ -36,7 +36,7 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
   - [x] Fatia 6 — Patrimônio (PR #23)
   - [x] Fatia 7 — Investimentos (PR #24; o job de cotações só roda pelo agendador depois do corte, porque o GitHub agenda workflows apenas no `main`)
   - [x] Fatia 8 — entrada em lote (PR #25; leitor do PDF do PicPay precisa de um extrato de exemplo 👤)
-  - [ ] Fatia 9 — IA
+  - [x] Fatia 9 — IA (PR #26)
   - [ ] Fatia 10 — Ajustes, acesso e RF23 👤 prints de exemplo
   - [ ] Fatia 11 — corte e entrega 👤 desligar o Community Cloud
 - [ ] **Etapa 10** — Auditoria (`/web-design-guidelines`) e entrega → `10-auditoria.md`

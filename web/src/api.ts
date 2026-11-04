@@ -103,3 +103,22 @@ export const apiIA = {
   chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
   notificacao: (texto: string) => pedir<{ regra?: boolean; reconheceu?: boolean; valor?: string | null; data?: string | null; estabelecimento?: string | null; sentido?: string; motivo?: string }>("/api/ia/notificacao", { method: "POST", body: JSON.stringify({ texto }) }),
 };
+
+export interface Ajustes {
+  contas: { id: string; nome: string; tipo: string; ativa: boolean }[]; prazos: { cartao: string; nome: string; fechamento: number; vencimento: number; desde: string }[];
+  categorias: { id: string; nome: string; tipo: string; grupo: string; ativa: boolean; previsto: string | null }[]; grupos: { id: string; nome: string }[];
+  regras: { id: string; contem: string; prioridade: number; categoria: string }[]; recorrentes: { id: string; nome: string; valor: string; dia: number; urgencia: string }[];
+  investimento: { max_pvp: number; max_peso: number; min_liquidez: number } | null; metas: { classe: string; meta: number }[]; admin: boolean;
+}
+const enviar = (url: string, metodo: string, corpo?: object) => pedir(url, { method: metodo, ...(corpo ? { body: JSON.stringify(corpo) } : {}) });
+export const apiAjustes = {
+  ver: () => pedir<Ajustes>("/api/ajustes"),
+  novaConta: (c: object) => enviar("/api/contas", "POST", c), conta: (id: string, c: object) => enviar(`/api/contas/${id}`, "PATCH", c),
+  prazos: (id: string, c: object) => enviar(`/api/cartoes/${id}/prazos`, "POST", c),
+  novaCategoria: (c: object) => enviar("/api/categorias", "POST", c), categoria: (id: string, c: object) => enviar(`/api/categorias/${id}`, "PATCH", c),
+  novaRegra: (c: object) => enviar("/api/regras", "POST", c), apagarRegra: (id: string) => enviar(`/api/regras/${id}`, "DELETE"),
+  encerrarRecorrente: (id: string) => enviar(`/api/contas-recorrentes/${id}`, "DELETE"),
+  regrasInvestimento: (c: object) => enviar("/api/investimentos/regras", "PUT", c),
+  acesso: () => pedir<{ pessoas: { id: string; email: string; nome: string; admin: boolean; ativa: boolean; demo: boolean }[]; registro: { quando: string; quem: string; acao: string; alvo: string }[] }>("/api/acesso"),
+  adicionar: (c: object) => enviar("/api/acesso", "POST", c), ativar: (id: string, ativa: boolean) => enviar(`/api/acesso/${id}`, "PATCH", { ativa }),
+};
