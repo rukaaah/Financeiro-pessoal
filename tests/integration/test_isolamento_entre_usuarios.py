@@ -75,7 +75,7 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         (usuario, f"{usuario}@exemplo.com", nome),
     )
 
-    pessoa, corrente, cartao, receber, grupo, categoria = (uuid.uuid4() for _ in range(6))
+    pessoa, corrente, cartao, receber, grupo, categoria, cofrinho = (uuid.uuid4() for _ in range(7))
 
     cur.execute(
         "INSERT INTO counterparties (id, user_id, name) VALUES (%s, %s, %s)",
@@ -88,7 +88,14 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
             (corrente, usuario, "PicPay", "checking", None),
             (cartao, usuario, "Unicred", "credit_card", None),
             (receber, usuario, "A receber", "receivable", pessoa),
+            (cofrinho, usuario, "Cofrinho Jogos", "goal", None),
         ],
+    )
+    # Migration 006: inserção mensal prevista do cofrinho (ADR-014).
+    cur.execute(
+        "INSERT INTO goal_contributions (user_id, account_id, vigencia, amount)"
+        " VALUES (%s, %s, '[2026-01-01,)', 150)",
+        (usuario, cofrinho),
     )
     cur.execute(
         "INSERT INTO account_terms (user_id, account_id, vigencia, closing_day, due_day)"

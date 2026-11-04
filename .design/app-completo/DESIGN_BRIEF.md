@@ -1,5 +1,9 @@
 # Design Brief: Financeiro pessoal — app completo (Fase 1 + Investimentos)
 
+> **VENCIDO.** Substituído por `.design/interface-v2/DESIGN_BRIEF.md` em 2026-10-08,
+> depois de um segundo grill-me que refez navegação, hierarquia das telas,
+> vocabulário e paleta. Fica no repo como registro do que foi decidido antes.
+
 > Fonte das decisões: grill-me de 2026-10-08, `CLAUDE.md`, ADR-001 a 009 e o
 > planejamento privado (RF01–RF19). Texto voltado ao usuário em português do Brasil.
 

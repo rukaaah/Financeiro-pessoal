@@ -13,11 +13,10 @@ from app import dados
 from app.componentes import tabela
 from app.composicao import sessao_atual
 from app.formatacao import data_curta
-from app.layout import cabecalho, titulo
+from app.layout import titulo
 from financeiro.identity.domain.usuario import ModoDeAcesso
 
 sessao = sessao_atual()
-cabecalho(sessao)
 titulo("Acesso")
 
 if sessao.modo is ModoDeAcesso.DEMO or not dados.eh_admin_de_exemplo(True):

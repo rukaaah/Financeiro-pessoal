@@ -108,6 +108,38 @@ class LinhaDeOrcamento:
     realizado: Decimal
     # Parte do realizado paga com dinheiro de cofrinho: consumo, mas não gasto corrente.
     financiado_por_cofrinho: Decimal = Decimal(0)
+    # Natureza da categoria (decisão do Pedro em 2026-10-29, ver CategoriaConfigurada).
+    natureza: str = "variável"
+    cofrinho: str | None = None
+    # Só em categoria com cofrinho: quanto saiu do salário PARA o cofrinho no mês.
+    # Nela, `previsto` é a inserção mensal prevista no cofrinho (definida ao criá-lo).
+    para_cofrinho: Decimal = Decimal(0)
+
+    @property
+    def do_salario(self) -> Decimal:
+        """Gasto pago direto com o dinheiro do mês (não veio do cofrinho)."""
+        return self.realizado - self.financiado_por_cofrinho
+
+    @property
+    def fora_do_previsto(self) -> Decimal:
+        """Categoria com cofrinho: o que saiu do salário além da inserção prevista.
+
+        Regra do Pedro (2026-10-29): pôr no cofrinho a inserção prevista e gastar
+        do cofrinho não aparecem no Resumo; gasto direto do salário, ou inserção
+        acima da prevista, aparecem.
+        """
+        if self.natureza != "cofrinho":
+            return Decimal(0)
+        return self.do_salario + max(self.para_cofrinho - self.previsto, Decimal(0))
+
+    @property
+    def gasto(self) -> Decimal:
+        """O que pesa no mês: o realizado menos o que saiu de cofrinho."""
+        return self.realizado - self.financiado_por_cofrinho
+
+    @property
+    def livre(self) -> Decimal:
+        return self.previsto - self.gasto
 
     @property
     def estado(self) -> Estado:
@@ -333,10 +365,22 @@ class PreviaDeImportacao:
 
 @dataclass(frozen=True, slots=True)
 class CategoriaConfigurada:
+    """Categoria com a natureza do gasto, definida ao criar (2026-10-29).
+
+    - "variável": o dia a dia; é o que aparece em "Onde ainda cabe".
+    - "fixa": mensalidade, assinatura, conta (Muay thai). Conta no orçamento, mas
+      não é dinheiro "livre para gastar" — já tem destino.
+    - "cofrinho": a categoria tem um cofrinho (Jogos → cofrinho Jogos) e três
+      modalidades de lançamento: para o cofrinho (inserção mensal, sai do
+      salário), do cofrinho (não pesa no mês) e do salário (gasto do mês).
+    """
+
     grupo: str
     nome: str
     tipo: str  # "Despesa" ou "Receita"
     arquivada: bool = False
+    natureza: str = "variável"  # "variável" | "fixa" | "cofrinho"
+    cofrinho: str | None = None  # só com natureza "cofrinho"
 
 
 @dataclass(frozen=True, slots=True)
@@ -380,3 +424,62 @@ class PedidoDeLancamento:
     finalidade_do_resgate: FinalidadeDoResgate | None = None
     e_devolucao: bool = False
     extras: dict[str, str] = field(default_factory=dict)
+
+
+# ------------------------------------------------------------ contas recorrentes (RF20)
+
+
+class Urgencia(Enum):
+    """Ordem sugerida de pagamento quando o saldo não cobre tudo (brief, RF20)."""
+
+    ESSENCIAL = "Essencial"
+    IMPORTANTE = "Importante"
+    ADIAVEL = "Adiável"
+
+
+ORDEM_DA_URGENCIA = {Urgencia.ESSENCIAL: 0, Urgencia.IMPORTANTE: 1, Urgencia.ADIAVEL: 2}
+
+
+@dataclass(frozen=True, slots=True)
+class ContaRecorrente:
+    """Uma conta que volta todo mês, vista num mês específico.
+
+    `valor` é o do mês; quando a conta "varia", é a estimativa (média recente) e
+    `varia` fica verdadeiro, para a tela dizer que é estimativa.
+    """
+
+    nome: str
+    valor: Decimal
+    dia_de_vencimento: int
+    categoria: str
+    conta: str
+    urgencia: Urgencia
+    vence_em: date
+    varia: bool = False
+    avisar_dias_antes: int = 3
+    paga_em: date | None = None
+
+    @property
+    def pendente(self) -> bool:
+        return self.paga_em is None
+
+
+@dataclass(frozen=True, slots=True)
+class SaidaPrevista:
+    """Dinheiro que ainda vai sair da conta neste mês: conta recorrente ou fatura."""
+
+    chave: str
+    nome: str
+    valor: Decimal
+    vence_em: date
+    urgencia: Urgencia
+
+
+@dataclass(frozen=True, slots=True)
+class SaidaEmRisco:
+    """Saída que o saldo em conta não cobre, com quanto falta e quem cobriria."""
+
+    saida: SaidaPrevista
+    falta: Decimal
+    cofrinho_que_cobre: str | None = None
+    cofrinho_e_reserva: bool = False

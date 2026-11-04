@@ -12,9 +12,8 @@ import streamlit as st
 
 from app import dados
 from app.componentes import metrica, tabela
-from app.composicao import sessao_atual
 from app.formatacao import brl, data_curta, ler_valor
-from app.layout import cabecalho, titulo
+from app.layout import titulo
 from app.modelos import PessoaAReceber
 
 
@@ -64,7 +63,6 @@ def dialogo_perdoar(pessoa: PessoaAReceber) -> None:
         st.rerun()
 
 
-cabecalho(sessao_atual())
 titulo("A receber")
 
 pessoas = dados.pessoas_a_receber()

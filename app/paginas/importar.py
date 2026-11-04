@@ -17,12 +17,10 @@ import streamlit as st
 
 from app import dados
 from app.componentes import metrica
-from app.composicao import sessao_atual
 from app.formatacao import brl, data_curta
-from app.layout import cabecalho, titulo
+from app.layout import titulo
 from app.modelos import TipoDeConta
 
-cabecalho(sessao_atual())
 titulo("Importar extrato")
 
 correntes = [c.nome for c in dados.contas() if c.tipo is TipoDeConta.CORRENTE]

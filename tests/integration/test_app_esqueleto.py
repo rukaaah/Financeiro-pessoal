@@ -7,6 +7,7 @@ não só quando alguém abre o navegador.
 É teste de integração porque o app conecta ao banco para resolver a identidade.
 """
 
+import re
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
@@ -14,7 +15,6 @@ from pathlib import Path
 import psycopg
 import pytest
 import streamlit as st
-from app.composicao import CHAVE_VER_DEMO
 from streamlit.testing.v1 import AppTest
 
 pytestmark = pytest.mark.integration
@@ -23,17 +23,34 @@ RAIZ = Path(__file__).resolve().parents[2]
 ENTRADA = RAIZ / "streamlit_app.py"
 TEMPO_LIMITE = 30
 
+# Os sete destinos do ADR-011, na ordem da barra.
 PAGINAS_ESPERADAS = (
-    "Visão geral",
-    "Lançamentos",
+    "Resumo",
     "Orçamento",
+    "Lançamentos",
     "Cartões",
     "Cofrinhos",
-    "A receber",
     "Investimentos",
-    "Importar",
-    "Configurações",
+    "Ajustes",
 )
+
+
+def _tarjas(resultado: AppTest) -> list[str]:
+    """Textos da tarja de dados fictícios (`layout.tarja`, um `st.html`).
+
+    O `AppTest` não tem tipo próprio para `st.html`; o conteúdo vem no proto.
+
+    Procura o ELEMENTO (`class="fin-tarja"`), não o nome da classe: o `<style>`
+    injetado também contém "fin-tarja" e um comentário com "Dados fictícios", e
+    a primeira versão deste filtro achava a tarja no CSS para qualquer usuário —
+    os testes da demonstração passavam mesmo sem tarja nenhuma.
+    """
+    return [
+        elemento.proto.body
+        for elemento in resultado.get("html")
+        if 'class="fin-tarja"' in elemento.proto.body
+        and not elemento.proto.body.lstrip().startswith("<style")
+    ]
 
 
 @pytest.fixture(autouse=True)
@@ -97,55 +114,70 @@ def test_o_app_sobe_sem_erro(app: AppTest) -> None:
     assert not resultado.exception, [str(e) for e in resultado.exception]
 
 
-def test_a_navegacao_tem_as_nove_paginas(app: AppTest) -> None:
+def test_a_navegacao_tem_os_sete_destinos(app: AppTest) -> None:
     """Se uma página tiver caminho errado, o st.navigation falha aqui."""
     from streamlit_app import PAGINAS
 
-    assert tuple(titulo for _, titulo, _ in PAGINAS) == PAGINAS_ESPERADAS
-    for caminho, _, _ in PAGINAS:
+    assert tuple(titulo for _, titulo, _, _ in PAGINAS) == PAGINAS_ESPERADAS
+    for caminho, _, _, _ in PAGINAS:
         assert (RAIZ / caminho).is_file(), f"página inexistente: {caminho}"
 
 
-def _ver_demonstracao(teste: AppTest) -> None:
-    """Simula o clique em "Ver demonstração" da tela de entrada."""
-    teste.session_state[CHAVE_VER_DEMO] = True
+def test_rotas_explicitas_sem_acento(app: AppTest) -> None:
+    """A URL não pode depender do rótulo (ADR-011): mudar "Ajustes" não muda a rota."""
+    from streamlit_app import PAGINAS
+
+    rotas = [rota for _, _, _, rota in PAGINAS]
+    assert rotas[0] == ""  # o padrão mora em "/"
+    assert all(re.fullmatch(r"[a-z]+", rota) for rota in rotas[1:]), rotas
+    assert len(set(rotas)) == len(rotas)
 
 
-def test_visitante_sem_login_ve_a_tela_de_entrada(app: AppTest) -> None:
+def test_o_filtro_de_tarja_nao_confunde_o_css_com_a_tarja(app: AppTest) -> None:
+    """Guarda do próprio teste: exatamente uma tarja por página, não o `<style>`."""
+    resultado = app.run()
+    assert len(_tarjas(resultado)) == 1
+
+
+def test_visitante_sem_login_cai_direto_na_demonstracao(app: AppTest) -> None:
+    """Não há tela de entrada (ADR-011): o visitante já vê o Resumo, com a tarja."""
     resultado = app.run()
     assert not resultado.exception, [str(e) for e in resultado.exception]
-    rotulos = [botao.label for botao in resultado.button]
-    assert "Entrar com Google" in rotulos
-    assert "Ver demonstração" in rotulos
-    # Antes de escolher, nenhuma página (e nenhum número) aparece.
-    assert not resultado.sidebar.button
+    assert any("Dados fictícios" in texto for texto in _tarjas(resultado))
+    assert "Ver demonstração" not in [botao.label for botao in resultado.button]
 
 
 def test_visitante_na_demonstracao_ve_a_faixa_de_dados_ficticios(app: AppTest) -> None:
     """O aviso mais importante da tela: o app é público e o visitante vê números inventados."""
-    _ver_demonstracao(app)
     resultado = app.run()
     assert not resultado.exception, [str(e) for e in resultado.exception]
 
-    avisos = [aviso.value for aviso in resultado.warning]
-    assert any("Dados fictícios" in texto for texto in avisos), (
-        f"faixa de dados fictícios ausente; avisos encontrados: {avisos}"
+    tarjas = _tarjas(resultado)
+    assert any("Dados fictícios" in texto for texto in tarjas), (
+        f"tarja de dados fictícios ausente; encontradas: {tarjas}"
     )
 
 
 def test_visitante_na_demonstracao_pode_entrar_com_google(app: AppTest) -> None:
-    _ver_demonstracao(app)
     resultado = app.run()
-    rotulos = [botao.label for botao in resultado.sidebar.button]
+    # Sem lateral (2026-10-29): "Entrar com Google" mora na tarja.
+    rotulos = [botao.label for botao in resultado.button]
     assert "Entrar com Google" in rotulos
     assert "Sair" not in rotulos
+    assert not resultado.sidebar.button
 
 
-def test_a_pagina_inicial_e_a_visao_geral(app: AppTest) -> None:
-    _ver_demonstracao(app)
+def test_a_pagina_inicial_e_o_resumo(app: AppTest) -> None:
     resultado = app.run()
-    titulos = [titulo.value for titulo in resultado.title]
-    assert titulos == ["Visão geral"]
+    # Desde 2026-10-30 o título é um <h1 class="fin-titulo"> no cabeçalho de uma
+    # linha só, e não `st.title`. Mesmo cuidado de `_tarjas`: ignora o <style>.
+    titulos = [
+        elemento.proto.body
+        for elemento in resultado.get("html")
+        if 'class="fin-titulo"' in elemento.proto.body
+        and not elemento.proto.body.lstrip().startswith("<style")
+    ]
+    assert titulos == ['<h1 class="fin-titulo">Resumo</h1>']
 
 
 def test_sem_configuracao_de_banco_a_falha_e_explicita(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -156,8 +188,6 @@ def test_sem_configuracao_de_banco_a_falha_e_explicita(monkeypatch: pytest.Monke
     # sozinho, e sem isto o teste conectaria no banco de produção da máquina de
     # quem estivesse rodando.
     teste.secrets["database"] = {"url": ""}
-    # A tela de entrada não toca o banco; é a escolha da demonstração que resolve a sessão.
-    _ver_demonstracao(teste)
     resultado = teste.run()
 
     assert resultado.exception
@@ -212,8 +242,7 @@ def test_conta_fora_da_allowlist_cai_no_demo(app: AppTest, monkeypatch: pytest.M
     resultado = app.run()
 
     assert not resultado.exception, [str(e) for e in resultado.exception]
-    avisos = [aviso.value for aviso in resultado.warning]
-    assert any("Dados fictícios" in texto for texto in avisos), (
+    assert any("Dados fictícios" in texto for texto in _tarjas(resultado)), (
         "conta fora da allowlist não caiu no demo — isto exporia dado real"
     )
 
@@ -225,9 +254,12 @@ def test_conta_da_allowlist_entra_como_dono(
     resultado = app.run()
 
     assert not resultado.exception, [str(e) for e in resultado.exception]
-    avisos = [aviso.value for aviso in resultado.warning]
-    assert not any("Dados fictícios" in texto for texto in avisos)
-    assert "Sair" in [botao.label for botao in resultado.sidebar.button]
+    assert not any("Dados fictícios" in texto for texto in _tarjas(resultado))
+    assert "Entrar com Google" not in [botao.label for botao in resultado.button]
+    # "Sair" mora no topo de Ajustes, não mais na lateral.
+    ajustes = resultado.switch_page("app/paginas/configuracoes.py").run()
+    assert not ajustes.exception, [str(e) for e in ajustes.exception]
+    assert "Sair" in [botao.label for botao in ajustes.button]
 
 
 def test_email_da_allowlist_mas_nao_verificado_cai_no_demo(
@@ -238,8 +270,7 @@ def test_email_da_allowlist_mas_nao_verificado_cai_no_demo(
     resultado = app.run()
 
     assert not resultado.exception, [str(e) for e in resultado.exception]
-    avisos = [aviso.value for aviso in resultado.warning]
-    assert any("Dados fictícios" in texto for texto in avisos)
+    assert any("Dados fictícios" in texto for texto in _tarjas(resultado))
 
 
 def test_usuario_inativo_cai_no_demo(
@@ -253,5 +284,4 @@ def test_usuario_inativo_cai_no_demo(
     resultado = app.run()
 
     assert not resultado.exception, [str(e) for e in resultado.exception]
-    avisos = [aviso.value for aviso in resultado.warning]
-    assert any("Dados fictícios" in texto for texto in avisos)
+    assert any("Dados fictícios" in texto for texto in _tarjas(resultado))

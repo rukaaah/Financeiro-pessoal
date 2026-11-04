@@ -20,3 +20,8 @@ substitui o anterior, e o antigo passa a `Status: substituído pelo ADR-NNN`.
 | [007](007-ciclo-de-fatura-e-pagamento.md) | Ciclo da fatura pelo dia de início; pagamento não é compra | Parcialmente substituído pelo [008](008-fechamento-inclusivo.md) |
 | [008](008-fechamento-inclusivo.md) | Dia de fechamento é o do app do banco, e é inclusivo | Aceito |
 | [009](009-aceitar-a-hibernacao-do-app.md) | Aceitar a hibernação do app; sem monitor externo | Aceito |
+| [010](010-pagamento-aponta-a-fatura-que-quita.md) | A perna de pagamento aponta a fatura que quita | Aceito |
+| [011](011-arquitetura-da-interface.md) | Sete destinos, mês global e intenção antes de contabilidade | Aceito |
+| [012](012-decimal-e-a-borda-de-renderizacao.md) | `Decimal` em toda conta; `float` só na borda de renderização | Aceito |
+| [013](013-modelo-recorrente-de-previsto.md) | Modelo recorrente de previsto | **Pendente** |
+| [014](014-natureza-da-categoria-e-cofrinho.md) | Natureza da categoria e a categoria com cofrinho | Aceito |

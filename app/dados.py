@@ -15,6 +15,7 @@ Regras para quem for ligar os casos de uso (CLAUDE.md, ADR-001):
 for `True`, toda página avisa que os números não são reais, inclusive para o dono.
 """
 
+import calendar
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
@@ -25,6 +26,7 @@ from app.modelos import (
     Cofrinho,
     CompraNaFatura,
     Conta,
+    ContaRecorrente,
     Fatura,
     Fii,
     FonteDeDados,
@@ -47,6 +49,7 @@ from app.modelos import (
     TermosDoCartao,
     TipoDeConta,
     TipoDeLancamento,
+    Urgencia,
     UsuarioComAcesso,
 )
 
@@ -104,6 +107,7 @@ def categorias_configuradas() -> tuple[CategoriaConfigurada, ...]:
         ("Transporte", ("Apps de transporte", "Combustível", "Passagens")),
         ("Lazer", ("Jogos", "Hobbies", "Saídas e eventos")),
         ("Esporte", ("Muay thai",)),
+        ("Casa", ("Contas da casa", "Assinaturas")),
         ("Compras", ("Presentes", "Compras pessoais")),
         ("Contas e taxas", ("Tarifas bancárias",)),
         ("Emergência", ("Imprevistos",)),
@@ -115,8 +119,23 @@ def categorias_configuradas() -> tuple[CategoriaConfigurada, ...]:
         ("Investimentos", ("Rendimentos e proventos",)),
         ("Outros", ("Outras entradas",)),
     )
+    # Natureza do gasto (exemplos do próprio Pedro, 2026-10-29).
+    # TODO(claude-code): coluna nova em `categories` (natureza + cofrinho
+    # vinculado, FK para `accounts` do tipo goal) — pede ADR e migration.
+    fixas = {"Muay thai", "Contas da casa", "Assinaturas"}
+    por_cofrinho = {"Jogos": "Jogos"}
     itens = [
-        CategoriaConfigurada(grupo, nome, "Despesa") for grupo, nomes in despesas for nome in nomes
+        CategoriaConfigurada(
+            grupo,
+            nome,
+            "Despesa",
+            natureza=(
+                "cofrinho" if nome in por_cofrinho else "fixa" if nome in fixas else "variável"
+            ),
+            cofrinho=por_cofrinho.get(nome),
+        )
+        for grupo, nomes in despesas
+        for nome in nomes
     ]
     itens += [
         CategoriaConfigurada(grupo, nome, "Receita") for grupo, nomes in receitas for nome in nomes
@@ -154,8 +173,12 @@ _ORCAMENTO_BASE = (
     ("Transporte", "Combustível", "300", "0.88"),
     ("Transporte", "Passagens", "80", "0.00"),
     ("Lazer", "Hobbies", "80", "1.00"),
+    ("Lazer", "Jogos", "150", "1.00"),
     ("Lazer", "Saídas e eventos", "200", "0.35"),
     ("Esporte", "Muay thai", "150", "1.00"),
+    # Contas recorrentes do exemplo: o realizado é o que já foi pago no fim do mês.
+    ("Casa", "Contas da casa", "280", "0.21"),
+    ("Casa", "Assinaturas", "45", "0.00"),
     ("Compras", "Presentes", "100", "1.15"),
     ("Compras", "Compras pessoais", "150", "0.90"),
     ("Contas e taxas", "Tarifas bancárias", "20", "1.00"),
@@ -173,13 +196,37 @@ def orcamento_do_mes(mes: date) -> tuple[LinhaDeOrcamento, ...]:
     da fatura (ADR-005).
     """
     giro = mes.month % 3
+    configuracao = {c.nome: c for c in categorias_configuradas()}
     linhas = []
     for indice, (grupo, categoria, previsto, fator) in enumerate(_ORCAMENTO_BASE):
         previsto_d = _d(previsto)
         ajuste = _d("1.00") + _d("0.05") * ((indice + giro) % 3 - 1)
         realizado = (previsto_d * _d(fator) * ajuste).quantize(_d("0.01"))
-        financiado = _d("40.00") if categoria == "Saídas e eventos" else Decimal(0)
-        linhas.append(LinhaDeOrcamento(grupo, categoria, previsto_d, realizado, financiado))
+        config = configuracao.get(categoria)
+        natureza = config.natureza if config else "variável"
+        cofrinho = config.cofrinho if config else None
+        para_cofrinho = Decimal(0)
+        if natureza == "cofrinho":
+            # Exemplo das três modalidades: a inserção prevista vai para o
+            # cofrinho, a compra sai do cofrinho, e nos meses pares um jogo pago
+            # direto com o salário (o caso que aparece no Resumo).
+            para_cofrinho = previsto_d
+            financiado = realizado
+            realizado += _d("80.00") if mes.month % 2 == 0 else Decimal(0)
+        else:
+            financiado = _d("40.00") if categoria == "Saídas e eventos" else Decimal(0)
+        linhas.append(
+            LinhaDeOrcamento(
+                grupo,
+                categoria,
+                previsto_d,
+                realizado,
+                financiado,
+                natureza,
+                cofrinho,
+                para_cofrinho,
+            )
+        )
     return tuple(linhas)
 
 
@@ -215,7 +262,11 @@ def resumo_do_mes(mes: date) -> ResumoDoMes:
         gasto=sum(
             (linha.realizado - linha.financiado_por_cofrinho for linha in linhas), Decimal(0)
         ),
-        gasto_previsto=sum((linha.previsto for linha in linhas), Decimal(0)),
+        # Categoria paga por cofrinho não tem previsto de gasto do mês: o dinheiro
+        # dela é o aporte no cofrinho, que já está em "guardado".
+        gasto_previsto=sum(
+            (linha.previsto for linha in linhas if linha.natureza != "cofrinho"), Decimal(0)
+        ),
         guardado=sum((m.transferido for m in metas), Decimal(0)),
         guardado_previsto=sum((m.planejado for m in metas), Decimal(0)),
     )
@@ -500,6 +551,85 @@ def pagar_fatura(
     return ResultadoDeEscrita(
         ok=True,
         mensagem="Exemplo: nada foi gravado. Falta ligar o caso de uso pagar_fatura.",
+        gravado=False,
+    )
+
+
+# ------------------------------------------------------------------ contas recorrentes
+
+# (nome, valor, varia, dia, categoria, conta, urgência, avisar dias antes)
+_CONTAS_RECORRENTES = (
+    ("Conta de luz", "120.00", True, 28, "Contas da casa", "PicPay", Urgencia.ESSENCIAL, 3),
+    ("Internet", "100.00", False, 31, "Contas da casa", "PicPay", Urgencia.IMPORTANTE, 3),
+    ("Celular", "60.00", False, 20, "Contas da casa", "PicPay", Urgencia.IMPORTANTE, 3),
+    ("Muay thai", "150.00", False, 10, "Muay thai", "PicPay", Urgencia.IMPORTANTE, 3),
+    ("Streaming", "45.00", False, 31, "Assinaturas", "PicPay", Urgencia.ADIAVEL, 2),
+)
+# Pendente de propósito no exemplo, para a tela mostrar uma conta vencida.
+_VENCIDA_NO_EXEMPLO = "Conta de luz"
+
+
+def contas_recorrentes(mes: date) -> tuple[ContaRecorrente, ...]:
+    """Contas recorrentes do mês, com o que já foi pago (RF20).
+
+    Exemplo: meses passados estão todos pagos; no mês corrente, o que venceu antes
+    de hoje foi pago, menos a conta de luz (para mostrar o crítico); meses futuros
+    estão em aberto. Vencimento num dia que o mês não tem cai no último dia.
+
+    TODO(claude-code): alerts.application.contas_do_mes, sobre `recurring_bills`
+    (com vigência: mudar o valor cria vigência nova, meses passados não mudam).
+    """
+    ultimo = calendar.monthrange(mes.year, mes.month)[1]
+    atual = primeiro_dia_do_mes(hoje())
+    contas = []
+    for nome, valor, varia, dia, categoria, conta, urgencia, avisar in _CONTAS_RECORRENTES:
+        vence = mes.replace(day=min(dia, ultimo))
+        if mes < atual:
+            paga_em: date | None = vence
+        elif mes == atual and vence < hoje() and nome != _VENCIDA_NO_EXEMPLO:
+            paga_em = vence
+        else:
+            paga_em = None
+        contas.append(
+            ContaRecorrente(
+                nome,
+                _d(valor),
+                dia,
+                categoria,
+                conta,
+                urgencia,
+                vence,
+                varia,
+                avisar,
+                paga_em,
+            )
+        )
+    return tuple(contas)
+
+
+def pagar_conta_recorrente(
+    nome: str, mes: date, valor: Decimal, conta_de_origem: str
+) -> ResultadoDeEscrita:
+    """Paga a conta do mês: lançamento de despesa ligado à conta recorrente.
+
+    TODO(claude-code): alerts.application.pagar_conta (lançamento + vínculo com
+    `recurring_bills` do mês, na mesma unidade de trabalho).
+    """
+    return ResultadoDeEscrita(
+        ok=True,
+        mensagem="Exemplo: nada foi gravado. Falta ligar o caso de uso pagar_conta.",
+        gravado=False,
+    )
+
+
+def salvar_conta_recorrente(conta: ContaRecorrente) -> ResultadoDeEscrita:
+    """Cadastra ou edita uma conta recorrente.
+
+    TODO(claude-code): alerts.application.salvar_conta_recorrente.
+    """
+    return ResultadoDeEscrita(
+        ok=True,
+        mensagem="Exemplo: nada foi gravado. Falta ligar o caso de uso de contas recorrentes.",
         gravado=False,
     )
 

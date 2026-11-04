@@ -1,10 +1,23 @@
 # Configuração do app. Diferente de secrets.toml, este arquivo entra no Git:
 # não tem segredo nenhum.
 #
-# Tema sóbrio e denso (ver .design/app-completo/DESIGN_BRIEF.md). Sem `base`:
-# o Streamlit segue a preferência do sistema, e cada modo tem a sua paleta.
-# Os tokens próprios (estado do orçamento, espaçamento) ficam em
-# app/estilo/tokens.css e usam as mesmas cores.
+# Os valores de cor espelham `app/estilo/tokens.css` — se mudar um, mude o
+# outro. tests/unit/test_tokens_espelham_tema.py confere os dois e os
+# contrastes mínimos.
+#
+# Decisão do grill de 2026-10-08 (.design/interface-v2/DESIGN_BRIEF.md): a cor
+# primária é NEUTRA (grafite), e verde, âmbar e vermelho ficam reservados ao
+# estado do orçamento — dentro, perto, fora. Na v1 a primária era verde, que
+# também significava "dentro do previsto": duplo sentido na mesma cor.
+#
+# O tema do Streamlit 1.65 cobre muita coisa que a v1 resolvia com CSS à mão
+# (cabeçalho de tabela, cor de gráfico, paleta semântica, tamanho do número do
+# st.metric). Preferir o tema ao CSS: é menos código para quebrar quando o
+# Streamlit mudar de marcação interna.
+#
+# Sem `base`: o Streamlit segue a preferência do sistema, e cada modo tem a
+# sua paleta.
+
 [server]
 # O app guarda dado financeiro; não há motivo para aceitar upload grande.
 maxUploadSize = 5
@@ -12,16 +25,105 @@ maxUploadSize = 5
 [browser]
 gatherUsageStats = false
 
+# ----------------------------------------------------------------- tipografia e forma
+
+[theme]
+# Pilha do sistema: nenhuma webfont é buscada em CDN para desenhar um extrato.
+font = "sans-serif"
+# Monoespaçada para número monetário, que precisa alinhar pelo decimal.
+codeFont = "monospace"
+headingFont = "sans-serif"
+
+# 16px de corpo, o padrão do Streamlit (--fin-t-base). Era 15 até 2026-10-29;
+# o Pedro achou a tela "diminuída".
+baseFontSize = 16
+# O número do st.metric é o destaque de várias telas; a v1 deixava no padrão.
+metricValueFontSize = "36px"   # TEXTO: o protocolo espera str; int derruba o tema.
+                                # px, não rem: independe da base (= --fin-t-2xl).
+
+# Raio pequeno: o suficiente para não parecer defeito de renderização.
+baseRadius = "0.25rem"
+buttonRadius = "0.25rem"
+
+# Borda de widget visível: num formulário financeiro, saber onde o campo começa
+# vale mais que a tela "limpa".
+showWidgetBorder = true
+showSidebarBorder = true
+linkUnderline = true
+
+# -------------------------------------------------------------------------- claro
+
 [theme.light]
-primaryColor = "#1f6f54"
-backgroundColor = "#fafaf8"
-secondaryBackgroundColor = "#f1f1ec"
-textColor = "#1b1f1d"
-baseRadius = "0.5rem"
+primaryColor = "#2b55d0"            # azul (--fin-acento)
+backgroundColor = "#fbfbf9"         # papel (--fin-fundo)
+secondaryBackgroundColor = "#f4f4f1" # (--fin-superficie)
+textColor = "#181b1a"               # tinta (--fin-texto)
+linkColor = "#2b55d0"
+borderColor = "#7f857f"             # contorno de widget (--fin-borda-campo, 3:1)
+dataframeBorderColor = "#cdd0ca"    # (--fin-regua)
+dataframeHeaderBackgroundColor = "#f4f4f1"
+dataframeHeaderTextColor = "#585f5c"
+codeBackgroundColor = "#f4f4f1"
+codeTextColor = "#181b1a"
+
+# Paleta semântica: é o que `st.badge`, `:green[...]` e os alertas usam. Mapeada
+# para as três cores de estado, para que nada no app invente um quarto verde.
+greenColor = "#1f6f54"
+greenTextColor = "#1f6f54"
+greenBackgroundColor = "#e2efe9"
+yellowColor = "#8a5a00"
+yellowTextColor = "#8a5a00"
+yellowBackgroundColor = "#f7ead1"
+redColor = "#b3261e"
+redTextColor = "#b3261e"
+redBackgroundColor = "#f9e2e0"
+grayColor = "#6b726e"
+grayTextColor = "#585f5c"
+grayBackgroundColor = "#f4f4f1"
+
+# Paleta categórica (RF22, revista em 2026-10-29): seis matizes, espelhadas de
+# --fin-grafico-cat-1..6. Verde, âmbar e vermelho ficam para estado.
+chartCategoricalColors = [
+  "#2b55d0", "#7a4bc9", "#0b7d99", "#bf3f86", "#34477a", "#7a8394",
+]  # --fin-grafico-cat-1..6
+chartSequentialColors = [
+  "#eef2fd", "#d9e2fa", "#c2d0f6", "#a8bcf1", "#8ca6eb",
+  "#6f8fe3", "#5479da", "#3d64d3", "#2b55d0", "#1c3a94",
+]
+
+# -------------------------------------------------------------------------- escuro
 
 [theme.dark]
-primaryColor = "#5fc9a0"
-backgroundColor = "#121513"
-secondaryBackgroundColor = "#1b201d"
-textColor = "#e6e8e5"
-baseRadius = "0.5rem"
+# Em escuro, o mesmo azul, mais claro.
+primaryColor = "#8eabff"
+backgroundColor = "#111413"
+secondaryBackgroundColor = "#191d1b"
+textColor = "#e7e9e6"
+linkColor = "#8eabff"
+borderColor = "#6b736e"             # (--fin-borda-campo)
+dataframeBorderColor = "#343b38"    # (--fin-regua)
+dataframeHeaderBackgroundColor = "#191d1b"
+dataframeHeaderTextColor = "#a6ada8"
+codeBackgroundColor = "#191d1b"
+codeTextColor = "#e7e9e6"
+
+greenColor = "#5fc9a0"
+greenTextColor = "#5fc9a0"
+greenBackgroundColor = "#16312a"
+yellowColor = "#e0a93b"
+yellowTextColor = "#e0a93b"
+yellowBackgroundColor = "#3a2e12"
+redColor = "#f2877e"
+redTextColor = "#f2877e"
+redBackgroundColor = "#3d1f1c"
+grayColor = "#868d89"
+grayTextColor = "#a6ada8"
+grayBackgroundColor = "#191d1b"
+
+chartCategoricalColors = [
+  "#8eabff", "#b99bf2", "#4fc3dd", "#f08cc2", "#c3cdf0", "#8a93a4",
+]  # --fin-grafico-cat-1..6
+chartSequentialColors = [
+  "#161b2a", "#1c2541", "#243159", "#2e3e72", "#3a4d8c",
+  "#4b5fa6", "#5e73c0", "#7389d8", "#8eabff", "#c4d3ff",
+]

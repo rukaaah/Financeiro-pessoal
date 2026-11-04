@@ -10,30 +10,20 @@ from html import escape
 
 import streamlit as st
 
-from app import dados
 from app.formatacao import (
     brl,
     hoje,
-    ler_valor,
     mes_extenso,
-    mes_numerico,
     primeiro_dia_do_mes,
     somar_meses,
 )
+from app.lancar import dialogo_lancar
 from app.modelos import (
     ROTULO_DO_ESTADO,
     Estado,
-    FinalidadeDoResgate,
     LinhaDeOrcamento,
-    PedidoDeLancamento,
-    TipoDeConta,
-    TipoDeLancamento,
     estado_do_gasto,
 )
-
-NENHUM = "Nenhum"
-PARCELAS_MAXIMAS = 36
-
 
 # --------------------------------------------------------------------- HTML puro
 
@@ -97,35 +87,59 @@ def metrica(
             st.html(selo(estado))
 
 
-def seletor_de_mes(chave: str) -> date:
-    """Mês navegável. O valor fica em `st.session_state[chave]`, sempre dia 1."""
-    if chave not in st.session_state:
-        st.session_state[chave] = primeiro_dia_do_mes(hoje())
+CHAVE_DO_MES = "mes"
 
-    def mover(passo: int) -> None:
-        st.session_state[chave] = somar_meses(st.session_state[chave], passo)
 
-    anterior, centro, proximo = st.columns([1, 3, 1], vertical_alignment="center")
-    anterior.button(
-        "",
-        icon=":material/chevron_left:",
-        key=f"{chave}_anterior",
-        on_click=mover,
-        args=(-1,),
-        help="Mês anterior",
-        width="stretch",
-    )
-    centro.markdown(f"**{mes_extenso(st.session_state[chave]).capitalize()}**")
-    proximo.button(
-        "",
-        icon=":material/chevron_right:",
-        key=f"{chave}_proximo",
-        on_click=mover,
-        args=(1,),
-        help="Próximo mês",
-        width="stretch",
-    )
-    mes: date = st.session_state[chave]
+def mes_global() -> date:
+    """O mês do app inteiro (ADR-011), sempre dia 1. Começa no mês corrente."""
+    if CHAVE_DO_MES not in st.session_state:
+        st.session_state[CHAVE_DO_MES] = primeiro_dia_do_mes(hoje())
+    mes: date = st.session_state[CHAVE_DO_MES]
+    return mes
+
+
+def _mover_mes(passo: int) -> None:
+    st.session_state[CHAVE_DO_MES] = somar_meses(mes_global(), passo)
+
+
+def seletor_de_mes() -> date:
+    """Seletor "< Outubro de 2026 >", numa linha, centralizado, logo abaixo do título.
+
+    Um estado só para o app inteiro: trocar o mês aqui troca em toda tela que
+    depende dele. Investimentos e Ajustes não chamam isto — um controle sem
+    efeito seria mentira de interface.
+    """
+    mes = mes_global()
+    with st.container(
+        horizontal=True,
+        horizontal_alignment="center",
+        vertical_alignment="center",
+        gap="small",
+        key="fin-mes",
+    ):
+        # Rótulo de texto escondido só visualmente (CSS): sem ele o leitor de tela
+        # leria o nome do ícone, "chevron_left".
+        st.button(
+            "Mês anterior",
+            icon=":material/chevron_left:",
+            key="mes_anterior",
+            on_click=_mover_mes,
+            args=(-1,),
+            type="tertiary",
+            width="content",
+        )
+        # aria-live: o leitor de tela anuncia o mês novo depois do clique.
+        rotulo = escape(mes_extenso(mes).capitalize())
+        st.html(f'<span class="fin-mes" aria-live="polite">{rotulo}</span>', width="content")
+        st.button(
+            "Próximo mês",
+            icon=":material/chevron_right:",
+            key="mes_proximo",
+            on_click=_mover_mes,
+            args=(1,),
+            type="tertiary",
+            width="content",
+        )
     return mes
 
 
@@ -151,153 +165,10 @@ def botao_lancar(chave: str) -> None:
         icon=":material/add:",
         type="primary",
         key=chave,
-        width="stretch",
-        help="Despesa, receita ou transferência",
+        width="content",
+        help="Gastei, recebi, guardei ou paguei a fatura",
     ):
         dialogo_lancar()
-
-
-@st.dialog("Lançar")
-def dialogo_lancar() -> None:
-    """Lançamento rápido: valor, categoria e conta; data de hoje. Poucos toques.
-
-    Sem `st.form` de propósito: a prévia do mês da fatura precisa reagir ao que
-    se digita. Dentro de um diálogo, cada interação reexecuta só o diálogo.
-    """
-    rotulo = st.segmented_control(
-        "Tipo",
-        [t.value for t in TipoDeLancamento],
-        default=TipoDeLancamento.DESPESA.value,
-        key="lancar_tipo",
-        label_visibility="collapsed",
-    )
-    tipo = TipoDeLancamento(rotulo or TipoDeLancamento.DESPESA.value)
-
-    # `st.number_input` devolve float, e dinheiro nunca é float neste projeto.
-    texto_do_valor = st.text_input(
-        "Valor (R$)", key="lancar_valor", placeholder="0,00", help="Ex.: 12,50"
-    )
-    contas = dados.contas()
-    por_nome = {c.nome: c for c in contas}
-    data = st.date_input("Data", value=hoje(), format="DD/MM/YYYY", key="lancar_data")
-
-    categoria: str | None = None
-    conta_destino: str | None = None
-    parcelas = 1
-    outra_pessoa: str | None = None
-    valor_da_outra_pessoa: Decimal | None = None
-    finalidade: FinalidadeDoResgate | None = None
-    devolucao = False
-    extras: dict[str, str] = {}
-
-    if tipo is TipoDeLancamento.TRANSFERENCIA:
-        nomes = [c.nome for c in contas]
-        origem = st.selectbox("De", nomes, key="lancar_origem")
-        conta_destino = st.selectbox(
-            "Para", [n for n in nomes if n != origem], key="lancar_destino"
-        )
-        conta = origem
-        if por_nome[origem].tipo is TipoDeConta.COFRINHO:
-            finalidade = st.selectbox(
-                "Finalidade do resgate",
-                list(FinalidadeDoResgate),
-                key="lancar_finalidade",
-                format_func=lambda f: f.value,
-                help="Empréstimo fica 'a devolver' até você repor.",
-            )
-        if por_nome[conta_destino].tipo is TipoDeConta.COFRINHO:
-            devolucao = st.checkbox(
-                "É devolução de empréstimo",
-                key="lancar_devolucao",
-                help="Sem marcar, conta como dinheiro guardado no mês.",
-            )
-    else:
-        elegiveis = [
-            c.nome
-            for c in contas
-            if c.tipo in (TipoDeConta.CORRENTE, TipoDeConta.CARTAO, TipoDeConta.DINHEIRO)
-        ]
-        conta = st.selectbox("Conta", elegiveis, key="lancar_conta")
-        opcoes = (
-            dados.categorias_de_despesa()
-            if tipo is TipoDeLancamento.DESPESA
-            else dados.categorias_de_receita()
-        )
-        categoria = st.selectbox("Categoria", opcoes, key="lancar_categoria")
-
-        if tipo is TipoDeLancamento.DESPESA:
-            cofrinhos = [c.nome for c in contas if c.tipo is TipoDeConta.COFRINHO]
-            escolhido = st.selectbox(
-                "Pago com dinheiro de cofrinho",
-                [NENHUM, *cofrinhos],
-                key="lancar_cofrinho",
-                help="A despesa mantém a categoria, mas não consome a renda do mês.",
-            )
-            if escolhido != NENHUM:
-                extras["financiado_por"] = escolhido
-
-        if tipo is TipoDeLancamento.DESPESA and por_nome[conta].tipo is TipoDeConta.CARTAO:
-            parcelas = int(
-                st.number_input(
-                    "Parcelas",
-                    min_value=1,
-                    max_value=PARCELAS_MAXIMAS,
-                    value=1,
-                    step=1,
-                    key="lancar_parcelas",
-                )
-            )
-            termos = por_nome[conta]
-            if termos.fechamento is not None and termos.vencimento is not None:
-                primeira = dados.mes_da_fatura(termos.fechamento, termos.vencimento, data)
-                texto = f"Entra na fatura que vence em **{mes_numerico(primeira)}**."
-                if parcelas > 1:
-                    ultima = somar_meses(primeira, parcelas - 1)
-                    texto += f" Última parcela em {mes_numerico(ultima)}."
-                st.info(texto, icon=":material/credit_card:")
-
-        if tipo is TipoDeLancamento.DESPESA and st.checkbox(
-            "Paguei por outra pessoa",
-            key="lancar_outra_pessoa",
-            help="Vira valor a receber, não gasto seu.",
-        ):
-            outra_pessoa = st.selectbox("Quem", dados.pessoas(), key="lancar_quem")
-            parte = st.text_input(
-                "Valor dela (R$)",
-                key="lancar_parte",
-                placeholder="Tudo",
-                help="Em branco: o valor inteiro.",
-            )
-            valor_da_outra_pessoa = ler_valor(parte) if parte.strip() else None
-
-    descricao = st.text_input("Descrição (opcional)", key="lancar_descricao")
-
-    if st.button("Salvar", type="primary", key="lancar_salvar", width="stretch"):
-        valor = ler_valor(texto_do_valor)
-        if valor is None:
-            st.error("Informe um valor maior que zero, como 12,50.")
-            return
-        pedido = PedidoDeLancamento(
-            tipo=tipo,
-            valor=valor,
-            conta=conta,
-            data=data,
-            descricao=descricao.strip(),
-            categoria=categoria,
-            conta_destino=conta_destino,
-            parcelas=parcelas,
-            paga_por_outra_pessoa=outra_pessoa,
-            valor_da_outra_pessoa=valor_da_outra_pessoa,
-            finalidade_do_resgate=finalidade,
-            e_devolucao=devolucao,
-            extras=extras,
-        )
-        resultado = dados.registrar_lancamento(pedido)
-        st.toast(
-            resultado.mensagem,
-            icon=":material/check:" if resultado.gravado else ":material/science:",
-        )
-        st.rerun()
 
 
 def tabela(

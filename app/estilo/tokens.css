@@ -1,55 +1,300 @@
-/* Tokens de design do app (ver .design/app-completo/DESIGN_BRIEF.md).
+/* Tokens de design — interface v2.
  *
- * Filosofia: sóbrio, denso e legível. Cor só para estado do orçamento
- * (dentro / perto / fora); o resto é neutro. Os valores de cor repetem os de
- * .streamlit/config.toml: se mudar um, mude o outro.
+ * Fonte: .design/interface-v2/DESIGN_BRIEF.md.
+ * Filosofia: Swiss/International aplicado a dado financeiro. Grade, tipografia e
+ * espaço fazem a hierarquia; nenhum enfeite carrega significado.
  *
- * Claro por padrão; escuro pela preferência do sistema, como o tema do
- * Streamlit (que não fixa `base`).
+ * REGRA DA COR, que explica quase toda escolha deste arquivo:
+ * a interface é neutra (grafite) e as três cores — verde, âmbar, vermelho —
+ * são reservadas para o estado do orçamento: dentro, perto, fora. Na v1 o
+ * verde era ao mesmo tempo "botão" e "dentro do previsto", duplo sentido na
+ * mesma cor. Aqui, quando aparece cor, a cor É a informação.
+ *
+ * Os contrastes nos comentários foram MEDIDOS (WCAG 2.1 relative luminance),
+ * não estimados. Alvo: 4,5:1 em texto, 3:1 em elemento gráfico de interface.
+ *
+ * Claro por padrão; escuro pela preferência do sistema. `[data-theme]` também
+ * é atendido, para o caso de um dia existir um botão de troca manual.
+ * Os valores de `--fin-fundo`, `--fin-superficie`, `--fin-texto` e
+ * `--fin-acento` espelham o `.streamlit/config.toml`: se mudar um, mude o outro.
  */
+
 :root {
-  /* Cor: neutros */
-  --fin-bg: #fafaf8;
-  --fin-bg-sunken: #f1f1ec;
-  --fin-text: #1b1f1d;
-  --fin-text-muted: #5b625e;      /* 5.9:1 sobre --fin-bg */
-  --fin-border: #d9dbd5;
+  /* ------------------------------------------------------------------ cor: fundo */
+  --fin-fundo: #fbfbf9;              /* papel */
+  --fin-superficie: #f4f4f1;         /* bloco recuado, cabeçalho de tabela */
+  --fin-poco: #ecece9;               /* campo de entrada */
+  --fin-fundo-inverso: #181b1a;
 
-  /* Cor: estado do orçamento (contraste >= 4.5:1 sobre --fin-bg) */
-  --fin-ok: #1f6f54;
-  --fin-warn: #8a5a00;
-  --fin-over: #b3261e;
-  --fin-ok-bg: #e3f1ea;
-  --fin-warn-bg: #f6ead2;
-  --fin-over-bg: #f8e1df;
+  /* ----------------------------------------------------------------- cor: texto */
+  --fin-texto: #181b1a;              /* 16,74:1 sobre o fundo */
+  --fin-texto-2: #585f5c;            /*  6,32:1 — rótulo, legenda */
+  --fin-texto-3: #636a66;            /*  5,36:1 sobre o fundo, 4,69:1 sobre
+                                      * --fin-poco — placeholder, desabilitado.
+                                      * #6b726e dava 4,17:1 sobre o campo e
+                                      * reprovava onde o placeholder mora. */
+  --fin-texto-inverso: #fbfbf9;
 
-  /* Espaçamento (base 4px) */
-  --fin-space-1: 4px;
-  --fin-space-2: 8px;
-  --fin-space-3: 12px;
-  --fin-space-4: 16px;
-  --fin-space-5: 24px;
+  /* ----------------------------------------------------------------- cor: régua */
+  /* A régua não é enfeite: é ela que separa seção e total, no lugar da caixa
+   * com borda que a v1 usava. Por isso dois pesos. */
+  --fin-regua: #cdd0ca;              /* 1,50:1 — separa itens de uma lista */
+  --fin-regua-forte: #b8bcb5;        /* 1,86:1 — separa total, fecha seção */
+  --fin-borda: #cdd0ca;
+  --fin-borda-campo: #7f857f;        /* 3,19:1 sobre --fin-poco: contorno de
+                                      * campo é componente de interface e pede
+                                      * 3:1 (WCAG 1.4.11). --fin-borda não chega. */
+  --fin-foco: #2b55d0;               /* contorno de foco: o acento, não a cor de estado */
 
-  /* Forma e tipografia */
-  --fin-radius: 8px;
-  --fin-radius-pill: 999px;
-  --fin-touch-min: 44px;          /* alvo de toque mínimo no celular */
-  --fin-font-numeric: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* ---------------------------------------------------------------- cor: acento */
+  /* Azul. Botão, link, controle ativo, série principal de gráfico. Era grafite
+   * até 2026-10-29; o Pedro achou o app sem cor. Azul não colide com as três
+   * cores de estado (verde, âmbar, vermelho). */
+  --fin-acento: #2b55d0;             /* 6,12:1 sobre o fundo */
+  --fin-acento-hover: #2347b3;
+  --fin-acento-ativo: #1c3a94;
+  --fin-acento-texto: #fbfbf9;       /* 6,12:1 sobre o acento */
+  --fin-acento-suave: #e6ecfb;       /* fundo de item selecionado; acento sobre ele 5,36:1 */
+
+  /* ----------------------------------------------------- cor: estado do orçamento */
+  --fin-dentro: #1f6f54;             /* 5,86:1 sobre o fundo */
+  --fin-perto: #8a5a00;              /* 5,72:1 */
+  --fin-fora: #b3261e;               /* 6,31:1 */
+  --fin-dentro-fundo: #e2efe9;       /* selo: 5,13:1 do texto sobre ele */
+  --fin-perto-fundo: #f7ead1;        /* selo: 4,98:1 */
+  --fin-fora-fundo: #f9e2e0;         /* selo: 5,29:1 */
+
+  /* Aviso de dados fictícios. Não é estado de orçamento: é a tarja, e precisa
+   * ser reconhecível sem competir com os três estados. */
+  --fin-tarja-fundo: #322d1f;
+  --fin-tarja-texto: #f6e7c4;        /* 11,20:1 sobre a tarja */
+  --fin-tarja-marca: #c9a227;
+
+  /* ------------------------------------------------------------- cor: gráfico */
+  /* Os dois únicos gráficos do app (patrimônio no tempo, compromisso por
+   * fatura) usam o acento, não as cores de estado. */
+  --fin-grafico-1: #2b55d0;
+  --fin-grafico-2: #6b726e;
+  --fin-grafico-grade: #ecece9;
+  /* Paleta categórica (RF22, revista em 2026-10-29): seis matizes, todas com pelo
+   * menos 3:1 contra o fundo nos dois modos. Classe de ativo, grupo de
+   * categoria. Sem verde, âmbar e vermelho, que são de estado; a 6 (cinza) é
+   * sempre "Outros". */
+  --fin-grafico-cat-1: #2b55d0;
+  --fin-grafico-cat-2: #7a4bc9;
+  --fin-grafico-cat-3: #0b7d99;
+  --fin-grafico-cat-4: #bf3f86;
+  --fin-grafico-cat-5: #34477a;
+  --fin-grafico-cat-6: #7a8394;
+  --fin-grafico-previsto: var(--fin-texto);   /* marca/linha do previsto */
+  --fin-grafico-faixa: var(--fin-acento-suave);  /* faixa baixo–alto da projeção */
+
+  /* --------------------------------------------- gravidade da aba Atenção (RF20) */
+  /* Decisão de 2026-10-29: reusa as cores de estado, com o mesmo sentido —
+   * crítico é "fora", atenção é "perto". Informativo é neutro. Sempre com
+   * rótulo escrito; nunca uma quarta cor. */
+  --fin-critico: var(--fin-fora);
+  --fin-critico-fundo: var(--fin-fora-fundo);
+  --fin-atencao: var(--fin-perto);
+  --fin-atencao-fundo: var(--fin-perto-fundo);
+  --fin-informativo: var(--fin-texto-2);
+  --fin-informativo-fundo: var(--fin-superficie);
+
+  /* ------------------------------------------------------------ espaçamento (4px) */
+  --fin-e-0: 0;
+  --fin-e-1: 2px;
+  --fin-e-2: 4px;
+  --fin-e-3: 6px;
+  --fin-e-4: 8px;
+  --fin-e-5: 12px;
+  --fin-e-6: 16px;
+  --fin-e-7: 24px;
+  --fin-e-8: 32px;
+  --fin-e-9: 48px;
+  --fin-e-10: 64px;
+
+  /* ------------------------------------------------------------------ tipografia */
+  /* Nenhuma fonte externa: o app roda no Community Cloud e não vai buscar
+   * webfont em CDN para desenhar um extrato. Usa a pilha do sistema. */
+  --fin-fonte: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --fin-fonte-numero: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* `rem` segue o `baseFontSize` do config.toml, que muda o font-size do elemento
+   * html: hoje 16px. Os valores abaixo são px ÷ 16 (há teste amarrando cada um ao
+   * px do comentário). Em 2026-10-29 a base era 15 e o Pedro achou a tela
+   * "diminuída": a escala subiu junto. */
+  --fin-t-xs: 0.75rem;     /* 12px — rótulo em caixa alta */
+  --fin-t-sm: 0.875rem;    /* 14px — legenda, nota de rodapé */
+  --fin-t-base: 1rem;      /* 16px — corpo */
+  --fin-t-md: 1.125rem;    /* 18px — valor em régua */
+  --fin-t-lg: 1.3125rem;   /* 21px — título de seção */
+  --fin-t-xl: 1.625rem;    /* 26px — título de página */
+  --fin-t-2xl: 2.25rem;    /* 36px — número principal no celular */
+  --fin-t-3xl: 3rem;       /* 48px — número principal no desktop */
+  --fin-t-campo-celular: 16px; /* absoluto de propósito: abaixo de 16px o iOS dá
+                                * zoom ao focar o campo, qualquer que seja a raiz */
+
+  --fin-p-normal: 400;
+  --fin-p-medio: 500;
+  --fin-p-semi: 600;
+  --fin-p-forte: 700;
+
+  --fin-l-apertada: 1.15;  /* número grande, título */
+  --fin-l-normal: 1.45;    /* corpo */
+  --fin-l-folgada: 1.6;    /* parágrafo de explicação */
+
+  --fin-k-apertada: -0.02em; /* número grande */
+  --fin-k-normal: 0;
+  --fin-k-larga: 0.08em;     /* rótulo em caixa alta */
+
+  /* --------------------------------------------------------------------- forma */
+  /* Raio pequeno: a Swiss não arredonda por gosto, só o suficiente para não
+   * parecer defeito de renderização. */
+  --fin-r-sm: 2px;
+  --fin-r-md: 4px;
+  --fin-r-lg: 6px;
+  --fin-r-pilula: 999px;
+
+  /* Sombra quase inexistente: a hierarquia vem de espaço e régua, não de
+   * elevação. Só o diálogo, que de fato flutua, usa sombra. */
+  --fin-sombra-dialogo: 0 8px 32px rgb(24 27 26 / 18%);
+  --fin-sombra-foco: 0 0 0 2px var(--fin-fundo), 0 0 0 4px var(--fin-foco);
+
+  /* -------------------------------------------------------------------- layout */
+  --fin-largura-leitura: 1200px;  /* o conteúdo para de crescer aqui (era 1040 até 2026-10-29) */
+  --fin-largura-texto: 68ch;      /* parágrafo de explicação */
+  --fin-toque-min: 44px;          /* alvo de toque no celular */
+
+  /* -------------------------------------------------------------------- movimento */
+  /* Sistema financeiro não anima números: valor que se move é valor que não se
+   * lê. Transição só em estado de controle (hover, foco). */
+  --fin-d-instante: 60ms;
+  --fin-d-rapida: 120ms;
+  --fin-d-normal: 200ms;
+  --fin-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --fin-ease-saida: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Quebras. Em CSS não dá para usar variável em `@media`, então estes tokens
+ * existem como documentação do que os media queries de componentes.css usam. */
+:root {
+  --fin-q-celular: 640px;
+  --fin-q-tablet: 768px;
+  --fin-q-leitura: 1200px;
+}
+
+/* ------------------------------------------------------------------- modo escuro */
+/* Não é inversão: o fundo é um verde-grafite muito escuro, e o texto não é
+ * branco puro (que vibra sobre fundo escuro). O acento inverte de lógica — em
+ * claro é tinta sobre papel; em escuro é papel sobre tinta. */
+
+[data-theme="dark"] {
+  --fin-fundo: #111413;
+  --fin-superficie: #191d1b;
+  --fin-poco: #212624;
+  --fin-fundo-inverso: #e7e9e6;
+
+  --fin-texto: #e7e9e6;              /* 15,17:1 sobre o fundo */
+  --fin-texto-2: #a6ada8;            /*  8,09:1 */
+  --fin-texto-3: #868d89;            /*  5,46:1 */
+  --fin-texto-inverso: #111413;
+
+  --fin-regua: #343b38;              /* 1,61:1 */
+  --fin-regua-forte: #49524d;        /* 2,29:1 */
+  --fin-borda: #343b38;
+  --fin-borda-campo: #6b736e;        /* 3,15:1 sobre --fin-poco */
+  --fin-foco: #8eabff;
+
+  --fin-acento: #8eabff;             /* 8,31:1 */
+  --fin-acento-hover: #a9c0ff;
+  --fin-acento-ativo: #c4d3ff;
+  --fin-acento-texto: #111413;
+  --fin-acento-suave: #1c2541;
+
+  --fin-dentro: #5fc9a0;             /* 9,13:1 */
+  --fin-perto: #e0a93b;              /* 8,74:1 */
+  --fin-fora: #f2877e;               /* 7,54:1 */
+  --fin-dentro-fundo: #16312a;       /* selo: 6,87:1 */
+  --fin-perto-fundo: #3a2e12;        /* selo: 6,27:1 */
+  --fin-fora-fundo: #3d1f1c;         /* selo: 6,05:1 */
+
+  --fin-tarja-fundo: #3a3220;
+  --fin-tarja-texto: #f6e7c4;
+  --fin-tarja-marca: #e0bb3f;
+
+  --fin-grafico-1: #8eabff;
+  --fin-grafico-2: #868d89;
+  --fin-grafico-grade: #212624;
+  --fin-grafico-cat-1: #8eabff;
+  --fin-grafico-cat-2: #b99bf2;
+  --fin-grafico-cat-3: #4fc3dd;
+  --fin-grafico-cat-4: #f08cc2;
+  --fin-grafico-cat-5: #c3cdf0;
+  --fin-grafico-cat-6: #8a93a4;
+  --fin-grafico-previsto: var(--fin-texto);   /* marca/linha do previsto */
+  --fin-grafico-faixa: var(--fin-acento-suave);  /* faixa baixo–alto da projeção */
+
+  --fin-sombra-dialogo: 0 8px 32px rgb(0 0 0 / 55%);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --fin-bg: #121513;
-    --fin-bg-sunken: #1b201d;
-    --fin-text: #e6e8e5;
-    --fin-text-muted: #a3aaa5;
-    --fin-border: #2d3430;
+  :root:not([data-theme="light"]) {
+    --fin-fundo: #111413;
+    --fin-superficie: #191d1b;
+    --fin-poco: #212624;
+    --fin-fundo-inverso: #e7e9e6;
 
-    --fin-ok: #5fc9a0;
-    --fin-warn: #e0a93b;
-    --fin-over: #f2877e;
-    --fin-ok-bg: #16322a;
-    --fin-warn-bg: #3a2e12;
-    --fin-over-bg: #3d1f1c;
+    --fin-texto: #e7e9e6;
+    --fin-texto-2: #a6ada8;
+    --fin-texto-3: #868d89;
+    --fin-texto-inverso: #111413;
+
+    --fin-regua: #343b38;
+    --fin-regua-forte: #49524d;
+    --fin-borda: #343b38;
+    --fin-borda-campo: #6b736e;
+    --fin-foco: #8eabff;
+
+    --fin-acento: #8eabff;
+    --fin-acento-hover: #a9c0ff;
+    --fin-acento-ativo: #c4d3ff;
+    --fin-acento-texto: #111413;
+    --fin-acento-suave: #1c2541;
+
+    --fin-dentro: #5fc9a0;
+    --fin-perto: #e0a93b;
+    --fin-fora: #f2877e;
+    --fin-dentro-fundo: #16312a;
+    --fin-perto-fundo: #3a2e12;
+    --fin-fora-fundo: #3d1f1c;
+
+    --fin-tarja-fundo: #3a3220;
+    --fin-tarja-texto: #f6e7c4;
+    --fin-tarja-marca: #e0bb3f;
+
+    --fin-grafico-1: #8eabff;
+    --fin-grafico-2: #868d89;
+    --fin-grafico-grade: #212624;
+    --fin-grafico-cat-1: #8eabff;
+    --fin-grafico-cat-2: #b99bf2;
+    --fin-grafico-cat-3: #4fc3dd;
+    --fin-grafico-cat-4: #f08cc2;
+    --fin-grafico-cat-5: #c3cdf0;
+    --fin-grafico-cat-6: #8a93a4;
+    --fin-grafico-previsto: var(--fin-texto);   /* marca/linha do previsto */
+    --fin-grafico-faixa: var(--fin-acento-suave);  /* faixa baixo–alto da projeção */
+
+    --fin-sombra-dialogo: 0 8px 32px rgb(0 0 0 / 55%);
+  }
+}
+
+/* Quem pediu menos movimento não recebe movimento. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fin-d-instante: 0ms;
+    --fin-d-rapida: 0ms;
+    --fin-d-normal: 0ms;
   }
 }

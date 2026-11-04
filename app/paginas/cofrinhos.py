@@ -1,4 +1,7 @@
-"""Página "Cofrinhos": um cartão por meta, com saldo, "deveria ter" e o que está a devolver.
+"""Cofrinhos: quanto está guardado em cada meta, e quem te deve (aba A receber).
+
+Revisão de 2026-10-29: um destaque e uma régua no lugar dos cartões de alturas
+diferentes; cada cofrinho é uma linha com a barra da meta.
 
 Casos de uso a ligar: `goals.cofrinhos_do_mes` (view v_goal_month), `goals.aportar`,
 `goals.resgatar`, `goals.criar_cofrinho`. Regras: RF14 e RF18. Resgate exige finalidade;
@@ -10,10 +13,21 @@ from decimal import Decimal
 import streamlit as st
 
 from app import dados
-from app.componentes import metrica, seletor_de_mes
-from app.composicao import sessao_atual
-from app.formatacao import brl, hoje, ler_valor, percentual
-from app.layout import cabecalho, titulo
+from app.blocos import (
+    Barra,
+    Grupo,
+    ItemDaRegua,
+    Linha,
+    barras,
+    colunas,
+    destaque,
+    lista,
+    quadro,
+    regua,
+)
+from app.dialogos import dialogo_perdoar, dialogo_recebimento
+from app.formatacao import brl, data_curta, hoje, ler_valor, percentual
+from app.layout import titulo_com_mes
 from app.modelos import Cofrinho, FinalidadeDoResgate
 
 
@@ -75,77 +89,175 @@ def dialogo_resgatar(cofrinho: Cofrinho) -> None:
         st.rerun()
 
 
-cabecalho(sessao_atual())
-titulo("Cofrinhos")
-
-mes = seletor_de_mes("mes_cofrinhos")
-cofrinhos = dados.cofrinhos(mes)
-
-total_guardado = sum((c.saldo for c in cofrinhos), Decimal(0))
-total_a_devolver = sum((c.a_devolver for c in cofrinhos), Decimal(0))
-resumo = st.columns(2)
-with resumo[0]:
-    metrica("Total nos cofrinhos", total_guardado)
-with resumo[1]:
-    metrica(
-        "A devolver aos cofrinhos",
-        total_a_devolver,
-        detalhe="Empréstimos que você fez para si mesmo",
+def _linha_do_cofrinho(c: Cofrinho) -> Linha:
+    partes = []
+    if c.meta:
+        partes.append(f"meta {brl(c.meta)}")
+    if c.deveria_ter is not None:
+        diferenca = c.saldo - c.deveria_ter
+        if diferenca == 0:
+            partes.append("em dia")
+        else:
+            partes.append(f"{'adiantado' if diferenca > 0 else 'atrasado'} {brl(abs(diferenca))}")
+    if c.percentual_do_cdi is not None:
+        partes.append(f"rende {percentual(c.percentual_do_cdi, 0)} do CDI")
+    atrasado = c.deveria_ter is not None and c.saldo < c.deveria_ter
+    return Linha(
+        c.nome.removeprefix("Cofrinho "),
+        brl(c.saldo),
+        " · ".join(partes) or "sem meta",
+        icone="emergency" if c.reserva_de_emergencia else "savings",
+        cor=4 if c.reserva_de_emergencia else 2,
+        selo=(f"devolver {brl(c.a_devolver)}", "warn") if c.a_devolver > 0 else None,
+        tom_barra="perto" if atrasado else "dentro",
+        progresso=float(min(c.saldo / c.meta, Decimal(1))) if c.meta else None,
+        valor_detalhe=f"+{brl(c.entrou_no_mes)}" if c.entrou_no_mes else "",
+        tom_detalhe="positivo",
     )
 
-with st.popover("Novo cofrinho", icon=":material/add:"):
-    # TODO(claude-code): goals.application.criar_cofrinho. Só o nome é obrigatório;
-    # meta, data-alvo, aporte mensal e % do CDI são opcionais e editáveis depois.
-    novo = st.text_input("Nome", key="novo_cofrinho_nome")
-    st.text_input("Meta (R$, opcional)", key="novo_cofrinho_meta")
-    st.date_input("Data-alvo (opcional)", value=None, min_value=hoje(), key="novo_cofrinho_data")
-    st.text_input("Aporte mensal planejado (R$, opcional)", key="novo_cofrinho_aporte")
-    if st.button("Criar", key="novo_cofrinho_criar", disabled=not novo.strip()):
-        st.toast("Exemplo: nada foi gravado. Falta ligar goals.criar_cofrinho.")
 
-for cofrinho in cofrinhos:
-    with st.container(border=True):
-        st.subheader(cofrinho.nome)
-        if cofrinho.percentual_do_cdi is not None:
-            st.caption(f"Rende {percentual(cofrinho.percentual_do_cdi, 0)} do CDI")
+mes = titulo_com_mes("Cofrinhos")
+cofrinhos = dados.cofrinhos(mes)
+pessoas = dados.pessoas_a_receber()
 
-        st.metric("Saldo", brl(cofrinho.saldo))
-        if cofrinho.meta:
-            st.progress(float(min(cofrinho.saldo / cofrinho.meta, Decimal(1))))
-            linha = f"Meta {brl(cofrinho.meta)}"
-            if cofrinho.deveria_ter is not None:
-                diferenca = cofrinho.saldo - cofrinho.deveria_ter
-                situacao = "adiantado" if diferenca >= 0 else "atrasado"
-                linha += (
-                    f"  -  deveria ter {brl(cofrinho.deveria_ter)} "
-                    f"({situacao} {brl(abs(diferenca))})"
-                )
-            st.caption(linha)
+aba_cofrinhos, aba_receber = st.tabs(
+    ["Cofrinhos", f"A receber ({len([p for p in pessoas if p.saldo > 0])})"]
+)
 
-        dados_do_mes = st.columns(4)
-        dados_do_mes[0].metric("Entrou", brl(cofrinho.entrou_no_mes))
-        dados_do_mes[1].metric("Saiu", brl(cofrinho.saiu_no_mes))
-        dados_do_mes[2].metric("Usado", brl(cofrinho.usado_no_mes))
-        dados_do_mes[3].metric("Rendimento", brl(cofrinho.rendimento_no_mes))
-
-        if cofrinho.a_devolver > 0:
-            dias = f" há {cofrinho.dias_a_devolver} dias" if cofrinho.dias_a_devolver else ""
-            st.warning(f"A devolver: {brl(cofrinho.a_devolver)}{dias}", icon=":material/undo:")
-
-        if cofrinho.historico:
-            st.line_chart(
-                {
-                    "Mês": [m for m, _, _ in cofrinho.historico],
-                    "Saldo": [float(s) for _, s, _ in cofrinho.historico],
-                    "Deveria ter": [float(d) for _, _, d in cofrinho.historico],
-                },
-                x="Mês",
-                y=["Saldo", "Deveria ter"],
-                height=160,
+with aba_cofrinhos:
+    total = sum((c.saldo for c in cofrinhos), Decimal(0))
+    a_devolver = sum((c.a_devolver for c in cofrinhos), Decimal(0))
+    numeros = regua(
+        (
+            ItemDaRegua(
+                "Entrou no mês",
+                brl(sum((c.entrou_no_mes for c in cofrinhos), Decimal(0))),
+                "",
+                "positivo",
+            ),
+            ItemDaRegua("Saiu", brl(sum((c.saiu_no_mes for c in cofrinhos), Decimal(0)))),
+            ItemDaRegua(
+                "Rendeu",
+                brl(sum((c.rendimento_no_mes for c in cofrinhos), Decimal(0))),
+                "",
+                "positivo",
+            ),
+        )
+    )
+    # Quanto das metas já está guardado, e quanto deveria estar a esta altura.
+    com_meta = [c for c in cofrinhos if c.meta]
+    soma_metas = sum((c.meta or Decimal(0) for c in com_meta), Decimal(0))
+    guardado_com_meta = sum((c.saldo for c in com_meta), Decimal(0))
+    deveria = sum((c.deveria_ter or Decimal(0) for c in com_meta), Decimal(0))
+    progresso_metas = (
+        barras(
+            (
+                Barra(
+                    "Das metas",
+                    float(guardado_com_meta / soma_metas),
+                    f"{guardado_com_meta / soma_metas:.0%}",
+                    "dentro" if guardado_com_meta >= deveria else "perto",
+                ),
+                Barra(
+                    "Deveria estar",
+                    float(deveria / soma_metas),
+                    f"{deveria / soma_metas:.0%}",
+                    "neutro",
+                ),
             )
+        )
+        if soma_metas
+        else ""
+    )
+    principal = destaque(
+        "Guardado nos cofrinhos",
+        brl(total),
+        f"{brl(a_devolver)} a devolver: empréstimos que você fez para si mesmo"
+        if a_devolver
+        else "Nada a devolver.",
+        "perto" if a_devolver else "dentro",
+        numeros,
+        corpo=progresso_metas,
+    )
+    # Revisão de 2026-10-30: a lista ao lado do total, e não abaixo dele.
+    st.html(
+        colunas(
+            principal,
+            quadro(
+                "Cofrinhos",
+                lista([Grupo([_linha_do_cofrinho(c) for c in cofrinhos])]),
+                f"{len(cofrinhos)} no total",
+            ),
+            proporcao="iguais",
+        )
+    )
 
-        acoes = st.columns(2)
-        if acoes[0].button("Aportar", key=f"abrir_aporte_{cofrinho.nome}", width="stretch"):
-            dialogo_aportar(cofrinho)
-        if acoes[1].button("Resgatar", key=f"abrir_resgate_{cofrinho.nome}", width="stretch"):
-            dialogo_resgatar(cofrinho)
+    # Ações numa linha só, para o cofrinho escolhido: a lista fica limpa.
+    with st.container(horizontal=True, vertical_alignment="bottom", gap="small"):
+        escolhido = st.selectbox(
+            "Cofrinho",
+            cofrinhos,
+            format_func=lambda c: c.nome.removeprefix("Cofrinho "),
+            key="cofrinho_escolhido",
+        )
+        if st.button("Aportar", icon=":material/add:", key="abrir_aporte"):
+            dialogo_aportar(escolhido)
+        if st.button("Resgatar", icon=":material/remove:", key="abrir_resgate"):
+            dialogo_resgatar(escolhido)
+        with st.popover("Novo", icon=":material/add_circle:"):
+            # TODO(claude-code): goals.application.criar_cofrinho. Só o nome é obrigatório;
+            # meta, data-alvo, aporte mensal e % do CDI são opcionais e editáveis depois.
+            novo = st.text_input("Nome", key="novo_cofrinho_nome")
+            st.text_input("Meta (R$, opcional)", key="novo_cofrinho_meta")
+            st.text_input(
+                "Inserção mensal prevista (R$, opcional)",
+                key="novo_cofrinho_insercao",
+                help="O que sai do salário todo mês para este cofrinho. Até esse valor, "
+                "a inserção não aparece no Resumo; acima dele, aparece.",
+            )
+            st.date_input(
+                "Data-alvo (opcional)", value=None, min_value=hoje(), key="novo_cofrinho_data"
+            )
+            if st.button("Criar", key="novo_cofrinho_criar", disabled=not novo.strip()):
+                st.toast("Exemplo: nada foi gravado. Falta ligar goals.criar_cofrinho.")
+
+with aba_receber:
+    total_receber = sum((p.saldo for p in pessoas), Decimal(0))
+    st.html(
+        destaque(
+            "A receber",
+            brl(total_receber),
+            "Entra no patrimônio, não no gasto do mês.",
+        )
+    )
+    grupos = []
+    for pessoa in sorted(pessoas, key=lambda p: p.saldo, reverse=True):
+        grupos.append(
+            Grupo(
+                [
+                    Linha(
+                        item.descricao,
+                        brl(item.valor),
+                        f"{data_curta(item.data)} · há {item.dias_em_aberto} dias"
+                        + (
+                            " · saiu de " + ", ".join(nome for nome, _ in item.emprestado_de)
+                            if item.emprestado_de
+                            else ""
+                        ),
+                        icone="person",
+                        cor=4,
+                        tom="perto" if item.dias_em_aberto > 15 else "neutro",
+                    )
+                    for item in pessoa.itens
+                ],
+                pessoa.nome,
+                brl(pessoa.saldo),
+            )
+        )
+    st.html(lista(grupos))
+    with st.container(horizontal=True, vertical_alignment="bottom", gap="small"):
+        quem = st.selectbox("Pessoa", pessoas, format_func=lambda p: p.nome, key="receber_quem")
+        if st.button("Registrar recebimento", icon=":material/payments:", key="abrir_receb"):
+            dialogo_recebimento(quem)
+        if st.button("Perdoar", icon=":material/volunteer_activism:", key="abrir_perdao"):
+            dialogo_perdoar(quem)

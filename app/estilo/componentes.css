@@ -1,58 +1,651 @@
-/* Estilos mínimos que o tema do Streamlit não cobre. Usa só os tokens. */
+/* Estilos dos componentes próprios — interface v2.
+ *
+ * Usa só os tokens de tokens.css (há teste conferindo). Mobile-first: o padrão
+ * é o celular, e cada @media (min-width) acrescenta. O que o tema do Streamlit
+ * já cobre (.streamlit/config.toml) não se repete aqui.
+ *
+ * Seletores do Streamlit por data-testid, nunca por classe gerada: as classes
+ * emotion mudam a cada versão; o data-testid é a interface que eles mantêm.
+ */
 
-/* Valores em dinheiro alinham em coluna */
-.fin-valor {
+/* ---------------------------------------------------------- coluna de leitura */
+/* O conteúdo para de crescer em --fin-largura-leitura e centraliza (brief v2).
+ * `layout="wide"` continua por baixo, para o celular usar a largura toda. */
+[data-testid="stMainBlockContainer"] {
+  max-width: var(--fin-largura-leitura);
+  margin-inline: auto;
+  padding-inline: var(--fin-e-6);
+}
+
+/* ---------------------------------------------------------- tarja */
+/* Dados fictícios: a primeira coisa do conteúdo, em toda página. Uma linha com
+ * marca à esquerda, não uma caixa de alerta: precisa ser reconhecível sem
+ * competir com as três cores de estado (tokens --fin-tarja-*). */
+.st-key-fin-tarja {
+  flex-wrap: wrap;
+  padding: var(--fin-e-3) var(--fin-e-4) var(--fin-e-3) var(--fin-e-5);
+  border-left: 3px solid var(--fin-tarja-marca);
+  border-radius: var(--fin-r-md);
+  background: var(--fin-tarja-fundo);
+}
+.st-key-fin-tarja > div:first-child { flex: 1 1 16rem; }
+.fin-tarja {
+  color: var(--fin-tarja-texto);
+  font-size: var(--fin-t-sm);
+  line-height: var(--fin-l-normal);
+}
+.fin-tarja strong { font-weight: var(--fin-p-semi); }
+/* Entrar com Google na tarja: contorno no tom da marca, texto da tarja. */
+.st-key-fin-tarja [data-testid^="stBaseButton"] {
+  color: var(--fin-tarja-texto);
+  border-color: var(--fin-tarja-marca);
+  background: transparent;
+}
+.st-key-fin-tarja [data-testid^="stBaseButton"] p { color: var(--fin-tarja-texto); }
+
+/* ---------------------------------------------------------- cabeçalho da página */
+/* Revisão de 2026-10-30: título, mês e Lançar numa linha só no desktop. No
+ * celular, título e Lançar na primeira linha e o mês, inteiro, na segunda. */
+.st-key-fin-cabeca {
+  flex-wrap: wrap;
+  row-gap: var(--fin-e-2);
+  padding-top: var(--fin-e-4);
+}
+.fin-titulo {
+  margin: 0;
+  padding: 0;
+  font-size: var(--fin-t-xl);
+  font-weight: var(--fin-p-forte);
+  letter-spacing: var(--fin-k-apertada);
+  line-height: var(--fin-l-apertada);
+}
+/* O container com chave vem embrulhado num div sem chave: é esse embrulho que
+ * participa do flex do cabeçalho, daí o :has(). */
+.st-key-fin-cabeca .st-key-lancar_topo { margin-left: auto; }
+.st-key-fin-cabeca > :has(> .st-key-fin-mes) { order: 3; flex: 1 0 100%; }
+.st-key-fin-mes { flex-wrap: nowrap; }
+@media (min-width: 641px) {
+  .fin-titulo { font-size: var(--fin-t-2xl); }
+  .st-key-fin-cabeca > :has(> .st-key-fin-mes) { order: 0; flex: 1 1 0%; min-width: max-content; }
+}
+
+/* ---------------------------------------------------------- seletor de mês */
+/* Uma linha, centralizada: ‹ Outubro de 2026 ›. Botões terciários quadrados
+ * de 44px; o rótulo tem largura mínima para o mês não empurrar as setas. */
+.st-key-fin-mes { justify-content: center; }
+.st-key-fin-mes [data-testid="stBaseButton-tertiary"] {
+  min-width: var(--fin-toque-min);
+  min-height: var(--fin-toque-min);
+  justify-content: center;
+}
+/* O texto do botão existe para o leitor de tela; na tela, só a seta. */
+.st-key-fin-mes [data-testid="stBaseButton-tertiary"] [data-testid="stMarkdownContainer"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.fin-mes {
+  display: inline-block;
+  min-width: 11rem;
+  text-align: center;
+  font-size: var(--fin-t-md);
+  font-weight: var(--fin-p-semi);
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------- conta (Ajustes) */
+.st-key-fin-conta { justify-content: space-between; }
+
+/* ---------------------------------------------------------- navegação */
+/* Barra própria (layout.navegacao): uma linha, rola na horizontal no celular,
+ * régua fina embaixo. A página ativa ganha peso e um traço do acento — sem cor
+ * de estado. A barra de rolagem fica escondida; o corte do último item já diz
+ * que há mais. */
+.st-key-fin-nav {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--fin-regua);
+  padding-bottom: var(--fin-e-2);
+}
+.st-key-fin-nav::-webkit-scrollbar { display: none; }
+.st-key-fin-nav > div { flex: 0 0 auto; }
+.st-key-fin-nav [data-testid="stPageLink"] a {
+  min-height: var(--fin-toque-min);
+  padding-inline: var(--fin-e-4);
+  border-radius: var(--fin-r-md);
+  white-space: nowrap;
+}
+.st-key-fin-nav [data-testid="stPageLink"] a span {
+  color: var(--fin-texto-2);
+}
+.st-key-fin-nav-ativo [data-testid="stPageLink"] a {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--fin-acento);
+  border-radius: 0;
+}
+.st-key-fin-nav-ativo [data-testid="stPageLink"] a span {
+  color: var(--fin-texto);
+  font-weight: var(--fin-p-semi);
+}
+
+/* ---------------------------------------------------------- foco e toque */
+/* Foco visível em todo controle, com o acento — nunca uma cor de estado. */
+:where(button, a, input, select, textarea, [role="tab"], [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--fin-sombra-foco);
+  border-radius: var(--fin-r-md);
+}
+
+/* Alvo de toque mínimo. Vale em toda largura: dedo e mouse convivem. */
+[data-testid="stButton"] button,
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stPopover"] button,
+[role="tab"] {
+  min-height: var(--fin-toque-min);
+}
+
+/* Campo com 16px no celular: abaixo disso o iOS dá zoom ao focar. Acima de
+ * 640px volta ao corpo (--fin-t-base, 16px). */
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+[data-testid="stDateInput"] input,
+[data-testid="stTextArea"] textarea {
+  font-size: var(--fin-t-campo-celular);
+}
+@media (min-width: 641px) {
+  [data-testid="stTextInput"] input,
+  [data-testid="stNumberInput"] input,
+  [data-testid="stDateInput"] input,
+  [data-testid="stTextArea"] textarea {
+    font-size: var(--fin-t-base);
+  }
+}
+
+/* ---------------------------------------------------------- botão primário */
+/* O Streamlit pinta o texto de todo controle primário de branco, e o tema não
+ * tem opção para isso. No escuro o acento é claro (#d8dcd9) e o branco por cima
+ * dava 1,4:1. --fin-acento-texto é o par certo nos dois modos (12,5 e 13,4:1).
+ * Cobre botão, envio de formulário, pílula e controle segmentado ativos. */
+[data-testid^="stBaseButton-primary"],
+[data-testid^="stBaseButton-primary"] p,
+[data-testid^="stBaseButton-primary"] [data-testid="stIconMaterial"],
+[data-testid$="Active"],
+[data-testid$="Active"] p {
+  color: var(--fin-acento-texto);
+}
+
+/* ---------------------------------------------------------- número */
+/* Todo valor monetário é tabular, para alinhar pelo decimal. Na fonte do app
+ * (Source Sans tem algarismos tabulares), não em monoespaçada: a mono deixava os
+ * números pesados, com cara de terminal (revisão de 2026-10-29). */
+.fin-valor {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
   white-space: nowrap;
 }
 
-/* Selo de estado: ícone + rótulo acompanham a cor (nunca só cor) */
+.fin-legenda {
+  color: var(--fin-texto-2);
+  font-size: var(--fin-t-sm);
+  line-height: var(--fin-l-normal);
+}
+
+/* ---------------------------------------------------------- selo */
+/* Único portador de cor da interface. Sempre com rótulo escrito.
+ * --ok/--warn/--over seguem os valores do enum `Estado` (app/modelos.py). */
 .fin-selo {
   display: inline-flex;
   align-items: center;
-  gap: var(--fin-space-1);
-  padding: 2px var(--fin-space-3);
-  border-radius: var(--fin-radius-pill);
-  font-size: 0.8rem;
-  font-weight: 600;
+  padding: var(--fin-e-1) var(--fin-e-4);
+  border-radius: var(--fin-r-pilula);
+  font-size: var(--fin-t-xs);
+  font-weight: var(--fin-p-semi);
+  letter-spacing: var(--fin-k-larga);
+  text-transform: uppercase;
+  line-height: var(--fin-l-normal);
 }
-.fin-selo--ok   { color: var(--fin-ok);   background: var(--fin-ok-bg); }
-.fin-selo--warn { color: var(--fin-warn); background: var(--fin-warn-bg); }
-.fin-selo--over { color: var(--fin-over); background: var(--fin-over-bg); }
+.fin-selo--ok   { color: var(--fin-dentro); background: var(--fin-dentro-fundo); }
+.fin-selo--warn { color: var(--fin-perto);  background: var(--fin-perto-fundo); }
+.fin-selo--over { color: var(--fin-fora);   background: var(--fin-fora-fundo); }
 
-/* Barra planejado x realizado */
+/* Gravidade da aba Atenção (RF20): mesmo sentido das cores de estado. */
+.fin-selo--critico     { color: var(--fin-critico);     background: var(--fin-critico-fundo); }
+.fin-selo--atencao     { color: var(--fin-atencao);     background: var(--fin-atencao-fundo); }
+.fin-selo--informativo { color: var(--fin-informativo); background: var(--fin-informativo-fundo); }
+
+/* ---------------------------------------------------------- barra */
+/* Previsto × realizado. Fina: é apoio do número, não o número. */
 .fin-barra {
-  position: relative;
-  height: 10px;
-  background: var(--fin-bg-sunken);
-  border-radius: var(--fin-radius-pill);
+  height: 6px;
+  background: var(--fin-poco);
+  border-radius: var(--fin-r-pilula);
   overflow: hidden;
 }
 .fin-barra > span {
   display: block;
   height: 100%;
-  border-radius: var(--fin-radius-pill);
+  border-radius: var(--fin-r-pilula);
 }
-.fin-barra--ok   > span { background: var(--fin-ok); }
-.fin-barra--warn > span { background: var(--fin-warn); }
-.fin-barra--over > span { background: var(--fin-over); }
+.fin-barra--ok   > span { background: var(--fin-dentro); }
+.fin-barra--warn > span { background: var(--fin-perto); }
+.fin-barra--over > span { background: var(--fin-fora); }
 
-.fin-legenda { color: var(--fin-text-muted); font-size: 0.85rem; }
-
-/* Alvos de toque no celular */
-@media (max-width: 640px) {
-  .stButton > button, .stFormSubmitButton > button { min-height: var(--fin-touch-min); }
+/* ---------------------------------------------------------- linha de orçamento */
+/* Régua fina entre itens, no lugar da caixa com borda. */
+.fin-linha {
+  padding-block: var(--fin-e-5);
+  border-bottom: 1px solid var(--fin-regua);
 }
-
-/* Linha de orçamento: nome, valores, barra e selo */
-.fin-linha { padding: var(--fin-space-3) 0; border-bottom: 1px solid var(--fin-border); }
 .fin-linha:last-child { border-bottom: 0; }
 .fin-linha__topo {
-  display: flex; justify-content: space-between; gap: var(--fin-space-3);
-  margin-bottom: var(--fin-space-2); flex-wrap: wrap;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--fin-e-2) var(--fin-e-5);
+  margin-bottom: var(--fin-e-4);
 }
-.fin-linha__nome { font-weight: 600; }
-.fin-linha__rodape { margin-top: var(--fin-space-2); display: flex; gap: var(--fin-space-3); align-items: center; }
+.fin-linha__nome { font-weight: var(--fin-p-semi); }
+.fin-linha__rodape {
+  display: flex;
+  align-items: center;
+  gap: var(--fin-e-5);
+  margin-top: var(--fin-e-4);
+}
 
-/* Aviso de que a tela mostra dados de exemplo */
-.fin-exemplo { color: var(--fin-text-muted); font-size: 0.85rem; }
+/* ---------------------------------------------------------- movimento */
+@media (prefers-reduced-motion: no-preference) {
+  :where(button, a, [role="tab"]) {
+    transition: box-shadow var(--fin-d-rapida) var(--fin-ease),
+      background-color var(--fin-d-rapida) var(--fin-ease);
+  }
+}
+
+/* ================================================== blocos de leitura (app/blocos.py)
+ * Revisão de 2026-10-29: "cards iguais", "cara de planilha", "pouca cor". */
+
+.fin-simbolo {
+  font-family: "Material Symbols Rounded";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
+
+.fin-rotulo {
+  margin: 0;
+  color: var(--fin-texto-2);
+  font-size: var(--fin-t-xs);
+  font-weight: var(--fin-p-semi);
+  letter-spacing: var(--fin-k-larga);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------- ícone colorido */
+.fin-ic {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--fin-r-pilula);
+}
+.fin-ic--1 { color: var(--fin-grafico-cat-1); background: color-mix(in srgb, var(--fin-grafico-cat-1) 14%, transparent); }
+.fin-ic--2 { color: var(--fin-grafico-cat-2); background: color-mix(in srgb, var(--fin-grafico-cat-2) 14%, transparent); }
+.fin-ic--3 { color: var(--fin-grafico-cat-3); background: color-mix(in srgb, var(--fin-grafico-cat-3) 14%, transparent); }
+.fin-ic--4 { color: var(--fin-grafico-cat-4); background: color-mix(in srgb, var(--fin-grafico-cat-4) 14%, transparent); }
+.fin-ic--5 { color: var(--fin-grafico-cat-5); background: color-mix(in srgb, var(--fin-grafico-cat-5) 14%, transparent); }
+.fin-ic--6 { color: var(--fin-grafico-cat-6); background: color-mix(in srgb, var(--fin-grafico-cat-6) 14%, transparent); }
+
+/* ---------------------------------------------------------- destaque */
+/* O número da tela: grande, com fundo suave do acento para puxar o olho primeiro. */
+.fin-destaque {
+  padding: var(--fin-e-6) var(--fin-e-6) var(--fin-e-5);
+  border-radius: var(--fin-r-lg);
+  background: var(--fin-acento-suave);
+}
+.fin-destaque--dentro, .fin-destaque--positivo { background: var(--fin-dentro-fundo); }
+.fin-destaque--perto { background: var(--fin-perto-fundo); }
+.fin-destaque--fora, .fin-destaque--negativo { background: var(--fin-fora-fundo); }
+.fin-destaque__valor {
+  margin: var(--fin-e-2) 0 0;
+  font-size: var(--fin-t-2xl);
+  font-weight: var(--fin-p-semi);
+  letter-spacing: var(--fin-k-apertada);
+  line-height: var(--fin-l-apertada);
+  color: var(--fin-texto);
+}
+.fin-destaque--dentro .fin-destaque__valor, .fin-destaque--positivo .fin-destaque__valor { color: var(--fin-dentro); }
+.fin-destaque--perto .fin-destaque__valor { color: var(--fin-perto); }
+.fin-destaque--fora .fin-destaque__valor, .fin-destaque--negativo .fin-destaque__valor { color: var(--fin-fora); }
+.fin-destaque__contexto {
+  margin: var(--fin-e-3) 0 0;
+  color: var(--fin-texto-2);
+  font-size: var(--fin-t-sm);
+}
+@media (min-width: 641px) {
+  .fin-destaque__valor { font-size: var(--fin-t-3xl); }
+}
+/* Destaque com os números que o explicam dentro: ocupa a altura da coluna e
+ * empurra a régua para baixo, sem buraco no meio. */
+.fin-destaque { display: flex; flex-direction: column; justify-content: space-between; gap: var(--fin-e-6); }
+.fin-destaque__rodape .fin-regua {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-block: var(--fin-e-5) 0;
+  border-top: 1px solid color-mix(in srgb, var(--fin-texto) 12%, transparent);
+  border-bottom: 0;
+}
+
+/* Barras de ritmo dentro do destaque: rótulo, barra e número numa linha. */
+.fin-barras { display: grid; gap: var(--fin-e-4); margin: var(--fin-e-6) 0 var(--fin-e-6); }
+.fin-barras__linha {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--fin-e-5);
+  font-size: var(--fin-t-sm);
+}
+.fin-barras__rotulo { color: var(--fin-texto-2); }
+.fin-barras__texto { font-weight: var(--fin-p-semi); text-align: right; }
+@media (min-width: 641px) {
+  .fin-barras__linha { grid-template-columns: 8.5rem minmax(0, 1fr) 6rem; }
+}
+.fin-barras .fin-lista__barra { height: 8px; margin-top: 0; background: color-mix(in srgb, var(--fin-texto) 12%, transparent); }
+.fin-barras .fin-lista__barra--neutro > span { background: var(--fin-texto-2); }
+
+@media (min-width: 641px) {
+  .fin-destaque__rodape .fin-regua { grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); }
+}
+
+/* ---------------------------------------------------------- colunas e quadro */
+/* Grade só em CSS: as colunas têm sempre a mesma altura. Uma coluna no
+ * celular; duas a partir de 900px (abaixo disso o destaque fica espremido). */
+.fin-colunas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--fin-e-6);
+}
+@media (min-width: 900px) {
+  .fin-colunas--iguais { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fin-colunas--principal { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+.fin-colunas__item { display: flex; flex-direction: column; gap: var(--fin-e-6); min-width: 0; }
+.fin-colunas__item > :last-child { flex: 1 1 auto; }
+.fin-quadro {
+  padding: var(--fin-e-5) var(--fin-e-6);
+  border-radius: var(--fin-r-lg);
+  background: var(--fin-superficie);
+}
+.fin-quadro__titulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--fin-e-4);
+  margin: 0 0 var(--fin-e-4);
+  padding: 0;
+  font-size: var(--fin-t-base);
+  font-weight: var(--fin-p-semi);
+}
+.fin-quadro .fin-lista { margin-bottom: 0; }
+.fin-quadro .fin-lista__linha { min-height: 0; }
+
+/* ---------------------------------------------------------- régua */
+/* Dois por linha no celular, quatro no desktop. Régua fina entre itens. */
+.fin-regua {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.75rem, 1fr));
+  gap: var(--fin-e-5) var(--fin-e-5);
+  padding-block: var(--fin-e-5);
+  border-bottom: 1px solid var(--fin-regua);
+}
+@media (min-width: 641px) {
+  .fin-regua { column-gap: var(--fin-e-7); }
+}
+.fin-regua__item { display: flex; flex-direction: column; gap: var(--fin-e-1); min-width: 0; }
+.fin-regua__valor { font-size: var(--fin-t-md); font-weight: var(--fin-p-semi); }
+.fin-regua__item--positivo .fin-regua__valor, .fin-regua__item--dentro .fin-regua__valor { color: var(--fin-dentro); }
+.fin-regua__item--negativo .fin-regua__valor, .fin-regua__item--fora .fin-regua__valor { color: var(--fin-fora); }
+.fin-regua__item--perto .fin-regua__valor { color: var(--fin-perto); }
+
+/* ---------------------------------------------------------- seção */
+.fin-secao {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--fin-e-4);
+  margin: var(--fin-e-6) 0 var(--fin-e-2);
+  padding: 0;
+  font-size: var(--fin-t-lg);
+  font-weight: var(--fin-p-semi);
+}
+
+/* ---------------------------------------------------------- lista de valores */
+.fin-lista { margin-bottom: var(--fin-e-3); }
+.fin-lista ul { list-style: none; margin: 0; padding: 0; }
+.fin-lista__cabecalho {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--fin-e-4) 0 var(--fin-e-1);
+  color: var(--fin-texto-2);
+  font-size: var(--fin-t-sm);
+  font-weight: var(--fin-p-semi);
+  border-bottom: 1px solid var(--fin-regua);
+}
+.fin-lista__linha {
+  display: flex;
+  align-items: center;
+  gap: var(--fin-e-5);
+  min-height: var(--fin-toque-min);
+  padding-block: var(--fin-e-3);
+  border-bottom: 1px solid var(--fin-regua);
+}
+.fin-lista__linha:last-child { border-bottom: 0; }
+.fin-lista__texto { display: flex; flex-direction: column; gap: var(--fin-e-1); flex: 1 1 auto; min-width: 0; }
+.fin-lista__titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fin-e-2) var(--fin-e-3);
+  font-weight: var(--fin-p-medio);
+  overflow-wrap: anywhere;
+}
+.fin-lista__valor { display: flex; flex-direction: column; align-items: flex-end; gap: var(--fin-e-1); text-align: right; }
+.fin-lista__valor .fin-valor { font-weight: var(--fin-p-semi); }
+.fin-valor--positivo, .fin-valor--dentro { color: var(--fin-dentro); }
+.fin-valor--negativo, .fin-valor--fora { color: var(--fin-fora); }
+.fin-valor--perto { color: var(--fin-perto); }
+.fin-lista__barra {
+  display: block;
+  height: 4px;
+  margin-top: var(--fin-e-2);
+  border-radius: var(--fin-r-pilula);
+  background: var(--fin-poco);
+  overflow: hidden;
+}
+.fin-lista__barra > span { display: block; height: 100%; border-radius: inherit; background: var(--fin-acento); }
+.fin-lista__barra--dentro > span { background: var(--fin-dentro); }
+.fin-lista__barra--perto > span { background: var(--fin-perto); }
+.fin-lista__barra--fora > span { background: var(--fin-fora); }
+
+/* ---------------------------------------------------------- alerta */
+/* Destaque de atenção de verdade: fundo e borda na cor da gravidade. */
+.fin-alertas { list-style: none; margin: 0 0 var(--fin-e-6); padding: 0; display: grid; gap: var(--fin-e-4); }
+.fin-alerta {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fin-e-5);
+  padding: var(--fin-e-5);
+  border-radius: var(--fin-r-lg);
+  border-left: 4px solid var(--fin-informativo);
+  background: var(--fin-informativo-fundo);
+}
+.fin-alerta--critico { border-left-color: var(--fin-critico); background: var(--fin-critico-fundo); }
+.fin-alerta--atencao { border-left-color: var(--fin-atencao); background: var(--fin-atencao-fundo); }
+.fin-alerta__icone { color: var(--fin-informativo); font-size: 1.5rem; }
+.fin-alerta--critico .fin-alerta__icone, .fin-alerta--critico .fin-alerta__gravidade { color: var(--fin-critico); }
+.fin-alerta--atencao .fin-alerta__icone, .fin-alerta--atencao .fin-alerta__gravidade { color: var(--fin-atencao); }
+.fin-alerta__texto { display: flex; flex-direction: column; gap: var(--fin-e-1); flex: 1 1 auto; min-width: 0; }
+.fin-alerta__gravidade {
+  color: var(--fin-texto-2);
+  font-size: var(--fin-t-xs);
+  font-weight: var(--fin-p-forte);
+  letter-spacing: var(--fin-k-larga);
+  text-transform: uppercase;
+}
+.fin-alerta__titulo { font-weight: var(--fin-p-semi); }
+.fin-alerta__valor { font-weight: var(--fin-p-semi); white-space: nowrap; }
+/* Compacto (o resumo na aba Mês): menos ar, mesma cor e mesmo rótulo. */
+.fin-alertas--compacto { gap: var(--fin-e-3); margin-bottom: 0; }
+.fin-alertas--compacto .fin-alerta { padding: var(--fin-e-4) var(--fin-e-5); gap: var(--fin-e-4); }
+.fin-alertas--compacto .fin-alerta__icone { font-size: 1.25rem; }
+/* No celular, o resumo mostra só os dois primeiros; o título já diz quantos há. */
+@media (max-width: 640px) {
+  .fin-alertas--compacto .fin-alerta:nth-child(n+3) { display: none; }
+}
+/* No compacto, a gravidade fica só para o leitor de tela: ícone e cor já dizem. */
+.fin-alertas--compacto .fin-alerta__gravidade {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Item da aba Atenção com botões (app/atencao.py): a moldura é o container do
+ * Streamlit, com a chave fin-item-GRAVIDADE-ID; o miolo vem sem fundo. */
+[class*="st-key-fin-item-critico"],
+[class*="st-key-fin-item-atencao"],
+[class*="st-key-fin-item-informativo"] {
+  flex-wrap: wrap;
+  row-gap: var(--fin-e-2);
+  padding: var(--fin-e-4) var(--fin-e-5);
+  border-radius: var(--fin-r-lg);
+  border-left: 4px solid var(--fin-informativo);
+  background: var(--fin-informativo-fundo);
+}
+[class*="st-key-fin-item-critico"] { border-left-color: var(--fin-critico); background: var(--fin-critico-fundo); }
+[class*="st-key-fin-item-atencao"] { border-left-color: var(--fin-atencao); background: var(--fin-atencao-fundo); }
+.fin-alerta--solto { padding: 0; border: 0; background: transparent; }
+.fin-alerta__icone--critico, .fin-alerta__gravidade--critico { color: var(--fin-critico); }
+.fin-alerta__icone--atencao, .fin-alerta__gravidade--atencao { color: var(--fin-atencao); }
+[class*="st-key-fin-item-"] > [data-testid="stElementContainer"]:has(> [data-testid="stHtml"]) { flex: 1 1 18rem; }
+[class*="st-key-fin-item-acoes"] { flex-wrap: wrap; margin-left: auto; }
+/* Valor do alerta à direita do texto, antes dos botões, não colado na borda. */
+.fin-alerta--solto .fin-alerta__valor { margin-right: var(--fin-e-5); }
+.st-key-fin-pendencias { gap: var(--fin-e-3); }
+/* No celular, "Lembrar amanhã" e "Resolvido" viram só ícone (o texto continua
+ * para o leitor de tela, e o `help` do botão diz o que fazem): a ação direta
+ * cabe na mesma linha e o item não dobra de altura. */
+@media (max-width: 640px) {
+  [class*="st-key-fin-item-acoes"] [data-testid="stBaseButton-tertiary"] [data-testid="stMarkdownContainer"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  [class*="st-key-fin-item-acoes"] [data-testid="stBaseButton-tertiary"] {
+    min-width: var(--fin-toque-min);
+    justify-content: center;
+  }
+  [class*="st-key-fin-item-acoes"] { margin-left: 0; }
+}
+.st-key-fin-atencao-topo .fin-secao { margin: 0; }
+.st-key-fin-atencao-topo .st-key-nova_conta_recorrente { margin-left: auto; }
+
+/* O Streamlit recua listas dentro de st.html; as nossas não são listas de texto. */
+[data-testid="stHtml"] ul.fin-alertas,
+[data-testid="stHtml"] .fin-lista ul {
+  margin-left: 0;
+  padding-left: 0;
+}
+[data-testid="stHtml"] .fin-lista__linha,
+[data-testid="stHtml"] .fin-alerta { margin: 0; }
+
+/* ---------------------------------------------------------- grupo recolhível */
+.fin-dobra { border-bottom: 1px solid var(--fin-regua); }
+.fin-dobra summary {
+  display: flex;
+  align-items: center;
+  gap: var(--fin-e-4);
+  cursor: pointer;
+  list-style: none;
+}
+.fin-dobra summary::-webkit-details-marker { display: none; }
+.fin-dobra summary > .fin-lista__linha { flex: 1 1 auto; border-bottom: 0; }
+.fin-dobra__seta { color: var(--fin-texto-2); transition: transform var(--fin-d-rapida) var(--fin-ease); }
+.fin-dobra[open] .fin-dobra__seta { transform: rotate(180deg); }
+.fin-dobra__corpo {
+  list-style: none;
+  margin: 0 0 var(--fin-e-4);
+  padding: 0 0 0 var(--fin-e-8);
+  border-left: 2px solid var(--fin-regua);
+}
+[data-testid="stHtml"] ul.fin-dobra__corpo { margin-left: var(--fin-e-6); padding-left: var(--fin-e-5); }
+.fin-dobra__corpo .fin-lista__linha { min-height: 0; }
+
+/* ---------------------------------------------------------- quanto cabe por categoria */
+.fin-folgas {
+  list-style: none;
+  margin: 0 0 var(--fin-e-5);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--fin-e-3);
+}
+@media (min-width: 641px) {
+  .fin-folgas { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+}
+[data-testid="stHtml"] ul.fin-folgas { margin-left: 0; padding-left: 0; }
+.fin-folga {
+  display: flex;
+  align-items: center;
+  gap: var(--fin-e-4);
+  margin: 0;
+  padding: var(--fin-e-4);
+  border-radius: var(--fin-r-lg);
+  background: var(--fin-superficie);
+}
+.fin-folga--fora { background: var(--fin-fora-fundo); }
+.fin-folga .fin-ic { width: 2rem; height: 2rem; }
+.fin-folga .fin-ic .fin-simbolo { font-size: 1.05rem; }
+.fin-folga__texto { display: flex; flex-direction: column; gap: var(--fin-e-1); min-width: 0; flex: 1 1 auto; }
+.fin-folga__nome {
+  color: var(--fin-texto-2);
+  font-size: var(--fin-t-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fin-folga__valor {
+  font-size: var(--fin-t-md);
+  font-weight: var(--fin-p-semi);
+}
+.fin-folga .fin-lista__barra { margin-top: var(--fin-e-1); }
+
+/* ---------------------------------------------------------- confirmação do Lançar */
+/* O que o sistema vai registrar, antes de salvar (ADR-011, decisão 5). */
+.fin-confirmacao {
+  display: flex;
+  gap: var(--fin-e-4);
+  align-items: flex-start;
+  padding: var(--fin-e-4) var(--fin-e-5);
+  border-radius: var(--fin-r-lg);
+  background: var(--fin-acento-suave);
+  color: var(--fin-texto);
+  font-size: var(--fin-t-sm);
+  line-height: var(--fin-l-normal);
+}
+.fin-confirmacao .fin-simbolo { color: var(--fin-acento); }

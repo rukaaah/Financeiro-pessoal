@@ -14,8 +14,18 @@ ARQUIVOS = ("tokens.css", "componentes.css")
 
 
 @cache
-def _css() -> str:
+def _ler(versao: tuple[int, ...]) -> str:
+    del versao  # só entra na chave do cache
     return "\n".join((PASTA / nome).read_text(encoding="utf-8") for nome in ARQUIVOS)
+
+
+def _css() -> str:
+    """CSS dos dois arquivos, relido só quando algum deles muda.
+
+    O cache é pela data de modificação: um `@cache` simples guardava o CSS pelo
+    processo inteiro, e editar o .css não aparecia até reiniciar o servidor.
+    """
+    return _ler(tuple((PASTA / nome).stat().st_mtime_ns for nome in ARQUIVOS))
 
 
 def aplicar_estilo() -> None:

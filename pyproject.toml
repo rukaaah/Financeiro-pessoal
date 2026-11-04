@@ -98,6 +98,12 @@ pretty = true
 module = ["streamlit.*"]
 ignore_missing_imports = true
 
+# Só o teste de tipos do tema lê o descritor do protobuf (dependência do
+# Streamlit, sem stubs instalados).
+[[tool.mypy.overrides]]
+module = ["google.protobuf.*"]
+ignore_missing_imports = true
+
 # ---------------------------------------------------------------- pytest
 
 [tool.pytest.ini_options]

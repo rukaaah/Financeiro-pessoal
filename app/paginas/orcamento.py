@@ -15,71 +15,240 @@ from itertools import groupby
 import streamlit as st
 
 from app import dados
-from app.componentes import linha_de_orcamento, metrica, seletor_de_mes
-from app.composicao import sessao_atual
+from app.blocos import (
+    Alerta,
+    Barra,
+    Dobra,
+    Grupo,
+    ItemDaRegua,
+    Linha,
+    Tom,
+    alertas,
+    barras,
+    colunas,
+    destaque,
+    dobras,
+    icone_do_grupo,
+    lista,
+    quadro,
+    regua,
+)
 from app.formatacao import brl
-from app.layout import cabecalho, titulo
-from app.modelos import estado_do_gasto
+from app.layout import titulo_com_mes
+from app.modelos import Estado, estado_do_gasto
 
-cabecalho(sessao_atual())
-titulo("Orçamento")
+# Estado do orçamento → (tom do valor/barra, selo). Selo sempre com texto (brief).
+VISUAL_DO_ESTADO: dict[Estado, tuple[Tom, tuple[str, str]]] = {
+    Estado.OK: ("dentro", ("dentro", "ok")),
+    Estado.ATENCAO: ("perto", ("perto", "warn")),
+    Estado.ESTOUROU: ("fora", ("fora", "over")),
+}
 
-mes = seletor_de_mes("mes_orcamento")
+
+def _razao(gasto: Decimal, previsto: Decimal) -> float:
+    return float(gasto / previsto) if previsto else 1.0
+
+
+mes = titulo_com_mes("Orçamento")
 resumo = dados.resumo_do_mes(mes)
 
-topo = st.columns(4)
-with topo[0]:
-    metrica("Renda base", resumo.renda_base)
-with topo[1]:
-    metrica(
-        "Gasto",
-        resumo.gasto,
-        detalhe=f"Previsto {brl(resumo.gasto_previsto)}",
-        estado=estado_do_gasto(resumo.gasto, resumo.gasto_previsto),
-    )
-with topo[2]:
-    metrica("Guardado", resumo.guardado, detalhe=f"Planejado {brl(resumo.guardado_previsto)}")
-with topo[3]:
-    metrica("Sobra", resumo.sobra, detalhe="Renda - gasto - guardado")
+estado = estado_do_gasto(resumo.gasto, resumo.gasto_previsto)
+restam = resumo.gasto_previsto - resumo.gasto
+tom_do_mes = VISUAL_DO_ESTADO[estado][0]
+linhas_do_mes = dados.orcamento_do_mes(mes)
 
-if resumo.renda_acima_do_previsto > 0:
-    st.info(
-        f"**{brl(resumo.renda_acima_do_previsto)} acima do previsto** na renda deste mês. "
-        "Você decide para onde vai: guardar, investir ou gastar.",
-        icon=":material/trending_up:",
+# Painel do topo (revisão de 2026-10-30): o destaque leva os números que o
+# explicam, e ao lado ficam as categorias mais perto do limite, que é o que se
+# vem procurar aqui.
+numeros = regua(
+    (
+        ItemDaRegua("Renda", brl(resumo.renda_real), f"base {brl(resumo.renda_base)}"),
+        ItemDaRegua("Guardado", brl(resumo.guardado), f"de {brl(resumo.guardado_previsto)}"),
+        ItemDaRegua(
+            "Sobra", brl(resumo.sobra), "", "positivo" if resumo.sobra >= 0 else "negativo"
+        ),
+        ItemDaRegua(
+            "Restam" if restam >= 0 else "Passou",
+            brl(abs(restam)),
+            "do previsto",
+            "dentro" if restam >= 0 else "fora",
+        ),
     )
+)
+uso = barras(
+    (
+        Barra(
+            "Gasto do previsto",
+            _razao(resumo.gasto, resumo.gasto_previsto),
+            f"{_razao(resumo.gasto, resumo.gasto_previsto):.0%}",
+            tom_do_mes,
+        ),
+    )
+)
+principal = destaque(
+    "Gasto do mês",
+    brl(resumo.gasto),
+    f"de {brl(resumo.gasto_previsto)} previstos",
+    tom_do_mes,
+    numeros,
+    corpo=uso,
+)
+
+variaveis_do_mes = sorted(
+    (i for i in linhas_do_mes if i.natureza == "variável" and i.previsto > 0),
+    key=lambda i: i.gasto / i.previsto,
+    reverse=True,
+)
+perto_do_limite = quadro(
+    "Mais perto do limite",
+    lista(
+        [
+            Grupo(
+                [
+                    Linha(
+                        i.categoria,
+                        brl(i.gasto),
+                        f"de {brl(i.previsto)}",
+                        icone=icone_do_grupo(i.grupo)[0],
+                        cor=icone_do_grupo(i.grupo)[1],
+                        tom=VISUAL_DO_ESTADO[i.estado][0],
+                        progresso=_razao(i.gasto, i.previsto),
+                    )
+                    for i in variaveis_do_mes[:4]
+                ]
+            )
+        ]
+    ),
+    "variáveis",
+)
+acima = (
+    alertas(
+        [
+            Alerta(
+                "informativo",
+                f"{brl(resumo.renda_acima_do_previsto)} acima da renda prevista",
+                "Você decide para onde vai: guardar, investir ou gastar.",
+            )
+        ],
+        compacto=True,
+    )
+    if resumo.renda_acima_do_previsto > 0
+    else ""
+)
+st.html(colunas(principal, acima + perto_do_limite, proporcao="principal"))
 
 aba_gasto, aba_guardado, aba_previsto = st.tabs(["Gasto", "Guardado", "Previsto"])
 
 with aba_gasto:
-    linhas = dados.orcamento_do_mes(mes)
+    linhas = linhas_do_mes
+    grupos = []
     for grupo, itens in groupby(linhas, key=lambda linha: linha.grupo):
-        lista = list(itens)
-        total = sum((i.realizado - i.financiado_por_cofrinho for i in lista), Decimal(0))
-        previsto = sum((i.previsto for i in lista), Decimal(0))
-        with st.container(border=True):
-            st.markdown(f"**{grupo}**  \n:gray[{brl(total)} de {brl(previsto)}]")
-            st.html("".join(linha_de_orcamento(i) for i in lista))
+        do_grupo = list(itens)
+        do_mes = [i for i in do_grupo if i.natureza != "cofrinho"]
+        # Gasto do salário em categoria com cofrinho pesa no mês; o previsto dela é a
+        # inserção no cofrinho (está em Guardado), então não entra no previsto de gasto.
+        gasto = sum((i.gasto for i in do_grupo), Decimal(0))
+        previsto = sum((i.previsto for i in do_mes), Decimal(0))
+        # O estado do grupo vem do que é variável: fixo em 100% é o esperado.
+        variaveis = [i for i in do_mes if i.natureza == "variável"]
+        if variaveis:
+            estado_grupo = estado_do_gasto(
+                sum((i.gasto for i in variaveis), Decimal(0)),
+                sum((i.previsto for i in variaveis), Decimal(0)),
+            )
+        else:
+            estado_grupo = Estado.ESTOUROU if gasto > previsto else Estado.OK
+        tom, selo = VISUAL_DO_ESTADO[estado_grupo]
+        icone, cor = icone_do_grupo(grupo)
+        categorias = []
+        for i in do_grupo:
+            if i.natureza == "cofrinho":
+                # Três modalidades: para o cofrinho, do cofrinho, do salário.
+                fora = i.fora_do_previsto
+                categorias.append(
+                    Linha(
+                        i.categoria,
+                        brl(i.do_salario),
+                        f"{brl(i.para_cofrinho)} de {brl(i.previsto)} postos no cofrinho "
+                        f"{i.cofrinho} · {brl(i.financiado_por_cofrinho)} gastos do cofrinho",
+                        selo=("do salário", "warn") if fora > 0 else ("cofrinho", "informativo"),
+                        tom="perto" if fora > 0 else "neutro",
+                        valor_detalhe="do salário",
+                    )
+                )
+                continue
+            estado_i = i.estado
+            if i.natureza == "fixa" and estado_i is Estado.ATENCAO:
+                estado_i = Estado.OK  # mensalidade chegando a 100% não é alerta
+            tom_i, selo_i = VISUAL_DO_ESTADO[estado_i]
+            # Nome próprio: `selo` já é o do grupo, logo acima.
+            selo_da_categoria: tuple[str, str] | None = (
+                selo_i if estado_i is not Estado.OK else None
+            )
+            if i.natureza == "fixa" and selo_da_categoria is None:
+                selo_da_categoria = ("fixo", "informativo")
+            categorias.append(
+                Linha(
+                    i.categoria,
+                    brl(i.gasto),
+                    f"de {brl(i.previsto)}"
+                    + (
+                        f" · {brl(i.financiado_por_cofrinho)} pagos com cofrinho"
+                        if i.financiado_por_cofrinho
+                        else ""
+                    ),
+                    tom=tom_i,
+                    selo=selo_da_categoria,
+                    progresso=_razao(i.gasto, i.previsto),
+                )
+            )
+        grupos.append(
+            Dobra(
+                grupo,
+                brl(gasto),
+                f"de {brl(previsto)} · {len(do_grupo)} categorias",
+                categorias,
+                icone=icone,
+                cor=cor,
+                tom=tom,
+                progresso=_razao(gasto, previsto),
+                selo=selo if tom != "dentro" else None,
+            )
+        )
+    st.html(dobras(grupos))
     st.caption(
-        "Despesas pagas com dinheiro de cofrinho aparecem no consumo da categoria, "
-        "mas não contam no gasto corrente do mês."
+        "Toque num grupo para ver as categorias. Despesa paga com dinheiro de cofrinho "
+        "aparece na categoria, mas não conta no gasto do mês."
     )
 
 with aba_guardado:
-    st.caption("Transferido para reserva, cofrinhos e investimentos. Não é gasto.")
-    for meta in dados.metas_de_guardado(mes):
-        with st.container(border=True):
-            esquerda, direita = st.columns([2, 1])
-            esquerda.markdown(f"**{meta.destino}**")
-            direita.markdown(f"{brl(meta.transferido)} de {brl(meta.planejado)}")
-            st.progress(
-                float(min(meta.transferido / meta.planejado, Decimal(1))) if meta.planejado else 0.0
-            )
-            if meta.devolucao > 0:
-                st.caption(
-                    f"Mais {brl(meta.devolucao)} devolvidos a este cofrinho: "
-                    "recompõem o que já estava guardado e não contam como guardado novo."
+    st.html(
+        lista(
+            [
+                Grupo(
+                    [
+                        Linha(
+                            meta.destino,
+                            brl(meta.transferido),
+                            f"de {brl(meta.planejado)} planejados"
+                            + (
+                                f" · mais {brl(meta.devolucao)} devolvidos, que não contam "
+                                "como guardado novo"
+                                if meta.devolucao > 0
+                                else ""
+                            ),
+                            icone="savings",
+                            cor=2,
+                            tom="dentro" if meta.transferido >= meta.planejado else "neutro",
+                            progresso=_razao(meta.transferido, meta.planejado),
+                        )
+                        for meta in dados.metas_de_guardado(mes)
+                    ]
                 )
+            ]
+        )
+    )
+    st.caption("Transferido para reserva, cofrinhos e investimentos. Não é gasto.")
 
 with aba_previsto:
     st.caption(

@@ -6,17 +6,35 @@ a fatura é paga (ADR-005, ADR-007). O pagamento aponta a fatura que quita (ADR-
 escrever).
 """
 
-from datetime import date
 from decimal import Decimal
 
 import streamlit as st
 
 from app import dados
-from app.componentes import metrica, tabela
-from app.composicao import sessao_atual
-from app.formatacao import brl, data_curta, ler_valor, mes_curto, mes_numerico
-from app.layout import cabecalho, titulo
+from app.blocos import (
+    Barra,
+    Grupo,
+    ItemDaRegua,
+    Linha,
+    barras,
+    colunas,
+    destaque,
+    icone_do_grupo,
+    lista,
+    quadro,
+    regua,
+    secao,
+)
+from app.formatacao import brl, data_curta, hoje, ler_valor, mes_curto, mes_numerico
+from app.layout import titulo
 from app.modelos import Fatura, SituacaoDaFatura
+
+# Situação → selo (texto, classe) e tom do valor. Selo sempre escrito (brief).
+VISUAL_DA_SITUACAO = {
+    SituacaoDaFatura.PAGA: (("paga", "ok"), "neutro"),
+    SituacaoDaFatura.ABERTA: (("aberta", "warn"), "neutro"),
+    SituacaoDaFatura.FUTURA: (("futura", "informativo"), "neutro"),
+}
 
 
 @st.dialog("Pagar fatura")
@@ -50,7 +68,6 @@ def dialogo_pagar_fatura(cartao: str, faturas: tuple[Fatura, ...]) -> None:
         st.rerun()
 
 
-cabecalho(sessao_atual())
 titulo("Cartões")
 
 termos = dados.termos_dos_cartoes()
@@ -61,75 +78,116 @@ atual = next(t for t in termos if t.cartao == cartao)
 faturas = dados.faturas(cartao)
 aberta = next((f for f in faturas if f.situacao is SituacaoDaFatura.ABERTA), None)
 
-colunas = st.columns(3)
-with colunas[0]:
-    if aberta is not None:
-        metrica(
-            "Fatura aberta",
-            aberta.total,
-            detalhe=f"Vence em {mes_numerico(aberta.mes_de_vencimento)}",
+futuras = [f for f in faturas if f.situacao is SituacaoDaFatura.FUTURA]
+comprometido = sum((f.total for f in futuras), Decimal(0))
+numeros = regua(
+    (
+        ItemDaRegua("Já comprometido", brl(comprometido), f"em {len(futuras)} faturas"),
+        ItemDaRegua("Fechamento", f"dia {atual.fechamento}", "como o app do banco"),
+        ItemDaRegua("Vencimento", f"dia {atual.vencimento}", "editável em Ajustes"),
+    )
+)
+# Só a vizinhança da fatura aberta: a última paga e as três próximas. O
+# histórico inteiro continua no seletor de "Compras da fatura", logo abaixo.
+em_ordem = sorted(faturas, key=lambda f: f.mes_de_vencimento)
+pagas = [f for f in em_ordem if f.situacao is SituacaoDaFatura.PAGA]
+proximas = [f for f in em_ordem if f.situacao is not SituacaoDaFatura.PAGA]
+vizinhanca = pagas[-1:] + proximas[:4]
+
+if aberta is not None:
+    # Esta fatura contra a anterior: diz de relance se o mês está mais pesado.
+    comparacao = ""
+    if pagas:
+        anterior = pagas[-1]
+        teto = max(aberta.total, anterior.total) or Decimal(1)
+        comparacao = barras(
+            (
+                Barra("Esta fatura", float(aberta.total / teto), brl(aberta.total)),
+                Barra(
+                    mes_curto(anterior.mes_de_vencimento).capitalize(),
+                    float(anterior.total / teto),
+                    brl(anterior.total),
+                    "neutro",
+                ),
+            )
         )
-with colunas[1]:
-    futuras = sum((f.total for f in faturas if f.situacao is SituacaoDaFatura.FUTURA), Decimal(0))
-    metrica("Já comprometido nas próximas", futuras, detalhe="Parcelas que ainda vão cair")
-with colunas[2], st.container(border=True):
-    st.metric("Fechamento e vencimento", f"dia {atual.fechamento} e dia {atual.vencimento}")
-    st.caption(
-        f"Como o app do banco mostra. Vale desde {data_curta(atual.vigente_desde)}"
-        f"/{atual.vigente_desde.year}. Editável em Configurações."
+    vence = aberta.mes_de_vencimento.replace(day=atual.vencimento)
+    faltam = (vence - hoje()).days
+    principal = destaque(
+        "Fatura aberta",
+        brl(aberta.total),
+        f"Vence {data_curta(vence)}"
+        + (f", em {faltam} dias" if 0 <= faltam <= 31 else "")
+        + f" · fecha dia {atual.fechamento}",
+        "perto" if 0 <= faltam <= 7 else "neutro",
+        numeros,
+        corpo=comparacao,
+    )
+else:
+    principal = destaque(
+        "Fatura aberta", brl(Decimal(0)), "Nenhuma fatura em aberto.", "dentro", numeros
     )
 
-if st.button("Pagar fatura", icon=":material/payments:", key="abrir_pagar_fatura"):
+# Faturas como lista com barra proporcional ao maior total: compara sem gráfico à parte.
+# Ao lado do destaque (revisão de 2026-10-30): a primeira dobra mostra o cartão inteiro.
+maior = max((f.total for f in faturas), default=Decimal(0)) or Decimal(1)
+lista_de_faturas = quadro(
+    "Faturas",
+    lista(
+        [
+            Grupo(
+                [
+                    Linha(
+                        mes_curto(f.mes_de_vencimento).capitalize(),
+                        brl(f.total),
+                        f"{len(f.compras)} compras"
+                        + (f" · paga em {data_curta(f.pago_em)}" if f.pago_em else ""),
+                        icone="credit_card",
+                        cor=1 if f.situacao is SituacaoDaFatura.ABERTA else 6,
+                        selo=VISUAL_DA_SITUACAO[f.situacao][0],
+                        progresso=float(f.total / maior),
+                    )
+                    for f in vizinhanca
+                ]
+            )
+        ]
+    ),
+    f"{len(faturas)} no total",
+)
+st.html(colunas(principal, lista_de_faturas, proporcao="principal"))
+if st.button(
+    "Pagar fatura",
+    icon=":material/payments:",
+    type="secondary",
+    key="abrir_pagar_fatura",
+    width="content",
+):
     dialogo_pagar_fatura(cartao, faturas)
 
-st.subheader("Faturas por mês de vencimento")
-tabela(
-    [
-        {
-            "Vencimento": mes_numerico(f.mes_de_vencimento),
-            "Situação": f.situacao.value,
-            "Total": brl(f.total),
-            "Pago em": data_curta(f.pago_em) if f.pago_em else "",
-        }
-        for f in faturas
-    ],
-    a_direita=("Total",),
-)
-
-st.subheader("Compromisso por fatura")
-st.bar_chart(
-    {
-        "Vencimento": [
-            date(f.mes_de_vencimento.year, f.mes_de_vencimento.month, 1) for f in faturas
-        ],
-        "Total": [float(f.total) for f in faturas],
-    },
-    x="Vencimento",
-    y="Total",
-    y_label="R$",
-)
-
-st.subheader("Detalhe da fatura")
+st.html(secao("Compras da fatura"))
 escolhida = st.selectbox(
     "Fatura",
     faturas,
     index=next((i for i, f in enumerate(faturas) if f is aberta), 0),
-    format_func=lambda f: f"{mes_curto(f.mes_de_vencimento)} - {f.situacao.value}",
+    format_func=lambda f: f"{mes_curto(f.mes_de_vencimento)} · {f.situacao.value.lower()}",
     key="detalhe_fatura",
+    label_visibility="collapsed",
 )
-tabela(
-    [
-        {
-            "Data": data_curta(c.data),
-            "Descrição": c.descricao,
-            "Categoria": c.categoria,
-            "Parcela": c.parcela or "",
-            "Valor": brl(c.valor),
-        }
-        for c in escolhida.compras
-    ],
-    a_direita=("Valor",),
-)
+grupo_da_categoria = {c.nome: c.grupo for c in dados.categorias_configuradas()}
+compras = []
+for c in sorted(escolhida.compras, key=lambda c: c.data, reverse=True):
+    icone, cor = icone_do_grupo(grupo_da_categoria.get(c.categoria))
+    compras.append(
+        Linha(
+            c.descricao,
+            brl(c.valor),
+            f"{data_curta(c.data)} · {c.categoria}"
+            + (f" · parcela {c.parcela}" if c.parcela else ""),
+            icone=icone,
+            cor=cor,
+        )
+    )
+st.html(lista([Grupo(compras, "", "")]) if compras else secao("Nenhuma compra"))
 st.caption(
     "Pagamento de fatura não aparece aqui: é transferência, não compra. "
     "Compra no dia do fechamento ainda entra nesta fatura."
