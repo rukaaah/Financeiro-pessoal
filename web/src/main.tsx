@@ -1,10 +1,11 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { api, apiMes, type CategoriaDoMes, type Lancamento, type ListaDoMes, type Mes as MesDados, type Opcoes } from "./api.ts";
+import { api, apiCartao, apiMes, type Cartao as CartaoDados, type Compra, type Fatura, type CategoriaDoMes, type Lancamento, type ListaDoMes, type Mes as MesDados, type Opcoes } from "./api.ts";
 import { Icone } from "./icone.tsx";
 import { Lancar } from "./telas/lancar.tsx";
 import { Editar, Lancamentos } from "./telas/lancamentos.tsx";
 import { DetalheDaCategoria, Mes } from "./telas/mes.tsx";
+import { Cartao, PagarFatura } from "./telas/cartao.tsx";
 import "./estilo.css";
 
 type Tela = "mes" | "lancamentos" | "cartao" | "patrimonio";
@@ -17,7 +18,9 @@ function App() {
   const [opcoes, setOpcoes] = useState<Opcoes | null>(null);
   const [lista, setLista] = useState<ListaDoMes | null>(null);
   const [ocultos, setOcultos] = useState<Set<string>>(new Set());
-  const [folha, setFolha] = useState<null | { tipo: "lancar" } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes }>(null);
+  const [folha, setFolha] = useState<null | { tipo: "lancar" } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
+  const [dadosCartao, setDadosCartao] = useState<{ cartoes: CartaoDados[]; compras: Compra[] } | null>(null);
+  const recarregarCartao = () => apiCartao.cartao().then(setDadosCartao).catch(() => {});
   const [mes, setMes] = useState(mesAtual());
   const [dadosMes, setDadosMes] = useState<MesDados | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
@@ -25,12 +28,13 @@ function App() {
 
   const avisar = (a: Aviso) => { clearTimeout(relogio.current); setAviso(a); relogio.current = window.setTimeout(() => setAviso(null), 5000); };
   const recarregarMes = (m = mes) => apiMes.mes(m).then((d) => d.mes === m && setDadosMes(d)).catch((e: Error) => avisar({ texto: e.message }));
-  const recarregar = () => { recarregarMes(); return api.lancamentos(mes).then(setLista).catch((e: Error) => avisar({ texto: e.message })); };
+  const recarregar = () => { recarregarMes(); recarregarCartao(); return api.lancamentos(mes).then(setLista).catch((e: Error) => avisar({ texto: e.message })); };
   useEffect(() => { setDadosMes(null); setLista(null); recarregarMes(mes); api.lancamentos(mes).then(setLista).catch(() => {}); }, [mes]);
 
   useEffect(() => {
     api.sessao().then(setSessao).catch(() => setSessao({ modo: "demo", nome: "Visitante" }));
     api.opcoes().then(setOpcoes).catch(() => {});
+    recarregarCartao();
     if (new URLSearchParams(location.search).get("lancar") === "gastei") setFolha({ tipo: "lancar" });
   }, []);
 
@@ -68,10 +72,11 @@ function App() {
         {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><a href="/auth/entrar">Entrar</a></div>}
         <main>
           {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} />
+            : tela === "cartao" ? <Cartao dados={dadosCartao} aoPagar={(c, f) => setFolha({ tipo: "pagar", c, f })} />
             : tela === "lancamentos" ? <Lancamentos lista={lista} ocultos={ocultos} aoEditar={(l) => setFolha({ tipo: "editar", l })} aoAbrirLancar={() => setFolha({ tipo: "lancar" })} />
             : <>
               <header><div><h1>{destinos.find((d) => d[0] === tela)![1]}</h1></div>{!demo && <a class="sub" href="/auth/sair">Sair</a>}</header>
-              <div class="vazio"><b>Esta tela chega numa próxima fatia.</b><p class="sub">{tela === "cartao" ? "Faturas e pagamento entram na fatia 4." : "Cofrinhos, a receber e investimentos entram nas fatias 6 e 7."} Já dá para lançar pelo + e ver em Lançamentos.</p></div>
+              <div class="vazio"><b>Esta tela chega numa próxima fatia.</b><p class="sub">{"Cofrinhos, a receber e investimentos entram nas fatias 6 e 7."} Já dá para lançar pelo + e ver em Lançamentos.</p></div>
             </>}
         </main>
       </div>
@@ -85,6 +90,11 @@ function App() {
       {folha?.tipo === "categoria" && <DetalheDaCategoria c={folha.c} mes={mes} aoFechar={() => setFolha(null)} aoSalvar={(valor, padrao) => {
         setFolha(null);
         apiMes.previsto({ categoria_id: folha.c.id, mes, valor, padrao }).then(() => recarregarMes()).then(() => avisar({ texto: "Previsto salvo." })).catch((e: Error) => avisar({ texto: e.message }));
+      }} />}
+      {folha?.tipo === "pagar" && <PagarFatura cartao={folha.c} fatura={folha.f} opcoes={opcoes} aoFechar={() => setFolha(null)} aoPagar={(corpo) => {
+        setFolha(null);
+        avisar({ texto: "Pagando…" });
+        apiCartao.pagar(corpo).then(recarregar).then(() => avisar({ texto: "Pagamento registrado." })).catch((e: Error) => avisar({ texto: e.message }));
       }} />}
       {aviso && <div class="toast" role="status"><span>{aviso.texto}</span>{aviso.desfazer && <button onClick={() => { const d = aviso.desfazer!; setAviso(null); d(); }}>Desfazer</button>}</div>}
     </>

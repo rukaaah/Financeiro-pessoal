@@ -43,3 +43,12 @@ export const apiMes = {
 
 /** Centavos a partir do texto de numeric, só para comparar e desenhar barras. */
 export const num = (t: string) => Number(t);
+
+export interface Fatura { mes: string; vencimento: string; total: string; pago: string; falta: string; situacao: "paga" | "parcial" | "aberta" | "atrasada" | "futura" }
+export interface Cartao { id: string; nome: string; fechamento: number | null; vencimento: number | null; comprometido: string; faturas: Fatura[] }
+export interface Compra { id: string; cartao: string; mes: string; data: string; descricao: string; valor: string; categoria: string | null; parcela: number | null; parcelas: number | null }
+
+export const apiCartao = {
+  cartao: () => pedir<{ cartoes: Cartao[]; compras: Compra[] }>("/api/cartao"),
+  pagar: (corpo: { cartao_id: string; conta_id: string; mes: string; valor: string; data: string }) => pedir("/api/pagar-fatura", { method: "POST", body: JSON.stringify(corpo) }),
+};

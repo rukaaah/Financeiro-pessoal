@@ -133,6 +133,7 @@ def _transferencia(
     quando: date,
     descricao: str,
     chave: str,
+    quita: date | None = None,
 ) -> None:
     """Insere as duas pernas de uma transferência.
 
@@ -142,11 +143,22 @@ def _transferencia(
     transfer_id = ident(f"transfer:{chave}")
     cur.executemany(
         "INSERT INTO transactions"
-        " (id, user_id, kind, account_id, amount, occurred_on, description, transfer_id)"
-        " VALUES (%s, %s, 'transfer', %s, %s, %s, %s, %s)",
+        " (id, user_id, kind, account_id, amount, occurred_on, description, transfer_id,"
+        "  settles_invoice_month)"
+        " VALUES (%s, %s, 'transfer', %s, %s, %s, %s, %s, %s)",
         [
-            (ident(f"{chave}:saida"), USUARIO, de, -valor, quando, descricao, transfer_id),
-            (ident(f"{chave}:entrada"), USUARIO, para, valor, quando, descricao, transfer_id),
+            (ident(f"{chave}:saida"), USUARIO, de, -valor, quando, descricao, transfer_id, None),
+            # Só a perna que entra no cartão aponta a fatura que quita (ADR-010).
+            (
+                ident(f"{chave}:entrada"),
+                USUARIO,
+                para,
+                valor,
+                quando,
+                descricao,
+                transfer_id,
+                quita,
+            ),
         ],
     )
 
@@ -310,6 +322,7 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 quando=vencimento,
                 descricao=f"Pagamento da fatura de {mes_fatura:%m/%Y}",
                 chave=f"fatura:{mes_fatura:%Y-%m}",
+                quita=mes_fatura,
             )
 
         # Pagar por alguém é transferência, não gasto (RF17): o dinheiro sai da
