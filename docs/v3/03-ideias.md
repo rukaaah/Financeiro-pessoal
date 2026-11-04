@@ -70,7 +70,7 @@ diário de uma pessoa. "Apêndice A" diz se o requisito já existe.
 | 19 | **Ação que não grava não mostra confirmação** (enquanto houver dado de exemplo) | Diagnóstico | `st.toast` confirma o que não aconteceu | P | médio | não |
 | 20 | **Data da última atualização** em todo saldo e cotação | Diagnóstico | Saber se o número é de hoje | P | médio | parcial (RF10 para cotações) |
 
-| 21 | **Freelance em dólar a receber**: valor em USD, data prevista de recebimento e conversão estimada para reais como o PicPay faz; entra na projeção do mês pela data prevista | Pedro, no Portão 1 | Renda variável em moeda estrangeira não aparece no planejamento | M | alto | não (novo) |
+| 21 | **Freelance em dólar a receber**: valor em USD, data prevista de recebimento e conversão para reais **pela taxa do PayPal**, por onde o dinheiro chega, registrando quanto o PayPal descontou; entra na projeção do mês pela data prevista | Pedro, no Portão 1 | Renda variável em moeda estrangeira não aparece no planejamento | M | alto | não (novo) |
 
 ## Resultado do Portão 1 (Pedro, 2026-11-04)
 
@@ -80,27 +80,31 @@ diário de uma pessoa. "Apêndice A" diz se o requisito já existe.
 | 2 | sim | |
 | 3 | sim, ajustado | Patrimônio líquido **sem** os valores a receber, e com as partes também visíveis separadas |
 | 4 a 20 | sim | |
-| 21 | sim (pedido novo) | Freelance em dólar, previsão de quando recebe e conversão pelo cálculo do PicPay |
+| 21 | sim (pedido novo) | Freelance em dólar, previsão de quando recebe e conversão pela taxa do PayPal, "marcando o quanto o PayPal comeu" (correção do Pedro: era PayPal, não PicPay) |
 
 Pendências do ADR-013, RF20 e RF23: o Pedro não respondeu; seguem com a recomendação
 abaixo até ele dizer o contrário, e voltam no Portão 2.
 
-### Sobre a conversão do PicPay (ideia 21)
+### Conversão pelo PayPal (ideia 21)
 
-O PicPay não publica a fórmula de conversão de recebimentos do exterior. O que foi
-lido:
+O freelance chega pelo PayPal, e é a taxa dele que vale. O app **não tenta adivinhar
+a fórmula do PayPal**: registra o que de fato aconteceu e mede o custo contra uma
+referência oficial.
 
-- A Conta Global do PicPay, lançada em 10/11/2025, tem "taxa adicional sobre o câmbio"
-  que "pode chegar a zero" conforme o perfil do cliente, tendo a PTAX como referência
-  ([Canaltech, 11/11/2025](https://canaltech.com.br/mercado/picpay-estreia-conta-global-integrada-ao-brasil-com-spread-zero-e-rendimento-de/)).
-- Spread, taxa de serviço e IOF do **recebimento** no PicPay: **não confirmados** em
-  fonte oficial.
+- **Ao receber**, o Pedro informa dois números que o PayPal mostra: quanto entrou em
+  dólar e quanto chegou em reais. O app calcula:
+  - câmbio do PayPal = reais recebidos ÷ dólares;
+  - referência = PTAX de venda do dia, do Banco Central (fonte oficial e gratuita);
+  - **quanto o PayPal comeu** = dólares × PTAX − reais recebidos, em R$ e em %.
+- **Na previsão** (antes de receber): estimativa = dólares × PTAX de hoje × (1 − custo
+  médio dos últimos recebimentos). Sem recebimento anterior, mostra só "dólares ×
+  PTAX" e avisa que o desconto do PayPal ainda não é conhecido.
+- **No lançamento**, a receita é o que chegou em reais. O desconto fica guardado junto,
+  como informação, e aparece somado no ano ("o PayPal ficou com R$ X em 2026"), sem
+  virar despesa do orçamento.
 
-Proposta para a Etapa 5: estimativa = USD × PTAX do dia (Banco Central, fonte
-oficial e gratuita) × (1 − spread) − IOF, com spread e IOF editáveis e **calibrados
-pelo primeiro recebimento real** (o Pedro informa quanto entrou em reais, e o app
-deduz a taxa efetiva). Depois que o dinheiro cai, o valor em reais é o do extrato,
-nunca a estimativa.
+As taxas do PayPal **não foram consultadas** em fonte: o desconto é medido em cada
+recebimento real, o que dispensa conhecê-las.
 
 ## Decisões pendentes que entram junto no Portão 1
 

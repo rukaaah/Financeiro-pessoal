@@ -177,9 +177,12 @@ R$ 2.675,00   R$ 1.865,01 R$ 475,00   R$ 334,99
 - **Salvar** é o único botão preenchido (tinta). O botão muda para "Salvando…" no
   toque, antes da resposta.
 - **Vou receber** (freelance): valor em USD, data prevista, conta de destino; a
-  estimativa em reais aparece embaixo do valor, em cinza: "≈ R$ 5.412,00 pela PTAX de
-  hoje (5,4120) e a taxa efetiva do último recebimento (1,2%)". Sem recebimento
-  anterior: "taxa efetiva ainda não calibrada; usando 0%".
+  estimativa em reais aparece embaixo do valor, em cinza: "≈ R$ 5.228,00: PTAX de
+  hoje (5,4120) menos o desconto médio do PayPal (3,4%)". Sem recebimento anterior:
+  "≈ R$ 5.412,00 pela PTAX; o desconto do PayPal ainda não é conhecido".
+- **Recebi o freelance**: dois campos, "Dólares" e "Chegou em reais (como o PayPal
+  mostra)". Embaixo, na hora: "O PayPal ficou com R$ 186,40 (3,4%) contra a PTAX de
+  hoje." Salvar grava a receita pelo valor em reais e guarda o desconto.
 
 ### Colar notificação
 

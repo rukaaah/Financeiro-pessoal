@@ -35,7 +35,7 @@ recorrente que já virou lançamento sai de "Contas a pagar" e entra em "Gasto".
 | Cartão (Unicred) | Conta cujas compras vivem em **faturas**; o dinheiro só sai da corrente no pagamento | Regra do Apêndice A, ADR-005 a 010 |
 | Cofrinho, inclusive os CDBs | Conta própria, com meta e % do CDI | Os CDBs **ficam só aqui** (item 4 aprovado). Investimentos mostra "renda fixa em cofrinhos: R$ X" como uma linha que aponta para cá, sem somar de novo |
 | Valor a receber de pessoa | Conta por pessoa | Fica **fora** do patrimônio líquido (item 3), mostrado à parte |
-| Freelance em dólar (ideia 21) | **Entrada prevista** com valor em USD, data prevista e conversão estimada; vira receita quando cai | É renda esperada, não dívida de alguém. Entra na projeção do mês pela data prevista |
+| Freelance em dólar (ideia 21) | **Entrada prevista** com valor em USD, data prevista e estimativa em reais; vira receita, pelo valor que o PayPal entregou, quando cai, com o desconto do PayPal guardado | É renda esperada, não dívida de alguém. Entra na projeção do mês pela data prevista |
 | Investimentos (FII, Tesouro) | Conta de investimento com posições | Valor de mercado vem do job de cotações |
 | Patrimônio líquido | Contas + cofrinhos + investimentos − faturas em aberto, **sem** a receber | Item 3 aprovado, com as partes visíveis |
 
@@ -269,11 +269,13 @@ Meta: três toques além de digitar o valor, quando a categoria vem sugerida.
 ### F8 — Freelance em dólar (ideia 21)
 
 1. **+** → **Vou receber**: valor em USD, data prevista, conta de destino.
-2. A estimativa em reais aparece na hora (PTAX × taxa efetiva calibrada) e entra
-   no saldo projetado do Mês na data prevista.
+2. A estimativa em reais aparece na hora (USD × PTAX × (1 − desconto médio do
+   PayPal nos últimos recebimentos)) e entra no saldo projetado na data prevista.
 3. Quando o dinheiro cai: o item da Atenção "Freelance previsto para hoje" vira
-   **Recebi** preenchido; o valor em reais é o do extrato. Na primeira vez, o app
-   deduz a taxa efetiva e passa a usá-la nas próximas estimativas.
+   **Recebi** preenchido com o valor em USD; o Pedro digita quanto chegou em reais,
+   como o PayPal mostra. O app mostra "o PayPal ficou com R$ 186,40 (3,4%) contra a
+   PTAX de hoje", guarda isso e usa nas próximas estimativas.
+4. Patrimônio → Visão traz, numa linha, o total que o PayPal descontou no ano.
 
 ### F9 — Conciliar (ideia 8)
 
