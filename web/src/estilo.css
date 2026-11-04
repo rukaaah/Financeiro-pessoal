@@ -158,3 +158,5 @@ a{color:var(--azul)}
 nav.barra button:active,.btn:active,.chip:active,.item:active{transform:scale(.98)}
 .achado > span[aria-hidden]{font-weight:800;color:var(--fora);width:20px;text-align:center}
 .btn[disabled]{opacity:.5;cursor:default}
+.link-sub{color:var(--azul);font-weight:600;font-size:14px;min-height:32px}
+.item .acao{background:none;border:0;min-height:32px}

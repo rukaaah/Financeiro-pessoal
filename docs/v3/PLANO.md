@@ -28,11 +28,11 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
 - [x] **Etapa 8** — Plano de construção → `08-plano-de-construcao.md`
 - [ ] **Etapa 9** — Construção, uma fatia por PR (👤 = precisa do Pedro)
   - [x] Fatia 0 — prova da stack (PRs #15, #17, #18; medição em `medicoes.md`: API p50 164 ms no 4G lento)
-  - [ ] Fatia 1 — login, demo e allowlist 👤 redirect do OAuth · login OIDC ✓ (PR #16); falta testar com o Google de verdade e reescrever o seed do demo
+  - [x] Fatia 1 — login, demo e allowlist (PR #16; secrets cadastrados; falta o Pedro entrar uma vez para confirmar)
   - [x] Fatia 2 — Lançar e Lançamentos (PR #19; toque em 26 a 45 ms, `medicoes.md`)
-  - [ ] Fatia 3 — Mês
-  - [ ] Fatia 4 — Cartão
-  - [ ] Fatia 5 — recorrentes, entradas previstas e Atenção
+  - [x] Fatia 3 — Mês (PR #20)
+  - [x] Fatia 4 — Cartão (PR #21)
+  - [ ] Fatia 5 — recorrentes, entradas previstas e Atenção (em PR)
   - [ ] Fatia 6 — Patrimônio
   - [ ] Fatia 7 — Investimentos
   - [ ] Fatia 8 — entrada em lote

@@ -121,6 +121,22 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         " VALUES (%s, %s, %s, %s)",
         (usuario, categoria, date(2026, 3, 1), Decimal("700.00")),
     )
+    cur.execute(
+        "INSERT INTO recurring_bills"
+        " (user_id, name, amount, due_day, category_id, account_id, valid_from)"
+        " VALUES (%s, 'Conta de luz', %s, 28, %s, %s, %s)",
+        (usuario, Decimal("120.00"), categoria, corrente, date(2026, 1, 1)),
+    )
+    cur.execute(
+        "INSERT INTO expected_incomes"
+        " (user_id, description, currency, amount, expected_on, account_id, category_id)"
+        " VALUES (%s, 'Freelance', 'USD', %s, %s, %s, %s)",
+        (usuario, Decimal("300.00"), date(2026, 3, 25), corrente, categoria),
+    )
+    cur.execute(
+        "INSERT INTO attention_snoozes (user_id, item_key, until) VALUES (%s, %s, NULL)",
+        (usuario, "conta:teste:2026-03"),
+    )
 
     transfer = uuid.uuid4()
     cur.executemany(

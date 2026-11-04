@@ -6,19 +6,27 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 const mesDaFatura = (m: string) => `${MESES[Number(m.slice(5, 7)) - 1]}/${m.slice(0, 4)}`;
 
 /** Folha "Lançar" (06b-telas.md): abre em Gastei, com o valor focado. */
-export function Lancar({ opcoes, aoFechar, aoLancar }: { opcoes: Opcoes | null; aoFechar(): void; aoLancar(corpo: object): void }) {
-  const [intencao, setIntencao] = useState<"gastei" | "recebi">("gastei");
-  const [valor, setValor] = useState("");
-  const [contaId, setContaId] = useState("");
-  const [categoriaId, setCategoriaId] = useState("");
+export interface Inicial { valor?: string | undefined; contaId?: string | undefined; categoriaId?: string | undefined; descricao?: string | undefined; contaRecorrenteId?: string | undefined }
+
+export function Lancar({ opcoes, inicial, ptax, descontoPb, aoFechar, aoLancar, aoPrever }: { opcoes: Opcoes | null; inicial?: Inicial | undefined; ptax?: string | null; descontoPb?: number; aoFechar(): void; aoLancar(corpo: object): void; aoPrever(corpo: object): void }) {
+  const [intencao, setIntencao] = useState<"gastei" | "recebi" | "vou-receber">("gastei");
+  const [valor, setValor] = useState(inicial?.valor ?? "");
+  const [contaId, setContaId] = useState(inicial?.contaId ?? "");
+  const [categoriaId, setCategoriaId] = useState(inicial?.categoriaId ?? "");
+  const [moeda, setMoeda] = useState<"USD" | "BRL">("USD");
   const [data, setData] = useState(hoje());
-  const [descricao, setDescricao] = useState("");
+  const [descricao, setDescricao] = useState(inicial?.descricao ?? "");
   const [parcelas, setParcelas] = useState(1);
   const [fatura, setFatura] = useState<string | null>(null);
   const [erro, setErro] = useState("");
   const campoValor = useRef<HTMLInputElement>(null);
 
   const tipo = intencao === "gastei" ? "expense" : "income";
+  const estimativa = (() => {
+    if (intencao !== "vou-receber" || moeda !== "USD" || !ptax) return null;
+    const v = Number(valor.replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(v) && v > 0 ? v * Number(ptax) * (1 - (descontoPb ?? 0) / 10000) : null;
+  })();
   const categorias = opcoes?.categorias.filter((c) => c.tipo === tipo) ?? [];
   const contas = opcoes?.contas.filter((c) => intencao === "gastei" || c.tipo !== "credit_card") ?? [];
   const conta = contas.find((c) => c.id === contaId);
@@ -40,7 +48,11 @@ export function Lancar({ opcoes, aoFechar, aoLancar }: { opcoes: Opcoes | null; 
     e.preventDefault();
     if (!/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$/.test(valor.trim())) return setErro("Digite o valor como 42,50.");
     if (!contaId || !categoriaId) return setErro("Escolha conta e categoria.");
-    aoLancar({ intencao, valor: valor.trim(), conta_id: contaId, categoria_id: categoriaId, data, descricao: descricao.trim(), parcelas: conta?.tipo === "credit_card" ? parcelas : 1 });
+    if (intencao === "vou-receber") {
+      if (!descricao.trim()) return setErro("Dê um nome, como Freelance.");
+      return aoPrever({ descricao: descricao.trim(), moeda, valor: valor.trim(), data, conta_id: contaId, categoria_id: categoriaId });
+    }
+    aoLancar({ intencao, valor: valor.trim(), conta_id: contaId, categoria_id: categoriaId, data, descricao: descricao.trim(), parcelas: conta?.tipo === "credit_card" ? parcelas : 1, conta_recorrente_id: inicial?.contaRecorrenteId });
   }
 
   return (
@@ -48,14 +60,14 @@ export function Lancar({ opcoes, aoFechar, aoLancar }: { opcoes: Opcoes | null; 
       <div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-lancar">
         <div class="topo"><h3 id="t-lancar">Lançar</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
         <div class="chips" role="group" aria-label="O que aconteceu">
-          {(["gastei", "recebi"] as const).map((i) => (
-            <button type="button" class="chip" aria-pressed={i === intencao} onClick={() => setIntencao(i)}>{i === "gastei" ? "Gastei" : "Recebi"}</button>
+          {(["gastei", "recebi", "vou-receber"] as const).map((i) => (
+            <button type="button" class="chip" aria-pressed={i === intencao} onClick={() => setIntencao(i)}>{i === "gastei" ? "Gastei" : i === "recebi" ? "Recebi" : "Vou receber"}</button>
           ))}
-          <span class="chip sub" title="Chega nas próximas fatias">Guardei · Paguei a fatura · Vou receber</span>
         </div>
         {!opcoes ? <p class="sub">Carregando contas e categorias…</p> : (
           <form onSubmit={salvar}>
-            <div class="campo"><label for="f-valor">Valor (R$)</label>
+            {intencao === "vou-receber" && <div class="chips" role="group" aria-label="Moeda">{(["USD", "BRL"] as const).map((m) => <button type="button" class="chip" aria-pressed={m === moeda} onClick={() => setMoeda(m)}>{m === "USD" ? "Dólar" : "Real"}</button>)}</div>}
+            <div class="campo"><label for="f-valor">Valor ({intencao === "vou-receber" && moeda === "USD" ? "US$" : "R$"})</label>
               <input id="f-valor" ref={campoValor} class="grande-in" inputMode="decimal" placeholder="0,00" value={valor} onInput={(e) => { setValor(e.currentTarget.value); setErro(""); }} /></div>
             <div class="campo"><label for="f-cat">Categoria</label>
               <select id="f-cat" value={categoriaId} onChange={(e) => setCategoriaId(e.currentTarget.value)}>
@@ -74,10 +86,12 @@ export function Lancar({ opcoes, aoFechar, aoLancar }: { opcoes: Opcoes | null; 
                   </select></div>
               </>
             )}
-            <div class="campo"><label for="f-data">Data</label><input id="f-data" type="date" value={data} onInput={(e) => setData(e.currentTarget.value)} /></div>
-            <div class="campo"><label for="f-desc">Descrição (opcional)</label><input id="f-desc" value={descricao} maxLength={200} onInput={(e) => setDescricao(e.currentTarget.value)} /></div>
+            {estimativa !== null && <p class="nota">≈ <b>R$ {estimativa.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>: PTAX de hoje ({ptax!.replace(".", ",")}) menos o desconto médio do PayPal ({((descontoPb ?? 0) / 100).toFixed(1).replace(".", ",")}%). Entra no saldo projetado na data.</p>}
+            {intencao === "vou-receber" && moeda === "USD" && !ptax && <p class="nota">Sem a PTAX agora; a estimativa em reais aparece quando ela voltar.</p>}
+            <div class="campo"><label for="f-data">{intencao === "vou-receber" ? "Data prevista" : "Data"}</label><input id="f-data" type="date" value={data} onInput={(e) => setData(e.currentTarget.value)} /></div>
+            <div class="campo"><label for="f-desc">{intencao === "vou-receber" ? "Nome" : "Descrição (opcional)"}</label><input id="f-desc" value={descricao} maxLength={200} onInput={(e) => setDescricao(e.currentTarget.value)} /></div>
             {erro && <p class="erro-campo" role="alert">{erro}</p>}
-            <div style="margin-top:16px"><button type="submit" class="btn-tinta">Salvar</button></div>
+            <div style="margin-top:16px"><button type="submit" class="btn-tinta">{intencao === "vou-receber" ? "Salvar previsão" : "Salvar"}</button></div>
           </form>
         )}
       </div>

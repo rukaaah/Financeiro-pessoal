@@ -1,6 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 import { apiMes, brl, type CategoriaDoMes, type DetalheCategoria, type Mes as MesDados, num } from "../api.ts";
 import { Icone } from "../icone.tsx";
+import { ListaDeAtencao, SaldoProjetado } from "./atencao.tsx";
+import type { ItemAtencao } from "../api.ts";
 
 const NOMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -9,7 +11,7 @@ export const andarMes = (m: string, d: number) => { const t = Number(m.slice(0, 
 const pct = (a: string, b: string) => (num(b) > 0 ? Math.round((num(a) / num(b)) * 100) : 0);
 const semRS = (t: string) => brl(t).replace("R$ ", "");
 
-export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria }: { mes: string; dados: MesDados | null; aoTrocarMes(m: string): void; aoAbrirCategoria(c: CategoriaDoMes): void }) {
+export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, aoAgir }: { mes: string; dados: MesDados | null; aoTrocarMes(m: string): void; aoAbrirCategoria(c: CategoriaDoMes): void; aoVerAtencao(): void; aoAgir(i: ItemAtencao): void }) {
   const d = dados;
   const grupos = [...new Set(d?.categorias.map((c) => c.grupo) ?? [])];
   return (
@@ -34,6 +36,14 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria }: { mes: string
       </div>
 
       {d?.descoberta && <div class="achado" role="note"><span aria-hidden="true">!</span><div>{d.descoberta}</div></div>}
+
+      {d && (
+        <section aria-labelledby="h-at">
+          <h2 id="h-at">Atenção · {d.atencao.length} <button class="link-sub" onClick={aoVerAtencao}>Ver todos</button></h2>
+          <ListaDeAtencao itens={d.atencao} limite={3} aoAgir={aoAgir} />
+        </section>
+      )}
+      {d && <SaldoProjetado dados={d} />}
 
       <section aria-labelledby="h-cat">
         <h2 id="h-cat">Categorias <span class="lado">gasto · previsto</span></h2>

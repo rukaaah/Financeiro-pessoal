@@ -32,7 +32,10 @@ export function brl(texto: string, comSinal = false): string {
 export const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export interface CategoriaDoMes { id: string; nome: string; grupo: string; previsto: string; gasto: string; media3m: string; ajustado: boolean; estado: "dentro" | "perto" | "fora" }
-export interface Mes { mes: string; previsto: string; gasto: string; a_pagar: string; livre: string; por_dia: string; dia_do_mes: number; dias_no_mes: number; dias_restantes: number; renda: string; renda_prevista: string; guardado: string; sobra: string; descoberta: string | null; categorias: CategoriaDoMes[] }
+export interface ItemAtencao { chave: string; gravidade: "critico" | "atencao" | "informativo"; titulo: string; detalhe: string; valor: string; data: string | null; acao: { tipo: "ver-categoria"; id: string } | { tipo: "pagar-conta"; id: string } | { tipo: "pagar-fatura"; cartao: string; mes: string } | { tipo: "receber"; id: string } | { tipo: "nenhuma" } }
+export interface ContaDoMes { id: string; nome: string; valor: string; vencimento: string; urgencia: "essential" | "important" | "deferrable"; paga: boolean; noCartao: boolean }
+export interface EntradaDoMes { id: string; descricao: string; data: string; estimativa: string }
+export interface Mes { atencao: ItemAtencao[]; projecao: { dia: string; saldo: string }[]; contas: ContaDoMes[]; entradas: EntradaDoMes[]; ptax: string | null; desconto_pb: number; saldo_hoje: string; mes: string; previsto: string; gasto: string; a_pagar: string; livre: string; por_dia: string; dia_do_mes: number; dias_no_mes: number; dias_restantes: number; renda: string; renda_prevista: string; guardado: string; sobra: string; descoberta: string | null; categorias: CategoriaDoMes[] }
 export interface DetalheCategoria { serie: { mes: string; gasto: string; previsto: string | null }[]; lancamentos: { id: string; data: string; descricao: string; valor: string; conta: string }[] }
 
 export const apiMes = {
@@ -51,4 +54,12 @@ export interface Compra { id: string; cartao: string; mes: string; data: string;
 export const apiCartao = {
   cartao: () => pedir<{ cartoes: Cartao[]; compras: Compra[] }>("/api/cartao"),
   pagar: (corpo: { cartao_id: string; conta_id: string; mes: string; valor: string; data: string }) => pedir("/api/pagar-fatura", { method: "POST", body: JSON.stringify(corpo) }),
+};
+
+export const apiAtencao = {
+  contasRecorrentes: () => pedir<{ contas: { id: string; nome: string; valor: string; dia: number; categoria_id: string; conta_id: string }[] }>("/api/contas-recorrentes"),
+  novaConta: (corpo: object) => pedir("/api/contas-recorrentes", { method: "POST", body: JSON.stringify(corpo) }),
+  novaEntrada: (corpo: object) => pedir("/api/entradas-previstas", { method: "POST", body: JSON.stringify(corpo) }),
+  receber: (id: string, corpo: { recebido: string; data: string }) => pedir<{ desconto: string | null; ptax: string | null }>(`/api/entradas-previstas/${id}/receber`, { method: "POST", body: JSON.stringify(corpo) }),
+  adiar: (chave: string, ate: string | null) => pedir("/api/atencao/adiar", { method: "POST", body: JSON.stringify({ chave, ate }) }),
 };

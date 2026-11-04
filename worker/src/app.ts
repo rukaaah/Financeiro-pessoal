@@ -6,6 +6,7 @@ import { apagarCookie, type Buscar, COOKIE_LOGIN, COOKIE_SESSAO, concluirLogin, 
 import { rotasDeLancamentos } from "./lancamentos.ts";
 import { rotasDoMes } from "./mes.ts";
 import { rotasDoCartao } from "./cartao.ts";
+import { rotasDaAtencao } from "./atencao.ts";
 import { comSessao } from "./sessao.ts";
 import type { Consulta, Linha } from "./banco.ts";
 import type { Context } from "hono";
@@ -20,6 +21,8 @@ export interface Dependencias<E> {
   /** Login Google. Sem configuração, /auth/entrar responde que o login não está ligado. */
   login?(env: E): { clientId: string; clientSecret: string; segredo: string } | null;
   buscar?: Buscar;
+  /** PTAX de venda do dia (Banco Central). Sem ela, entrada em dólar fica sem estimativa. */
+  ptax?(env: E): Promise<string | null>;
 }
 
 export function criarApp<E extends object>(deps: Dependencias<E>) {
@@ -49,8 +52,9 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
     return (await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), consultas)).linhas;
   };
   rotasDeLancamentos(app, rodar);
-  rotasDoMes(app, rodar);
+  rotasDoMes(app, rodar, deps.ptax ?? (async () => null));
   rotasDoCartao(app, rodar);
+  rotasDaAtencao(app, rodar, deps.ptax ?? (async () => null));
 
   app.get("/api/sessao", async (c) => {
     const { sessao } = await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), []);
