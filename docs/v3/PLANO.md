@@ -18,7 +18,7 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
   - [x] Facilitações vindas da Etapa 2 e do diagnóstico
   - [x] Reddit dispensado pelo Pedro em 2026-11-04 (nenhum caminho de leitura funcionou)
 - [x] 🔒 **Portão 1** — respondido em 2026-11-04 (ver `03-ideias.md`)
-- [ ] **Etapa 4** — Onde a IA ajuda → `04-ia.md` + `prompts/ia/<funcionalidade>.md`
+- [x] **Etapa 4** — Onde a IA ajuda → `04-ia.md` + `prompts/ia/<funcionalidade>.md`
 - [ ] **Etapa 5** — Representação e arquitetura de informação → `05-arquitetura-de-informacao.md`
 - [ ] **Etapa 6a** — Estilo (`/design-md-library`) → `06a-estilo.md`
 - [ ] **Etapa 6b** — Telas (`/design-taste-frontend`) → `06b-telas.md`
