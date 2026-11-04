@@ -9,6 +9,7 @@ import { Cartao, PagarFatura } from "./telas/cartao.tsx";
 import { Atencao, NovaConta, Receber } from "./telas/atencao.tsx";
 import type { Inicial } from "./telas/lancar.tsx";
 import { Mover, type Movimento, Patrimonio } from "./telas/patrimonio.tsx";
+import { ColarNotificacao, ImportarExtrato } from "./telas/entrada.tsx";
 import "./estilo.css";
 
 type Tela = "mes" | "lancamentos" | "cartao" | "patrimonio";
@@ -21,7 +22,7 @@ function App() {
   const [opcoes, setOpcoes] = useState<Opcoes | null>(null);
   const [lista, setLista] = useState<ListaDoMes | null>(null);
   const [ocultos, setOcultos] = useState<Set<string>>(new Set());
-  const [folha, setFolha] = useState<null | { tipo: "lancar"; inicial?: Inicial } | { tipo: "atencao" } | { tipo: "nova-conta" } | { tipo: "receber"; id: string } | { tipo: "mover"; m: Movimento } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
+  const [folha, setFolha] = useState<null | { tipo: "lancar"; inicial?: Inicial; intencao?: "gastei" | "recebi" } | { tipo: "colar" } | { tipo: "importar" } | { tipo: "atencao" } | { tipo: "nova-conta" } | { tipo: "receber"; id: string } | { tipo: "mover"; m: Movimento } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
   const [dadosCartao, setDadosCartao] = useState<{ cartoes: CartaoDados[]; compras: Compra[] } | null>(null);
   const [dadosPatrimonio, setDadosPatrimonio] = useState<PatrimonioDados | null>(null);
   const recarregarPatrimonio = () => apiPatrimonio.ver().then(setDadosPatrimonio).catch(() => {});
@@ -101,7 +102,7 @@ function App() {
           {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} />
             : tela === "patrimonio" ? <Patrimonio dados={dadosPatrimonio} opcoes={opcoes} aoMover={(m) => setFolha({ tipo: "mover", m })} aoAvisar={(texto) => avisar({ texto })} />
             : tela === "cartao" ? <Cartao dados={dadosCartao} aoPagar={(c, f) => setFolha({ tipo: "pagar", c, f })} />
-            : tela === "lancamentos" ? <Lancamentos lista={lista} ocultos={ocultos} aoEditar={(l) => setFolha({ tipo: "editar", l })} aoAbrirLancar={() => setFolha({ tipo: "lancar" })} />
+            : tela === "lancamentos" ? <Lancamentos lista={lista} ocultos={ocultos} aoEditar={(l) => setFolha({ tipo: "editar", l })} aoAbrirLancar={() => setFolha({ tipo: "lancar" })} aoColar={() => setFolha({ tipo: "colar" })} aoImportar={() => setFolha({ tipo: "importar" })} />
             : <>
               <header><div><h1>{destinos.find((d) => d[0] === tela)![1]}</h1></div>{!demo && <a class="sub" href="/auth/sair">Sair</a>}</header>
               <div class="vazio"><b>Esta tela chega numa próxima fatia.</b><p class="sub">{"Cofrinhos, a receber e investimentos entram nas fatias 6 e 7."} Já dá para lançar pelo + e ver em Lançamentos.</p></div>
@@ -113,7 +114,7 @@ function App() {
         <button aria-label="Lançar" onClick={() => setFolha({ tipo: "lancar" })}><span class="lancar"><Icone nome="mais" tamanho={28} /></span></button>
         {destinos.slice(2).map(([id, nome]) => <button aria-current={tela === id ? "page" : undefined} onClick={() => setTela(id)}><Icone nome={id} />{nome}</button>)}
       </div></nav>
-      {folha?.tipo === "lancar" && <Lancar opcoes={opcoes} inicial={folha.inicial} ptax={dadosMes?.ptax ?? null} descontoPb={dadosMes?.desconto_pb ?? 0} aoFechar={() => setFolha(null)} aoLancar={lancar}
+      {folha?.tipo === "lancar" && <Lancar opcoes={opcoes} inicial={folha.inicial} intencaoInicial={folha.intencao} ptax={dadosMes?.ptax ?? null} descontoPb={dadosMes?.desconto_pb ?? 0} aoFechar={() => setFolha(null)} aoLancar={lancar}
         aoPrever={(corpo) => { setFolha(null); apiAtencao.novaEntrada(corpo).then(() => recarregarMes()).then(() => avisar({ texto: "Entrada prevista salva." })).catch((e: Error) => avisar({ texto: e.message })); }} />}
       {folha?.tipo === "atencao" && dadosMes && <Atencao dados={dadosMes} aoFechar={() => setFolha(null)} aoAgir={agir} aoAdiar={adiar} aoNovaConta={() => setFolha({ tipo: "nova-conta" })} />}
       {folha?.tipo === "nova-conta" && <NovaConta opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => { setFolha(null); apiAtencao.novaConta(corpo).then(() => recarregarMes()).then(() => avisar({ texto: "Conta recorrente salva." })).catch((e: Error) => avisar({ texto: e.message })); }} />}
@@ -139,6 +140,8 @@ function App() {
           : apiPatrimonio.conciliar(corpo).then((r) => { avisar({ texto: r.diferenca === "0.00" ? "Conferido: o saldo bate com o banco." : `Diferença de R$ ${r.diferenca.replace(".", ",")} contra o banco.` }); return r; });
         feito.then(() => recarregar()).then(() => { if (m.tipo !== "conciliar") avisar({ texto: "Salvo." }); }).catch((e: Error) => avisar({ texto: e.message }));
       }} />}
+      {folha?.tipo === "colar" && <ColarNotificacao opcoes={opcoes} aoFechar={() => setFolha(null)} aoAbrir={(inicial, intencao) => setFolha({ tipo: "lancar", inicial, intencao })} />}
+      {folha?.tipo === "importar" && <ImportarExtrato opcoes={opcoes} aoFechar={() => setFolha(null)} aoImportado={(n) => { setFolha(null); recarregar(); avisar({ texto: `${n} lançamentos importados.` }); }} />}
       {aviso && <div class="toast" role="status"><span>{aviso.texto}</span>{aviso.desfazer && <button onClick={() => { const d = aviso.desfazer!; setAviso(null); d(); }}>Desfazer</button>}</div>}
     </>
   );

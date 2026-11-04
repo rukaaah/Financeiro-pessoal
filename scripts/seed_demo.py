@@ -374,6 +374,21 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 ident("salario"),
             ),
         )
+        # Saldo com que a conta começou o histórico: sem ele, três meses de aluguel,
+        # fatura e compra de cotas deixam o PicPay negativo e o demo mente (ideia 18).
+        cur.execute(
+            "INSERT INTO transactions (id, user_id, kind, account_id, category_id, amount,"
+            " occurred_on, description) VALUES (%s, %s, 'income', %s, %s, %s, %s, %s)",
+            (
+                ident("saldo-inicial"),
+                USUARIO,
+                ident("picpay"),
+                ident("salario"),
+                Decimal("12000.00"),
+                primeiro_dia(hoje, 3),
+                "Saldo inicial",
+            ),
+        )
         # Três meses de histórico, terminando no mês corrente.
         for meses_atras in (2, 1, 0):
             mes = primeiro_dia(hoje, meses_atras)

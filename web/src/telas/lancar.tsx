@@ -8,8 +8,8 @@ const mesDaFatura = (m: string) => `${MESES[Number(m.slice(5, 7)) - 1]}/${m.slic
 /** Folha "Lançar" (06b-telas.md): abre em Gastei, com o valor focado. */
 export interface Inicial { valor?: string | undefined; contaId?: string | undefined; categoriaId?: string | undefined; descricao?: string | undefined; contaRecorrenteId?: string | undefined }
 
-export function Lancar({ opcoes, inicial, ptax, descontoPb, aoFechar, aoLancar, aoPrever }: { opcoes: Opcoes | null; inicial?: Inicial | undefined; ptax?: string | null; descontoPb?: number; aoFechar(): void; aoLancar(corpo: object): void; aoPrever(corpo: object): void }) {
-  const [intencao, setIntencao] = useState<"gastei" | "recebi" | "vou-receber">("gastei");
+export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoFechar, aoLancar, aoPrever }: { opcoes: Opcoes | null; inicial?: Inicial | undefined; intencaoInicial?: "gastei" | "recebi" | undefined; ptax?: string | null; descontoPb?: number; aoFechar(): void; aoLancar(corpo: object): void; aoPrever(corpo: object): void }) {
+  const [intencao, setIntencao] = useState<"gastei" | "recebi" | "vou-receber">(intencaoInicial ?? "gastei");
   const [valor, setValor] = useState(inicial?.valor ?? "");
   const [contaId, setContaId] = useState(inicial?.contaId ?? "");
   const [categoriaId, setCategoriaId] = useState(inicial?.categoriaId ?? "");

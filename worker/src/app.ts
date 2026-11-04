@@ -9,6 +9,7 @@ import { rotasDoCartao } from "./cartao.ts";
 import { rotasDaAtencao } from "./atencao.ts";
 import { rotasDoPatrimonio } from "./patrimonio.ts";
 import { rotasDeInvestimentos } from "./investimentos.ts";
+import { rotasDeImportacao } from "./importar.ts";
 import { comSessao } from "./sessao.ts";
 import type { Consulta, Linha } from "./banco.ts";
 import type { Context } from "hono";
@@ -59,6 +60,7 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
   rotasDaAtencao(app, rodar, deps.ptax ?? (async () => null));
   rotasDoPatrimonio(app, rodar);
   rotasDeInvestimentos(app, rodar);
+  rotasDeImportacao(app, rodar);
 
   app.get("/api/sessao", async (c) => {
     const { sessao } = await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), []);

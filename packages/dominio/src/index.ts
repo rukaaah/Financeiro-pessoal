@@ -7,3 +7,4 @@ export * from "./conversao.ts";
 export * from "./atencao.ts";
 export * from "./patrimonio.ts";
 export * from "./investimentos.ts";
+export * from "./entrada.ts";
