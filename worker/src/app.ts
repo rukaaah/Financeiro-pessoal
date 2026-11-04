@@ -5,6 +5,7 @@ import { consulta } from "./banco.ts";
 import { apagarCookie, type Buscar, COOKIE_LOGIN, COOKIE_SESSAO, concluirLogin, criarCookieSessao, iniciarLogin } from "./auth.ts";
 import { rotasDeLancamentos } from "./lancamentos.ts";
 import { rotasDoMes } from "./mes.ts";
+import { rotasDoCartao } from "./cartao.ts";
 import { comSessao } from "./sessao.ts";
 import type { Consulta, Linha } from "./banco.ts";
 import type { Context } from "hono";
@@ -49,6 +50,7 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
   };
   rotasDeLancamentos(app, rodar);
   rotasDoMes(app, rodar);
+  rotasDoCartao(app, rodar);
 
   app.get("/api/sessao", async (c) => {
     const { sessao } = await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), []);
