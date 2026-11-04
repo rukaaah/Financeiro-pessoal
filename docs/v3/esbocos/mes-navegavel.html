@@ -1,4 +1,4 @@
-<title>Mês · esboço v3</title>
+<title>Financeiro pessoal · esboço v3</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block">
 <style>
@@ -97,11 +97,49 @@ nav.barra .lancar .ms{font-size:30px}
 .colunas i{flex:1;background:var(--sup2);border-radius:2px 2px 0 0;position:relative}
 .colunas i.atual{background:var(--azul)}
 .colunas-rot{display:flex;justify-content:space-between;font-size:12px;color:var(--t2)}
+
+.abas{display:flex;gap:20px;border-bottom:1px solid var(--regua);overflow-x:auto;margin:4px 0 16px}
+.abas button{padding:10px 0;font-weight:500;color:var(--t2);border-bottom:2px solid transparent;white-space:nowrap;min-height:44px}
+.abas button[aria-selected="true"]{color:var(--tinta);font-weight:700;border-bottom-color:var(--tinta)}
+.chip[aria-pressed="true"]{background:var(--tinta);color:var(--papel);border-color:var(--tinta);font-weight:600}
+.lote{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
+.lote .btn{justify-content:center}
+.dia{font-size:13px;font-weight:700;color:var(--t2);padding:14px 0 6px}
+.entrada{color:var(--dentro)}
+.heroi .acao-heroi{display:flex;gap:8px;margin-top:14px}
+.btn-cheio{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--heroi-t);color:var(--heroi);border-radius:4px;padding:10px 16px;min-height:44px;font-weight:700;font-size:15px}
+.btn-tinta{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--tinta);color:var(--papel);border-radius:4px;padding:12px 16px;min-height:48px;font-weight:700;font-size:16px;width:100%}
+.colfat{display:flex;align-items:flex-end;gap:10px;height:90px;margin-top:8px}
+.colfat div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--t2);height:100%;justify-content:flex-end}
+.colfat i{display:block;width:100%;background:var(--sup2);border-radius:2px 2px 0 0}
+.colfat .atual i{background:var(--azul)}
+.partes .item{grid-template-columns:minmax(0,1fr) auto}
+.menos{color:var(--t2)}
+.prog{grid-column:1/-1;height:4px;background:var(--sup2);border-radius:999px;margin-top:6px;overflow:hidden;position:relative}
+.prog i{display:block;height:100%;background:var(--tinta)}
+.prog b{position:absolute;top:-3px;width:2px;height:10px;background:var(--azul)}
+.aloc{display:grid;grid-template-columns:90px minmax(0,1fr) 46px;gap:8px;align-items:center;padding:6px 0;font-size:14px}
+.aloc .tr{height:10px;background:var(--sup2);border-radius:999px;position:relative}
+.aloc .tr i{position:absolute;left:0;top:0;bottom:0;background:var(--azul);border-radius:999px}
+.aloc .tr b{position:absolute;top:-3px;width:2px;height:16px;background:var(--tinta)}
+.pessoa{display:flex;align-items:center;gap:10px}
+.inicial{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;color:var(--tinta)}
+.areas .item{align-items:center}
+.toggle{width:40px;height:24px;border-radius:999px;background:var(--dentro);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--papel)}
+.campo{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.campo label{font-size:14px;font-weight:600}
+.campo input,.campo select{font:inherit;font-size:16px;color:var(--tinta);background:var(--sup);border:1px solid var(--t2);border-radius:4px;padding:10px 12px;min-height:46px;width:100%}
+.campo .grande-in{font-size:28px;font-weight:700}
+.nota{font-size:14px;color:var(--t2);margin-top:6px}
+.nota b{color:var(--tinta)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--tinta);color:var(--papel);border-radius:6px;padding:10px 14px;display:flex;gap:16px;align-items:center;z-index:30;max-width:calc(100% - 32px)}
+.toast button{color:var(--papel);font-weight:700;text-decoration:underline;min-height:36px}
 @media (prefers-reduced-motion:no-preference){.folha{animation:sobe .16s ease-out}@keyframes sobe{from{transform:translateY(24px);opacity:.6}}}
 </style>
 
 <div class="app">
-  <div class="tarja"><span><b>Dados fictícios</b> · esboço navegável do Mês</span><span>v3</span></div>
+  <div class="tarja"><span><b>Dados fictícios</b> · esboço navegável</span><span>v3</span></div>
   <main id="tela"></main>
 </div>
 <nav class="barra" aria-label="Destinos"><div class="in">
@@ -234,13 +272,145 @@ function telaMes(){
   <p class="sub" id="copiado" aria-live="polite"></p>`;
 }
 
-const outras = {lancamentos:"Lançamentos", cartao:"Cartão", patrimonio:"Patrimônio"};
-function telaOutra(id){ return `<header><div><h1>${outras[id]}</h1></div></header><div class="vazio"><b>Ainda não desenhada neste esboço.</b><p class="sub">O briefing desta tela está em docs/v3/06b-telas.md. Este esboço mostra só o Mês.</p></div>`; }
 
+// ---- outras telas (mesmos dados fictícios)
+const lanc = [ // [dia, descrição, categoria, conta, valor em centavos (+ entrada / − saída), tipo]
+  [4,"Supermercado Bom Preço","Mercado","PicPay",-22150,"g"],[4,"Uber","Apps","PicPay",-1890,"g"],
+  [3,"Supermercado","Mercado","Unicred · fatura 11/2026",-31840,"g"],[3,"Lanche","Lanches e delivery","PicPay",-4250,"g"],
+  [3,"Aporte na Reserva","","PicPay → Cofrinho Reserva",30000,"t"],[2,"Combustível","Combustível","Unicred · fatura 11/2026",-18000,"g"],
+  [2,"Mensalidade muay thai","Muay thai","PicPay",-15000,"g"],[1,"Salário","Salário","PicPay",420000,"r"],
+  [1,"Presente","Presentes","Unicred · fatura 11/2026",-11500,"g"],[1,"Tarifa","Tarifas bancárias","PicPay",-2000,"g"],
+];
+const faturas = [["Out/26","paga",64840,"paga em 11/10"],["Nov/26","aberta",84340,"vence 11/11"],["Dez/26","futura",23000,""],["Jan/27","futura",23000,""],["Fev/27","futura",15000,""],["Mar/27","futura",15000,""]];
+const comprasNov = [["Supermercado","03/11 · Mercado",31840],["Combustível","02/11 · Combustível",18000],["Presente","01/11 · Presentes",11500],["Fone de ouvido","20/10 · Compras pessoais · parcela 1/3",8000],["Console de jogos","10/10 · Jogos · parcela 2/6",15000]];
+console.assert(soma(comprasNov.map(c=>c[2]))===84340, "fatura de novembro não fecha");
+const comprometido = soma(faturas.filter(f=>f[1]==="futura").map(f=>f[2]));
+const cofrinhos = [["Reserva",180000,300000,210000,10000,""],["Viagem",95000,240000,80000,0,""],["Jogos",30000,45000,30000,6000,""],["CDB PicPay",125000,0,0,0,"100% do CDI"],["CDB Inter",82000,0,0,0,"102% do CDI"]]; // saldo, meta, deveria ter, a devolver, %CDI
+const fiis = [["Papel",[["FICTA11",245250,"25 cotas · P/VP 1,03"],["DEMO11",38480,"40 cotas · P/VP 0,94"]],30],["Tijolo",[["TESTE11",122760,"12 cotas · P/VP 0,88"]],20],["Logística",[["EXEMP11",158400,"10 cotas · P/VP 0,97"]],15],["FI-Infra",[["MODEL11",275100,"30 cotas · P/VP 0,92"]],10],["Tesouro",[["Tesouro Selic 2031",150000,"título público"]],25]];
+const investido = soma(fiis.flatMap(c=>c[1].map(a=>a[1])));
+const contas = 184035, cofr = soma(cofrinhos.map(c=>c[1])), cartaoDivida = 84340 + comprometido;
+const patrimonio = contas + cofr + investido - cartaoDivida;
+const receber = [["Pais",35000,[["Consulta paga com dinheiro dos cofrinhos","29/10 · há 6 dias",35000]],"#e8e0f7"],["Ana",15000,[["Combustível","26/10 · há 9 dias",5000],["Parte da conta do jantar","01/11 · há 3 dias",10000]],"#dff1ea"]];
+console.assert(cofr===512000 && investido===989990 && patrimonio===1525685, "patrimônio não fecha");
+
+function telaLancamentos(){
+  const filtro = estadoTela.filtro || "Tudo";
+  const vis = lanc.filter(l=> filtro==="Tudo" || (filtro==="Gastos"&&l[5]==="g") || (filtro==="Entradas"&&l[5]==="r") || (filtro==="Transferências"&&l[5]==="t"));
+  const entrou = soma(lanc.filter(l=>l[5]==="r").map(l=>l[4])), saiu = -soma(lanc.filter(l=>l[5]==="g"&&!l[3].startsWith("Unicred")).map(l=>l[4]));
+  const dias = [...new Set(vis.map(l=>l[0]))];
+  const nomeDia = d => d===4?"Hoje, qua 4 de nov": d===3?"Ontem, ter 3 de nov": d===2?"seg, 2 de nov":"dom, 1 de nov";
+  return `<header><div><h1>Lançamentos</h1><div class="sub">Novembro · ${lanc.length} lançamentos</div></div><button class="icone" data-acao="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button></header>
+  <div class="lote"><button class="btn" data-acao="importar"><span class="ms" style="font-size:20px">upload_file</span>Importar extrato</button><button class="btn" data-acao="colar"><span class="ms" style="font-size:20px">content_paste</span>Colar notificação</button></div>
+  <div class="chips" role="group" aria-label="Filtro">${["Tudo","Gastos","Entradas","Transferências"].map(f=>`<button class="chip" data-acao="filtro" data-f="${f}" aria-pressed="${f===filtro}">${f}</button>`).join("")}<button class="chip" data-acao="breve"><span class="ms" style="font-size:18px">search</span> Buscar</button></div>
+  ${dias.length? dias.map(d=>`<div class="dia">${nomeDia(d)}</div><div class="lista">${vis.filter(l=>l[0]===d).map(l=>`<button class="item" data-acao="editar" data-i="${lanc.indexOf(l)}"><span class="nome">${l[5]==="t"?'<span class="ms" style="font-size:18px">swap_horiz</span> ':""}${esc(l[1])}</span><span class="valor ${l[5]==="r"?"entrada":""}">${l[5]==="t"?brl(l[4]):(l[4]>0?"+":"")+brl(l[4])}</span><span class="sub">${esc([l[2],l[3]].filter(Boolean).join(" · "))}</span><span></span></button>`).join("")}</div>`).join("") : `<div class="vazio">Nenhum lançamento deste tipo em novembro.</div>`}
+  <div class="linha-total"><span>Entrou · Saiu</span><span>${brl(entrou)} · ${brl(saiu)}</span></div>
+  <p class="sub">Pela data do lançamento, sem transferências e sem compras no cartão, que contam no mês da fatura. Por isso não é o mesmo gasto do Mês.</p>
+  <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">download</span>Exportar CSV</button></div>`;
+}
+
+function telaCartao(){
+  const i = estadoTela.fatura ?? 1, f = faturas[i], mx = Math.max(...faturas.map(x=>x[2]));
+  return `<header><div><h1>Cartão</h1><div class="sub">Unicred · fecha dia 4, vence dia 11</div></div><button class="icone" data-acao="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button></header>
+  <div class="chips" role="group" aria-label="Fatura">${faturas.map((x,j)=>`<button class="chip" data-acao="fatura" data-i="${j}" aria-pressed="${j===i}">${x[0]} · ${x[1]}</button>`).join("")}</div>
+  <div class="heroi">
+    <div class="rot">Fatura de ${f[0].toLowerCase()} · ${f[1]}</div>
+    <div class="grande">${brl(f[2])}</div>
+    <p class="conta">${f[1]==="aberta"?"vence 11/11, em 7 dias · fechou dia 4": f[1]==="paga"? f[3] : "parcelas que já caem nesta fatura"}</p>
+    ${f[1]==="aberta"?`<div class="acao-heroi"><button class="btn-cheio" data-acao="pagar"><span class="ms" style="font-size:20px">payments</span>Pagar fatura</button></div>`:""}
+  </div>
+  <section aria-labelledby="h-comp"><h2 id="h-comp">Já comprometido <span class="lado">${brl(comprometido)} em ${faturas.filter(x=>x[1]==="futura").length} faturas</span></h2>
+    <div class="proj"><div class="colfat">${faturas.map((x,j)=>`<div class="${j===i?"atual":""}"><span>${num(x[2]).replace(",00","")}</span><i style="height:${x[2]/mx*60}px"></i><span>${x[0].slice(0,3)}</span></div>`).join("")}</div></div></section>
+  <section aria-labelledby="h-compras"><h2 id="h-compras">Compras da fatura <span class="lado">${i===1?comprasNov.length:"—"}</span></h2>
+    ${i===1? `<div class="lista">${comprasNov.map(c=>`<div class="item"><span class="nome">${c[0]}</span><span class="valor">${brl(c[2])}</span><span class="sub">${c[1]}</span><span></span></div>`).join("")}</div>`: `<div class="vazio">Este esboço só detalha a fatura de novembro.</div>`}</section>
+  <p class="sub" style="margin-top:16px">Compra no dia do fechamento ainda entra nesta fatura. O pagamento é transferência, não gasto. Prazos em Ajustes → Cartões.</p>`;
+}
+
+function telaPatrimonio(){
+  const aba = estadoTela.aba || "Visão";
+  const abas = `<div class="abas" role="tablist">${["Visão","Cofrinhos","Investimentos","A receber"].map(a=>`<button role="tab" data-acao="aba" data-a="${a}" aria-selected="${a===aba}">${a}</button>`).join("")}</div>`;
+  let corpo="";
+  if(aba==="Visão") corpo = `<div class="heroi"><div class="rot">Patrimônio líquido hoje</div><div class="grande">${brl(patrimonio)}</div><p class="conta">+R$ 420,79 desde 31/10 · sem os valores a receber</p></div>
+    <section><h2>As partes</h2><div class="lista partes">
+      <div class="item"><span class="nome">Contas</span><span class="valor">${brl(contas)}</span><span class="sub">PicPay · atualizado hoje 09:14</span><span></span></div>
+      <div class="item"><span class="nome">Cofrinhos</span><span class="valor">${brl(cofr)}</span><span class="sub">5 cofrinhos, com os CDBs</span><span></span></div>
+      <div class="item"><span class="nome">Investimentos</span><span class="valor">${brl(investido)}</span><span class="sub">cotações de 04/11</span><span></span></div>
+      <div class="item"><span class="nome">Cartão</span><span class="valor menos">${brl(-cartaoDivida)}</span><span class="sub">fatura aberta e parcelas futuras</span><span></span></div>
+    </div><div class="linha-total"><span>Patrimônio líquido</span><span>${brl(patrimonio)}</span></div>
+    <div class="lista"><div class="item"><span class="nome">A receber de pessoas</span><span class="valor">${brl(50000)}</span><span class="sub">fora do patrimônio</span><span></span></div>
+    <div class="item"><span class="nome">O PayPal ficou com</span><span class="valor">${brl(41260)}</span><span class="sub">em 2026, contra a PTAX, em 3 recebimentos</span><span></span></div></div></section>
+    <div class="rodape"><button class="btn" data-acao="conciliar"><span class="ms" style="font-size:18px">rule</span>Conciliar saldo</button></div><p class="sub">Última conciliação: PicPay em 01/11.</p>`;
+  if(aba==="Cofrinhos") corpo = `<div class="heroi"><div class="rot">Guardado nos cofrinhos</div><div class="grande">${brl(cofr)}</div><p class="conta">${brl(16000)} a devolver: empréstimos que você fez para si mesmo</p>
+      <div class="acao-heroi"><button class="btn-cheio" data-acao="lancar" data-int="Guardei">Guardar</button><button class="btn-claro" data-acao="lancar" data-int="Resgatei">Resgatar</button></div></div>
+    <section><h2>Cofrinhos <span class="lado">${cofrinhos.length}</span></h2><div class="lista">${cofrinhos.map(([n,sal,meta,dev,adev,cdi])=>`<div class="item"><span class="nome">${adev?`<span class="selo perto">devolver ${brl(adev)}</span>`:""}${n}</span><span class="valor">${brl(sal)}</span>
+      <span class="sub">${meta? `meta ${brl(meta)} · deveria ter ${brl(dev)}${sal<dev?` · atrasado ${brl(dev-sal)}`: sal>dev?` · adiantado ${brl(sal-dev)}`:" · em dia"}` : cdi}</span><span class="sub">${meta?Math.round(sal/meta*100)+"%":""}</span>
+      ${meta?`<span class="prog"><i style="width:${sal/meta*100}%"></i><b style="left:${dev/meta*100}%"></b></span>`:""}</div>`).join("")}</div></section>
+    <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">add</span>Novo cofrinho</button></div>`;
+  if(aba==="Investimentos") corpo = `<div class="heroi"><div class="rot">Investido</div><div class="grande">${brl(investido)}</div><p class="conta">mais ${brl(207000)} em CDBs, em Cofrinhos · cotações de 04/11</p>
+      <div class="tres"><div><div class="r">Proventos nov</div><div class="v">82,69</div></div><div><div class="r">Média 12m</div><div class="v">60,70</div></div><div><div class="r">12 meses</div><div class="v">+11,0%</div></div></div>
+      <div class="pe"><span>CDI 9,6% · IFIX 7,4%</span><button class="btn-claro" data-acao="chat" data-contexto="inv"><span class="ms" style="font-size:18px">auto_awesome</span>Perguntar</button></div></div>
+    <section><h2>Alocação contra a meta</h2><div class="proj">${fiis.map(([cl,at,meta])=>{const v=soma(at.map(a=>a[1])),p=v/investido*100;return `<div class="aloc"><span>${cl}</span><span class="tr"><i style="width:${p}%"></i><b style="left:${meta}%"></b></span><span style="text-align:right">${Math.round(p)}%</span></div>`}).join("")}<p class="sub">Barra: hoje. Traço: sua meta.</p></div></section>
+    <section><h2>Carteira <span class="lado">tickers fictícios</span></h2>${fiis.map(([cl,at])=>`<div class="grupo"><div class="grupo-cab"><span>${cl}</span><span>${brl(soma(at.map(a=>a[1])))}</span></div>${at.map(a=>`<div class="item"><span class="nome">${a[0]}</span><span class="valor">${brl(a[1])}</span><span class="sub">${a[2]}</span><span class="sub">${Math.round(a[1]/investido*1000)/10}%</span></div>`).join("")}</div>`).join("")}</section>
+    <div class="rodape"><button class="btn" data-acao="breve">Onde aportar</button><button class="btn" data-acao="breve">Projeção</button><button class="btn" data-acao="breve">Importar posição por print</button></div>`;
+  if(aba==="A receber") corpo = `<div class="heroi"><div class="rot">A receber de pessoas</div><div class="grande">${brl(50000)}</div><p class="conta">Fica fora do patrimônio e do gasto do mês.</p></div>
+    ${receber.map(([n,t,itens,tom])=>`<section><h2><span class="pessoa"><span class="inicial" style="background:${tom}">${n[0]}</span>${n}</span><span>${brl(t)}</span></h2><div class="lista">${itens.map(i=>`<div class="item"><span class="nome">${i[0]}</span><span class="valor">${brl(i[2])}</span><span class="sub">${i[1]}</span><span></span></div>`).join("")}</div>
+      <div class="rodape" style="margin-top:8px"><button class="btn" data-acao="breve">Registrar recebimento</button><button class="btn" data-acao="breve">Perdoar</button></div></section>`).join("")}`;
+  return `<header><div><h1>Patrimônio</h1><div class="sub">hoje, 04/11/2026</div></div><button class="icone" data-acao="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button></header>${abas}${corpo}`;
+}
+
+function telaAjustes(){
+  const areas = [["account_balance","Contas","PicPay, Unicred, Inter"],["credit_card","Cartões","Unicred: fecha 4, vence 11"],["category","Categorias e previsto","15 categorias · R$ 2.675,00 por mês"],["event_repeat","Recorrentes e entradas previstas","5 contas · freelance em USD"],["trending_up","Investimentos","metas por classe e critérios"],["rule","Regras","4 regras de categoria"],["group","Acesso","só quem administra"]];
+  const ia = [["Chat por contexto","lançamentos do período, com nomes de pessoas trocados e números apagados"],["Colar notificação","o texto colado, sem números de conta"],["Categoria sugerida","só o nome do estabelecimento"]];
+  return `<header><div><h1>Ajustes</h1><div class="sub">Pedro · modo real</div></div><button class="icone" data-acao="voltar" aria-label="Voltar"><span class="ms">close</span></button></header>
+  <div class="lista areas">${areas.map(a=>`<button class="item" data-acao="breve"><span class="nome"><span class="ms" style="font-size:20px;color:var(--t2)">${a[0]}</span> ${a[1]}</span><span class="ms" style="color:var(--t2)">chevron_right</span><span class="sub">${a[2]}</span><span></span></button>`).join("")}</div>
+  <section><h2>IA <span class="lado">Cloudflare Workers AI</span></h2><div class="lista">${ia.map(x=>`<div class="item" style="align-items:center"><span class="nome">${x[0]}</span><span class="toggle" role="switch" aria-checked="true" aria-label="${x[0]} ligado"></span><span class="sub">Envia: ${x[1]}</span><span></span></div>`).join("")}</div>
+  <p class="sub">Nunca é enviado: nome de banco, número de conta ou cartão, CPF, e-mail. O provedor não guarda nem treina com o que recebe.</p></section>
+  <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">logout</span>Sair</button></div>`;
+}
+
+const estadoTela = {};
+let telaAtual = "mes", telaAntes = "mes";
+const telas = {mes:telaMes, lancamentos:telaLancamentos, cartao:telaCartao, patrimonio:telaPatrimonio, ajustes:telaAjustes};
 function mostrar(id){
-  document.getElementById("tela").innerHTML = id==="mes"? telaMes() : telaOutra(id);
+  if(id!=="ajustes") telaAntes = id; telaAtual = id;
+  document.getElementById("tela").innerHTML = telas[id]();
   document.querySelectorAll("nav.barra [data-tela]").forEach(b=>{ if(b.dataset.tela===id) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
-  window.scrollTo(0,0);
+}
+function redesenhar(){ const y = scrollY; document.getElementById("tela").innerHTML = telas[telaAtual](); scrollTo(0,y); }
+function toast(txt){ document.querySelector(".toast")?.remove(); document.body.insertAdjacentHTML("beforeend", `<div class="toast" role="status"><span>${txt}</span><button data-acao="desfazer">Desfazer</button></div>`); setTimeout(()=>document.querySelector(".toast")?.remove(), 5000); }
+
+function lancar(intencao){
+  intencao = intencao || "Gastei";
+  const ints = ["Gastei","Recebi","Guardei","Resgatei","Paguei a fatura","Vou receber"];
+  const contasOp = `<option>PicPay</option><option>Unicred (cartão)</option>`;
+  const catOp = cats.map(c=>`<option ${c.n==="Lanches e delivery"?"selected":""}>${c.n}</option>`).join("");
+  const campos = {
+    "Gastei": `<div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="42,50"></div>
+      <div class="campo"><label for="f-cat">Categoria <span class="selo perto" style="margin-left:4px">sugerida</span></label><select id="f-cat">${catOp}</select></div>
+      <div class="campo"><label for="f-conta">Pago com</label><select id="f-conta" data-acao-change="conta">${contasOp}</select></div>
+      <p class="nota" id="nota-cartao" hidden>Entra na <b>fatura que vence em 11/12</b>, porque a de novembro fechou no dia 4.</p>
+      <div class="campo"><label for="f-data">Data</label><input id="f-data" value="04/11/2026"></div>
+      <p class="nota">Mais opções: paguei por outra pessoa · usei dinheiro de cofrinho · parcelas</p>`,
+    "Recebi": `<div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="1.568,40"></div>
+      <div class="campo"><label for="f-cat">Categoria</label><select id="f-cat"><option>Freelance / Data Annotation</option><option>Salário</option></select></div>
+      <div class="campo"><label for="f-usd">Dólares recebidos (se veio pelo PayPal)</label><input id="f-usd" inputmode="decimal" value="300,00"></div>
+      <p class="nota">PTAX de hoje 5,4120 → R$ 1.623,60. <b>O PayPal ficou com R$ 55,20 (3,4%).</b></p>`,
+    "Guardei": `<div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="100,00"></div>
+      <div class="campo"><label for="f-cof">Cofrinho</label><select id="f-cof">${cofrinhos.map(c=>`<option>${c[0]}</option>`).join("")}</select></div>
+      <p class="nota">Você deve R$ 100,00 ao Reserva. <b>É devolução?</b> Sem marcar, conta como guardado novo e a dívida continua.</p>`,
+    "Resgatei": `<div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="200,00"></div>
+      <div class="campo"><label for="f-cof">Cofrinho</label><select id="f-cof">${cofrinhos.map(c=>`<option>${c[0]}</option>`).join("")}</select></div>
+      <div class="campo"><label for="f-fin">Para quê</label><select id="f-fin"><option>Usei no objetivo</option><option>Empréstimo (fica a devolver)</option><option>Retirada definitiva</option></select></div>`,
+    "Paguei a fatura": `<div class="campo"><label for="f-fat">Fatura que este pagamento quita</label><select id="f-fat"><option>Nov/26 · R$ 843,40</option></select></div>
+      <div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="843,40"></div>
+      <p class="nota">Valor igual ao total: a fatura fica paga. Não entra como gasto.</p>`,
+    "Vou receber": `<div class="campo"><label for="f-usd">Dólares</label><input id="f-usd" class="grande-in" inputmode="decimal" value="300,00"></div>
+      <div class="campo"><label for="f-data">Data prevista</label><input id="f-data" value="25/11/2026"></div>
+      <p class="nota">≈ <b>R$ 1.568,40</b>: PTAX de hoje (5,4120) menos o desconto médio do PayPal (3,4%). Entra no saldo projetado em 25/11.</p>`,
+  };
+  abrir(`<div class="topo"><h3>Lançar</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <div class="chips" role="group" aria-label="O que aconteceu">${ints.map(x=>`<button class="chip" data-acao="intencao" data-int="${x}" aria-pressed="${x===intencao}">${x}</button>`).join("")}</div>
+    <form id="form-lancar">${campos[intencao]}<div style="margin-top:16px"><button type="submit" class="btn-tinta">Salvar</button></div></form>`);
+  camada.querySelector("#f-valor, #f-usd")?.focus();
 }
 
 // ---- folhas
@@ -254,15 +424,20 @@ const respostas = {
     ["Onde gastei mais?", `Mercado: ${brl(54150)}, 32% do gasto do mês. Depois Combustível (${brl(18080)}) e Restaurantes (${brl(16500)}).`, `com base em: gasto por categoria`],
     ["Como melhorar?", `Restaurantes já está ${brl(2500)} acima da média de 3 meses. Segurar a categoria no previsto até o fim do mês mantém o livre em ${brl(livre)}; repetir o ritmo atual o reduziria em cerca de ${brl(Math.round(16500/HOJE*(DIAS-HOJE)) )}.`, `com base em: Restaurantes ${brl(16500)} em ${HOJE} dias, média ${brl(14000)}`],
   ],
+  inv: [
+    ["O que mudou na carteira?", `O valor investido subiu R$ 420,79 no mês. EXEMP11 foi o que mais subiu (+5,5% sobre o preço médio) e TESTE11 o que mais caiu (−5,3%). FI-Infra está em 28% da carteira, contra meta de 10%.`, `com base em: variação por ativo e alocação × meta`],
+    ["O que é P/VP?", `Preço sobre valor patrimonial: quanto o mercado paga por cada real de patrimônio do fundo. 0,88 (TESTE11) é abaixo do patrimônio; 1,03 (FICTA11), acima. Não diz sozinho se é bom ou ruim.`, `com base em: glossário e P/VP da carteira`],
+    ["Devo vender TESTE11?", `Não faço recomendação de investimento. O Onde aportar aplica as suas regras.`, `regra fixa do chat`],
+  ],
   cat: n => { const c = cats.find(x=>x.n===n); return [
-    ["Onde gastei mais?", `Em ${n}, ${brl(c.v)} no mês até hoje. Com a opção de nomes de estabelecimento ligada, eu mostraria os lugares; sem ela, a maior parte caiu às sextas.`, `com base em: gasto de ${n} por dia da semana`],
+    ["Onde gastei mais?", n==="Mercado"? `Supermercado Bom Preço: R$ 221,50 em 1 compra (41% da categoria), e Supermercado no cartão: R$ 318,40.` : `Em ${n}, ${brl(c.v)} no mês até hoje; o maior lançamento foi de ${brl(Math.round(c.v*0.6))}.`, `com base em: lançamentos de ${n} em novembro (aprovado enviar)`],
     ["Isso é normal?", c.m? `${c.v>=c.m?"Acima":"Abaixo"} do normal: a média dos últimos 3 meses é ${brl(c.m)}, e este mês já está em ${brl(c.v)} no dia ${HOJE}.` : "Não há histórico suficiente nesta categoria.", `com base em: média de 3 meses`],
     ["Como diminuir?", c.v>0? `Para fechar no previsto de ${brl(c.p)}, o resto do mês comporta ${brl(Math.max(0,c.p-c.v))}, cerca de ${brl(Math.max(0,Math.round((c.p-c.v)/diasRest)))} por dia.` : `Nada gasto ainda; o previsto é ${brl(c.p)}.`, `com base em: previsto − gasto, ${diasRest} dias restantes`],
   ];}
 };
 function chat(contexto, nome){
-  const lista = contexto==="mes"? respostas.mes : respostas.cat(nome);
-  const titulo = contexto==="mes"? "Orçamento de novembro" : `${nome} · novembro`;
+  const lista = contexto==="mes"? respostas.mes : contexto==="inv"? respostas.inv : respostas.cat(nome);
+  const titulo = contexto==="mes"? "Orçamento de novembro" : contexto==="inv"? "Investimentos" : `${nome} · novembro`;
   abrir(`<div class="topo"><h3>${esc(titulo)}</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
     <div class="chips">${lista.map((q,i)=>`<button class="chip" data-acao="pergunta" data-i="${i}">${q[0]}</button>`).join("")}</div>
     <div id="conversa" aria-live="polite"></div>
@@ -289,14 +464,36 @@ document.addEventListener("click", ev=>{
   const a = t.dataset.acao; ev.preventDefault();
   if(a==="fechar") fechar();
   else if(a==="chat") chat(t.dataset.contexto, t.dataset.nome);
-  else if(a==="pergunta"){ const f=camada.querySelector(".folha"); const l = f.dataset.ctx==="mes"? respostas.mes : respostas.cat(f.dataset.nome); const [q,r,b]=l[+t.dataset.i];
+  else if(a==="pergunta"){ const f=camada.querySelector(".folha"); const l = f.dataset.ctx==="mes"? respostas.mes : f.dataset.ctx==="inv"? respostas.inv : respostas.cat(f.dataset.nome); const [q,r,b]=l[+t.dataset.i];
     document.getElementById("conversa").insertAdjacentHTML("beforeend", `<div class="msg eu">${q}</div><div class="msg ia">${r}<span class="base">${b}</span></div>`); }
   else if(a==="copiar"){ const txt = `Novembro/2026 · previsto ${brl(previsto)} · gasto ${brl(gasto)} · a pagar ${brl(pagar)} · livre ${brl(livre)} · guardado ${brl(guardadoReal)} de ${brl(guardadoPlan)}`;
     const ok=()=>document.getElementById("copiado").textContent="Resumo copiado.";
     try{ navigator.clipboard.writeText(txt).then(ok, ()=>{document.getElementById("copiado").textContent=txt;}); }catch(e){ document.getElementById("copiado").textContent=txt; } }
-  else if(a==="lancar") abrir(`<div class="topo"><h3>Lançar</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div><div class="chips">${["Gastei","Recebi","Guardei","Resgatei","Paguei a fatura","Vou receber"].map(x=>`<span class="chip">${x}</span>`).join("")}</div><p class="sub">O diálogo de lançar não faz parte deste esboço.</p>`);
-  else if(a==="mes-ant"||a==="mes-prox"||a==="breve"||a==="ajustes") abrir(`<div class="topo"><h3>Fora do esboço</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div><p class="sub">Este esboço tem só novembro e a tela Mês. O resto está descrito em docs/v3/06b-telas.md.</p>`);
+  else if(a==="lancar"||a==="intencao") lancar(t.dataset.int);
+  else if(a==="pagar") lancar("Paguei a fatura");
+  else if(a==="ajustes") mostrar("ajustes");
+  else if(a==="voltar") mostrar(telaAntes);
+  else if(a==="filtro"){ estadoTela.filtro=t.dataset.f; redesenhar(); }
+  else if(a==="fatura"){ estadoTela.fatura=+t.dataset.i; redesenhar(); }
+  else if(a==="aba"){ estadoTela.aba=t.dataset.a; redesenhar(); }
+  else if(a==="desfazer"){ document.querySelector(".toast")?.remove(); }
+  else if(a==="editar"){ const l=lanc[+t.dataset.i]; abrir(`<div class="topo"><h3>Editar lançamento</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+      <div class="campo"><label for="e-desc">Descrição</label><input id="e-desc" value="${esc(l[1])}"></div><div class="campo"><label for="e-val">Valor (R$)</label><input id="e-val" class="grande-in" value="${num(l[4])}"></div>
+      <p class="nota">${esc([l[2],l[3]].filter(Boolean).join(" · "))}</p><div style="margin-top:16px"><button class="btn-tinta" data-acao="salvo">Salvar</button></div>
+      <div class="rodape"><button class="btn" data-acao="excluido" style="color:var(--fora)">Excluir “${esc(l[1])}”</button></div>`); }
+  else if(a==="salvo"){ fechar(); toast("Lançamento salvo."); }
+  else if(a==="excluido"){ fechar(); toast("Lançamento excluído."); }
+  else if(a==="colar") abrir(`<div class="topo"><h3>Colar notificação</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+      <div class="campo"><label for="c-txt">Texto da notificação ou do SMS</label><input id="c-txt" value="Compra aprovada de R$ 42,50 em IFOOD *RESTAURANTE em 03/11"></div>
+      <p class="nota">Li: <b>R$ 42,50 · IFOOD RESTAURANTE · 03/11 · cartão</b></p><div style="margin-top:16px"><button class="btn-tinta" data-acao="lancar" data-int="Gastei">Abrir em Gastei</button></div>`);
+  else if(a==="importar") abrir(`<div class="topo"><h3>Importar extrato</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+      <p class="sub">PicPay, em PDF. Nada é gravado antes de você revisar e confirmar; o fechamento é conferido pelo saldo diário impresso.</p><div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">upload_file</span>Escolher o PDF</button></div>`);
+  else if(a==="conciliar") abrir(`<div class="topo"><h3>Conciliar saldo</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+      <div class="campo"><label for="k-val">Quanto o PicPay mostra agora (R$)</label><input id="k-val" class="grande-in" value="1.840,35"></div><p class="nota">Igual ao app: <b>diferença R$ 0,00</b>. Salvar grava a conciliação de hoje.</p><div style="margin-top:16px"><button class="btn-tinta" data-acao="salvo">Salvar</button></div>`);
+  else if(a==="mes-ant"||a==="mes-prox"||a==="breve") abrir(`<div class="topo"><h3>Fora do esboço</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div><p class="sub">Este esboço tem só novembro e não abre este detalhe. O briefing completo está em docs/v3/06b-telas.md.</p>`);
 });
+document.addEventListener("submit", e=>{ if(e.target.id==="form-lancar"){ e.preventDefault(); fechar(); toast("Lançado."); } });
+document.addEventListener("change", e=>{ if(e.target.id==="f-conta"){ document.getElementById("nota-cartao").hidden = !e.target.value.startsWith("Unicred"); } });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape") fechar(); });
 mostrar("mes");
 </script>

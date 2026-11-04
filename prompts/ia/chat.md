@@ -16,7 +16,7 @@ devolvidos). Este arquivo diz o que muda por contexto.
   "historico": [
     {"pergunta": "onde gastei mais?", "resposta": "Às sextas: R$ 312,00 de R$ 520,00 no mês."}
   ],
-  "aprovacoes": {"nomes_de_estabelecimento": false}
+  "aprovacoes": {"lancamentos": true}
 }
 ```
 
@@ -27,8 +27,8 @@ devolvidos). Este arquivo diz o que muda por contexto.
 
 | Contexto | Funções |
 |---|---|
-| categoria | `gasto_por_mes(categoria, de, ate)`, `gasto_por_dia_da_semana(categoria, mes)`, `gasto_por_conta(categoria, mes)`, `media(categoria, meses)`, `previsto(categoria, mes)`; **com aprovação**: `por_estabelecimento(categoria, mes, limite)`, `maiores_lancamentos(categoria, mes, limite)` |
-| mes | `resumo_do_mes(mes)` (o mesmo do RF21), `gasto_por_grupo`, `gasto_por_categoria`, `comparar_com_media(mes, meses)`, `contas_a_pagar(mes)`, `guardado(mes)` |
+| categoria | `gasto_por_mes(categoria, de, ate)`, `gasto_por_dia_da_semana(categoria, mes)`, `gasto_por_conta(categoria, mes)`, `media(categoria, meses)`, `previsto(categoria, mes)`; **aprovadas em 2026-11-04**: `por_estabelecimento(categoria, mes, limite)`, `maiores_lancamentos(categoria, mes, limite)`, `lancamentos(categoria, de, ate)` (mascarados) |
+| mes | `lancamentos(de, ate, limite)` (mascarados), `resumo_do_mes(mes)` (o mesmo do RF21), `gasto_por_grupo`, `gasto_por_categoria`, `comparar_com_media(mes, meses)`, `contas_a_pagar(mes)`, `guardado(mes)` |
 | investimentos | `posicoes(data)`, `variacao_no_mes(mes)` por ativo e classe, `proventos(de, ate)`, `alocacao_vs_meta()`, `rentabilidade(periodo)` contra CDI e IFIX, `glossario(termo)` |
 
 O app só oferece à IA as funções com aprovação quando `aprovacoes` permite. Uma
@@ -79,8 +79,9 @@ consultado, e sugira um período maior em `perguntas_seguintes`.
 
 ## Nunca vai ao provedor
 
-Nome de pessoa, nome de conta e de banco, número de conta, e-mail, nome da
-corretora; descrição de lançamento e nome de estabelecimento sem a aprovação.
+Nome de pessoa (vira "pessoa A"), nome de conta e de banco, número de conta,
+cartão e CPF, e-mail, nome da corretora. Descrições de lançamento vão, mascaradas,
+desde a aprovação de 2026-11-04; com o interruptor desligado em Ajustes → IA, não vão.
 
 ## No modo demonstração
 

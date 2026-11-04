@@ -327,3 +327,17 @@ Patrimônio → patrimônio líquido e as partes; Lançamentos não tem (é list
   prontas com respostas fixas e a frase "No modo demonstração as respostas são de
   exemplo."
 - **Limite do dia:** "Limite de perguntas de hoje atingido. Volta amanhã."
+
+## Esboço navegável (2026-11-04)
+
+O Pedro aprovou o estilo do esboço v2 ("pode terminar o design nesse estilo"). O
+esboço navegável `esbocos/mes-navegavel.html` cobre Mês (com detalhe de categoria e
+chat), Lançamentos (filtros, editar e excluir com Desfazer, colar notificação,
+importar), Cartão (faturas por vencimento, Pagar), Patrimônio (Visão, Cofrinhos,
+Investimentos, A receber), Ajustes (áreas e IA) e o Lançar com as seis intenções,
+incluindo "Recebi" com o desconto do PayPal e "Vou receber" em dólar. Todos os totais
+são somados das partes, com asserções no próprio arquivo.
+
+Regra que o esboço fixou para todas as telas: **um bloco de destaque azul-escuro por
+tela** com o número que responde a pergunta da tela e, quando há, a ação principal
+dentro dele (Pagar fatura, Guardar). Lançamentos não tem bloco de destaque: é lista.
