@@ -142,6 +142,36 @@ $$;
 
 
 --
+-- Name: admin_access_log(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.admin_access_log() RETURNS TABLE(quando timestamp with time zone, quem text, acao text, alvo text)
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    PERFORM exige_admin();
+    RETURN QUERY SELECT l.created_at, u.email, l.action, l.target FROM public.access_log l JOIN public.app_users u ON u.id = l.actor_id ORDER BY l.created_at DESC LIMIT 50;
+END $$;
+
+
+--
+-- Name: admin_add_app_user(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.admin_add_app_user(p_email text, p_nome text) RETURNS uuid
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE v_admin uuid := exige_admin(); v_id uuid;
+BEGIN
+    INSERT INTO public.app_users (email, display_name) VALUES (lower(btrim(p_email)), btrim(p_nome)) RETURNING id INTO v_id;
+    INSERT INTO public.access_log (actor_id, action, target) VALUES (v_admin, 'adicionou', lower(btrim(p_email)));
+    RETURN v_id;
+END $$;
+
+
+--
 -- Name: admin_list_app_users(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -174,6 +204,25 @@ $$;
 --
 
 COMMENT ON FUNCTION public.admin_list_app_users() IS 'Lista a allowlist inteira para quem administra (RF19). SECURITY DEFINER porque a policy de app_users deixa ver só a própria linha; a permissão é checada por dentro da função, não pela tela.';
+
+
+--
+-- Name: admin_set_active(uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.admin_set_active(p_id uuid, p_active boolean) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE v_admin uuid := exige_admin(); v_email text;
+BEGIN
+    IF p_id = v_admin AND NOT p_active THEN
+        RAISE EXCEPTION 'quem administra não desativa a si mesmo' USING ERRCODE = '42501';
+    END IF;
+    UPDATE public.app_users SET active = p_active WHERE id = p_id AND NOT is_demo RETURNING email INTO v_email;
+    IF v_email IS NULL THEN RAISE EXCEPTION 'pessoa não encontrada' USING ERRCODE = 'P0002'; END IF;
+    INSERT INTO public.access_log (actor_id, action, target) VALUES (v_admin, CASE WHEN p_active THEN 'reativou' ELSE 'desativou' END, v_email);
+END $$;
 
 
 --
@@ -244,6 +293,23 @@ $$;
 --
 
 COMMENT ON FUNCTION public.demo_app_user() IS 'Id do usuário demo ativo, destino de quem não está na allowlist (ADR-003).';
+
+
+--
+-- Name: exige_admin(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.exige_admin() RETURNS uuid
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE v uuid := current_app_user();
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.app_users u WHERE u.id = v AND u.is_admin AND u.active) THEN
+        RAISE EXCEPTION 'esta operação é só para quem administra o app (RF19)' USING ERRCODE = '42501';
+    END IF;
+    RETURN v;
+END $$;
 
 
 --
@@ -637,6 +703,20 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: access_log; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.access_log (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    actor_id uuid NOT NULL,
+    action text NOT NULL,
+    target text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT access_log_acao CHECK ((action = ANY (ARRAY['adicionou'::text, 'desativou'::text, 'reativou'::text])))
+);
+
+
+--
 -- Name: account_terms; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -901,6 +981,21 @@ COMMENT ON COLUMN public.categories.goal_account_id IS 'Cofrinho que paga os gas
 
 
 --
+-- Name: categorization_rules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.categorization_rules (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    contains text NOT NULL,
+    category_id uuid NOT NULL,
+    priority smallint DEFAULT 50 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT categorization_rules_texto CHECK ((length(btrim(contains)) >= 2))
+);
+
+
+--
 -- Name: category_groups; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1110,6 +1205,14 @@ COMMENT ON COLUMN public.transactions.goal_movement IS 'Na perna que mexe no cof
 
 
 --
+-- Name: access_log access_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.access_log
+    ADD CONSTRAINT access_log_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: account_terms account_terms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1283,6 +1386,14 @@ ALTER TABLE ONLY public.categories
 
 ALTER TABLE ONLY public.categories
     ADD CONSTRAINT categories_user_id_id UNIQUE (user_id, id);
+
+
+--
+-- Name: categorization_rules categorization_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categorization_rules
+    ADD CONSTRAINT categorization_rules_pkey PRIMARY KEY (id);
 
 
 --
@@ -1540,6 +1651,14 @@ CREATE CONSTRAINT TRIGGER transactions_transfer_soma_zero AFTER INSERT OR DELETE
 
 
 --
+-- Name: access_log access_log_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.access_log
+    ADD CONSTRAINT access_log_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: account_terms account_terms_account_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1681,6 +1800,22 @@ ALTER TABLE ONLY public.categories
 
 ALTER TABLE ONLY public.categories
     ADD CONSTRAINT categories_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: categorization_rules categorization_rules_categoria_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categorization_rules
+    ADD CONSTRAINT categorization_rules_categoria_fk FOREIGN KEY (user_id, category_id) REFERENCES public.categories(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: categorization_rules categorization_rules_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categorization_rules
+    ADD CONSTRAINT categorization_rules_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
 
 
 --
@@ -1852,6 +1987,12 @@ ALTER TABLE ONLY public.transactions
 
 
 --
+-- Name: access_log; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.access_log ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: account_terms; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1995,6 +2136,19 @@ CREATE POLICY categories_isolamento ON public.categories TO app USING ((user_id 
 
 
 --
+-- Name: categorization_rules; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.categorization_rules ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: categorization_rules categorization_rules_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY categorization_rules_isolamento ON public.categorization_rules TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: category_groups; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -2120,6 +2274,22 @@ GRANT USAGE ON SCHEMA public TO jobs;
 
 
 --
+-- Name: FUNCTION admin_access_log(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.admin_access_log() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.admin_access_log() TO app;
+
+
+--
+-- Name: FUNCTION admin_add_app_user(p_email text, p_nome text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.admin_add_app_user(p_email text, p_nome text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.admin_add_app_user(p_email text, p_nome text) TO app;
+
+
+--
 -- Name: FUNCTION admin_list_app_users(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -2128,11 +2298,26 @@ GRANT ALL ON FUNCTION public.admin_list_app_users() TO app;
 
 
 --
+-- Name: FUNCTION admin_set_active(p_id uuid, p_active boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.admin_set_active(p_id uuid, p_active boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.admin_set_active(p_id uuid, p_active boolean) TO app;
+
+
+--
 -- Name: FUNCTION demo_app_user(); Type: ACL; Schema: public; Owner: -
 --
 
 REVOKE ALL ON FUNCTION public.demo_app_user() FROM PUBLIC;
 GRANT ALL ON FUNCTION public.demo_app_user() TO app;
+
+
+--
+-- Name: FUNCTION exige_admin(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.exige_admin() FROM PUBLIC;
 
 
 --
@@ -2248,6 +2433,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.budget_templates TO app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.categories TO app;
+
+
+--
+-- Name: TABLE categorization_rules; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.categorization_rules TO app;
 
 
 --
