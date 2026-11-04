@@ -25,3 +25,5 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--papel);border-top:1p
 nav .in{max-width:440px;margin:0 auto;height:64px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;text-align:center;font-size:12px;color:var(--t2)}
 nav [aria-current="page"]{color:var(--tinta);font-weight:700}
 nav .lancar{width:56px;height:56px;border-radius:50%;background:var(--azul);color:#fff;font-size:30px;margin:-20px auto 0;display:grid;place-items:center}
+.tarja a{color:var(--tarja-t);font-weight:700}
+a{color:var(--azul)}

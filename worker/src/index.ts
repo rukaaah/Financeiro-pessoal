@@ -1,12 +1,21 @@
 import { criarApp } from "./app.ts";
+import { credenciaisDoPedido } from "./auth.ts";
 import { bancoNeon } from "./banco-neon.ts";
 
 export interface Env {
   DATABASE_URL: string;
   ASSETS: Fetcher;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  SESSION_SECRET?: string;
 }
 
 export default criarApp<Env>({
   banco: (env) => bancoNeon(env.DATABASE_URL),
-  credenciais: async () => null,
+  // Sem SESSION_SECRET não existe sessão válida: todo mundo cai no demo.
+  credenciais: async (req, env) => (env.SESSION_SECRET ? credenciaisDoPedido(req, env.SESSION_SECRET) : null),
+  login: (env) =>
+    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.SESSION_SECRET
+      ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, segredo: env.SESSION_SECRET }
+      : null,
 });

@@ -15,8 +15,9 @@
   → sessão do usuário; senão → sessão do usuário demo.
 - A sessão é um cookie `HttpOnly`, `Secure`, `SameSite=Lax`, assinado com HMAC
   (`SESSION_SECRET`), com o id do usuário e a validade. Sem cookie → demo.
-- Revogar acesso continua sendo `active = false`; a sessão é revalidada contra
-  `app_users` a cada 10 minutos.
+- Revogar acesso continua sendo `active = false`, e vale **no pedido seguinte**: todo
+  lote resolve o e-mail da sessão em `app_users` de novo (correção de 2026-11-04,
+  na implementação; antes dizia a cada 10 minutos).
 
 ## Consequências
 
@@ -29,7 +30,8 @@ chave de teste.
 1. Em console.cloud.google.com → **Credenciais** → o OAuth client já existente →
    **URIs de redirecionamento**: acrescentar `https://<nome>.workers.dev/auth/callback`.
 2. No GitHub, secrets `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` (os mesmos valores do
-   secrets do Streamlit). `SESSION_SECRET` é gerado pelo workflow na primeira vez; não
-   precisa ser digitado.
+   secrets do Streamlit), e `SESSION_SECRET` com o resultado de `openssl rand -base64 48`
+   rodado no seu terminal (trocar esse valor desloga todo mundo; por isso ele não é
+   gerado a cada deploy).
 3. Conferir: entrar com a sua conta tira a tarja; entrar com outra conta mantém a
    tarja.

@@ -43,7 +43,15 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
           wranglerVersion: "4.151.2"
+          # Um secret vazio no GitHub não sobe: o Worker fica sem login e todo
+          # mundo cai no demo, que é o comportamento seguro.
           secrets: |
             DATABASE_URL
+            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_SECRET
+            SESSION_SECRET
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_APP }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}

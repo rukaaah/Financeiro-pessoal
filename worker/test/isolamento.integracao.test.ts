@@ -1,6 +1,7 @@
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { criarApp } from "../src/app.ts";
+import { credenciaisDoPedido, criarCookieSessao } from "../src/auth.ts";
 import { bancoPg } from "./banco-pg.ts";
 
 /**
@@ -68,6 +69,20 @@ describe("isolamento entre usuários pelo Worker, como papel app", () => {
     try {
       const [linhas] = await banco.lote([{ texto: "select count(*)::int as n from accounts", params: [] }]);
       expect(linhas![0]!.n).toBe(0);
+    } finally {
+      await banco.fechar();
+    }
+  });
+
+  it("pelo cookie de sessão de verdade: A entra como dono e vê só as dela; cookie forjado cai no demo", async () => {
+    const SEGREDO = "segredo-de-integracao-com-mais-de-32-bytes";
+    const banco = bancoPg(URL_APP);
+    const a = criarApp({ banco: () => banco, credenciais: (req) => credenciaisDoPedido(req, SEGREDO) });
+    try {
+      const cookie = (await criarCookieSessao(emails.a, SEGREDO)).split(";")[0]!;
+      expect(await (await a.request("/api/saude", { headers: { cookie } })).json()).toMatchObject({ modo: "dono", contas: 2 });
+      const forjado = (await criarCookieSessao(emails.a, "outro-segredo-qualquer-com-32-bytes!!")).split(";")[0]!;
+      expect(await (await a.request("/api/saude", { headers: { cookie: forjado } })).json()).toMatchObject({ modo: "demo", contas: demoTinhaContas });
     } finally {
       await banco.fechar();
     }
