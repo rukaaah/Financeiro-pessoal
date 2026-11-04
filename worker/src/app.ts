@@ -10,6 +10,7 @@ import { rotasDaAtencao } from "./atencao.ts";
 import { rotasDoPatrimonio } from "./patrimonio.ts";
 import { rotasDeInvestimentos } from "./investimentos.ts";
 import { rotasDeImportacao } from "./importar.ts";
+import { rotasDeAjustes } from "./ajustes.ts";
 import { type ModeloDeIA, rotasDaIA, type RodarComSessao } from "./ia.ts";
 import { comSessao } from "./sessao.ts";
 import type { Consulta, Linha } from "./banco.ts";
@@ -64,6 +65,7 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
   rotasDoPatrimonio(app, rodar);
   rotasDeInvestimentos(app, rodar);
   rotasDeImportacao(app, rodar);
+  rotasDeAjustes(app, rodar);
   const rodarComSessao: RodarComSessao<E> = async (c, consultas) => {
     c.header("Cache-Control", "no-store");
     return comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), consultas);

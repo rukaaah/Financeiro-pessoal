@@ -166,6 +166,10 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         (usuario,),
     )
     cur.execute(
+        "INSERT INTO categorization_rules (user_id, contains, category_id) VALUES (%s, 'UBER', %s)",
+        (usuario, categoria),
+    )
+    cur.execute(
         "INSERT INTO ai_calls (user_id, use_case, input_chars, accepted)"
         " VALUES (%s, 'chat', 120, true)",
         (usuario,),

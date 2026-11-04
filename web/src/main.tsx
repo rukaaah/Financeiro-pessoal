@@ -11,9 +11,10 @@ import type { Inicial } from "./telas/lancar.tsx";
 import { Mover, type Movimento, Patrimonio } from "./telas/patrimonio.tsx";
 import { ColarNotificacao, ImportarExtrato } from "./telas/entrada.tsx";
 import { Chat } from "./telas/chat.tsx";
+import { Ajustes } from "./telas/ajustes.tsx";
 import "./estilo.css";
 
-type Tela = "mes" | "lancamentos" | "cartao" | "patrimonio";
+type Tela = "mes" | "lancamentos" | "cartao" | "patrimonio" | "ajustes";
 interface Aviso { texto: string; desfazer?: () => void }
 const mesAtual = () => new Date().toISOString().slice(0, 7);
 
@@ -99,8 +100,10 @@ function App() {
     <>
       <div class="app">
         {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><a href="/auth/entrar">Entrar</a></div>}
+        {tela !== "ajustes" && <button class="icone ajustes-topo" style={demo ? undefined : "top:calc(env(safe-area-inset-top,0px) + 10px)"} aria-label="Ajustes" onClick={() => setTela("ajustes")}><Icone nome="ajustes" /></button>}
         <main>
-          {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "mes", titulo: "Orçamento do mês" })} />
+          {tela === "ajustes" ? <Ajustes demo={demo} nome={sessao?.nome ?? ""} aoAvisar={(texto) => { avisar({ texto }); api.opcoes().then(setOpcoes).catch(() => {}); recarregar(); }} aoVoltar={() => setTela("mes")} />
+            : tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "mes", titulo: "Orçamento do mês" })} />
             : tela === "patrimonio" ? <Patrimonio dados={dadosPatrimonio} opcoes={opcoes} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "investimentos", titulo: "Investimentos" })} aoMover={(m) => setFolha({ tipo: "mover", m })} aoAvisar={(texto) => avisar({ texto })} />
             : tela === "cartao" ? <Cartao dados={dadosCartao} aoPagar={(c, f) => setFolha({ tipo: "pagar", c, f })} />
             : tela === "lancamentos" ? <Lancamentos lista={lista} ocultos={ocultos} aoEditar={(l) => setFolha({ tipo: "editar", l })} aoAbrirLancar={() => setFolha({ tipo: "lancar" })} aoColar={() => setFolha({ tipo: "colar" })} aoImportar={() => setFolha({ tipo: "importar" })} />
