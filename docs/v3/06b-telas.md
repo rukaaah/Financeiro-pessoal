@@ -311,3 +311,19 @@ muda três coisas, e esta é a direção que vale para as outras telas:
 
 Nas outras telas, o bloco de destaque leva: Cartão → total da fatura e Pagar;
 Patrimônio → patrimônio líquido e as partes; Lançamentos não tem (é lista).
+
+## Chat por contexto (pedido do Pedro, 2026-11-04)
+
+- **Onde aparece:** um botão **Perguntar** (contorno, ícone `auto_awesome`) no topo
+  do Detalhe da categoria, no rodapé do bloco de destaque do Mês (substitui "Avaliar o
+  mês") e no topo de Patrimônio → Investimentos.
+- **Forma:** folha que sobe de baixo, com o contexto escrito no topo ("Lanches e
+  delivery · novembro"), duas ou três perguntas prontas em chips, o campo de texto
+  embaixo e o teclado. Cada resposta é texto curto; quando há números, uma tabela
+  pequena logo abaixo, com os mesmos valores. Sugestões vêm marcadas "com base em"
+  e o número.
+- **Estados:** "pensando…" no lugar da resposta, sem animação; erro dentro da folha
+  com "Tentar de novo"; sem chave ou fora do modo real, a folha mostra as perguntas
+  prontas com respostas fixas e a frase "No modo demonstração as respostas são de
+  exemplo."
+- **Limite do dia:** "Limite de perguntas de hoje atingido. Volta amanhã."

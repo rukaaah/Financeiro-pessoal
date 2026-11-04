@@ -93,6 +93,8 @@ Ajustes  /ajustes     (ícone no topo, à direita)
  abas: Contas · Cartões · Categorias e previsto · Recorrentes e entradas previstas ·
        Investimentos · Regras · IA · Acesso (só admin)
 
+Perguntar (chat por contexto: Mês, Detalhe da categoria, Investimentos), folha
+
 Lançar (global, botão central da barra)
  Gastei · Recebi · Guardei · Resgatei · Paguei a fatura · Vou receber
 ```
