@@ -1,11 +1,13 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { api, apiCartao, apiMes, type Cartao as CartaoDados, type Compra, type Fatura, type CategoriaDoMes, type Lancamento, type ListaDoMes, type Mes as MesDados, type Opcoes } from "./api.ts";
+import { api, apiAtencao, apiCartao, apiMes, type ItemAtencao, type Cartao as CartaoDados, type Compra, type Fatura, type CategoriaDoMes, type Lancamento, type ListaDoMes, type Mes as MesDados, type Opcoes } from "./api.ts";
 import { Icone } from "./icone.tsx";
 import { Lancar } from "./telas/lancar.tsx";
 import { Editar, Lancamentos } from "./telas/lancamentos.tsx";
 import { DetalheDaCategoria, Mes } from "./telas/mes.tsx";
 import { Cartao, PagarFatura } from "./telas/cartao.tsx";
+import { Atencao, NovaConta, Receber } from "./telas/atencao.tsx";
+import type { Inicial } from "./telas/lancar.tsx";
 import "./estilo.css";
 
 type Tela = "mes" | "lancamentos" | "cartao" | "patrimonio";
@@ -18,7 +20,7 @@ function App() {
   const [opcoes, setOpcoes] = useState<Opcoes | null>(null);
   const [lista, setLista] = useState<ListaDoMes | null>(null);
   const [ocultos, setOcultos] = useState<Set<string>>(new Set());
-  const [folha, setFolha] = useState<null | { tipo: "lancar" } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
+  const [folha, setFolha] = useState<null | { tipo: "lancar"; inicial?: Inicial } | { tipo: "atencao" } | { tipo: "nova-conta" } | { tipo: "receber"; id: string } | { tipo: "editar"; l: Lancamento } | { tipo: "categoria"; c: CategoriaDoMes } | { tipo: "pagar"; c: CartaoDados; f: Fatura }>(null);
   const [dadosCartao, setDadosCartao] = useState<{ cartoes: CartaoDados[]; compras: Compra[] } | null>(null);
   const recarregarCartao = () => apiCartao.cartao().then(setDadosCartao).catch(() => {});
   const [mes, setMes] = useState(mesAtual());
@@ -47,6 +49,27 @@ function App() {
     }).catch((e: Error) => avisar({ texto: e.message }));
   }
 
+  function agir(i: ItemAtencao) {
+    const a = i.acao;
+    if (a.tipo === "ver-categoria") { const c = dadosMes?.categorias.find((x) => x.id === a.id); if (c) setFolha({ tipo: "categoria", c }); }
+    if (a.tipo === "pagar-conta") {
+      const k = dadosMes?.contas.find((x) => x.id === a.id);
+      apiAtencao.contasRecorrentes().then((r) => {
+        const b = r.contas.find((x) => x.id === a.id);
+        setFolha({ tipo: "lancar", inicial: { valor: (k?.valor ?? "").replace(".", ","), contaId: b?.conta_id, categoriaId: b?.categoria_id, descricao: k?.nome, contaRecorrenteId: a.id } });
+      }).catch((e: Error) => avisar({ texto: e.message }));
+    }
+    if (a.tipo === "pagar-fatura") {
+      const c = dadosCartao?.cartoes.find((x) => x.id === a.cartao), f = c?.faturas.find((x) => `${x.mes}-01` === a.mes || x.mes === a.mes.slice(0, 7));
+      if (c && f) setFolha({ tipo: "pagar", c, f });
+    }
+    if (a.tipo === "receber") setFolha({ tipo: "receber", id: a.id });
+  }
+
+  function adiar(i: ItemAtencao, ate: string | null) {
+    apiAtencao.adiar(i.chave, ate).then(() => recarregarMes()).then(() => avisar({ texto: ate ? "Lembro amanhã." : "Marcado como resolvido." })).catch((e: Error) => avisar({ texto: e.message }));
+  }
+
   function excluir(l: Lancamento) {
     setFolha(null);
     setOcultos((s) => new Set(s).add(l.id));
@@ -71,7 +94,7 @@ function App() {
       <div class="app">
         {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><a href="/auth/entrar">Entrar</a></div>}
         <main>
-          {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} />
+          {tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} />
             : tela === "cartao" ? <Cartao dados={dadosCartao} aoPagar={(c, f) => setFolha({ tipo: "pagar", c, f })} />
             : tela === "lancamentos" ? <Lancamentos lista={lista} ocultos={ocultos} aoEditar={(l) => setFolha({ tipo: "editar", l })} aoAbrirLancar={() => setFolha({ tipo: "lancar" })} />
             : <>
@@ -85,7 +108,14 @@ function App() {
         <button aria-label="Lançar" onClick={() => setFolha({ tipo: "lancar" })}><span class="lancar"><Icone nome="mais" tamanho={28} /></span></button>
         {destinos.slice(2).map(([id, nome]) => <button aria-current={tela === id ? "page" : undefined} onClick={() => setTela(id)}><Icone nome={id} />{nome}</button>)}
       </div></nav>
-      {folha?.tipo === "lancar" && <Lancar opcoes={opcoes} aoFechar={() => setFolha(null)} aoLancar={lancar} />}
+      {folha?.tipo === "lancar" && <Lancar opcoes={opcoes} inicial={folha.inicial} ptax={dadosMes?.ptax ?? null} descontoPb={dadosMes?.desconto_pb ?? 0} aoFechar={() => setFolha(null)} aoLancar={lancar}
+        aoPrever={(corpo) => { setFolha(null); apiAtencao.novaEntrada(corpo).then(() => recarregarMes()).then(() => avisar({ texto: "Entrada prevista salva." })).catch((e: Error) => avisar({ texto: e.message })); }} />}
+      {folha?.tipo === "atencao" && dadosMes && <Atencao dados={dadosMes} aoFechar={() => setFolha(null)} aoAgir={agir} aoAdiar={adiar} aoNovaConta={() => setFolha({ tipo: "nova-conta" })} />}
+      {folha?.tipo === "nova-conta" && <NovaConta opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => { setFolha(null); apiAtencao.novaConta(corpo).then(() => recarregarMes()).then(() => avisar({ texto: "Conta recorrente salva." })).catch((e: Error) => avisar({ texto: e.message })); }} />}
+      {folha?.tipo === "receber" && dadosMes && (() => { const e = dadosMes.entradas.find((x) => x.id === folha.id); return e ? <Receber entrada={e} ptax={dadosMes.ptax} descontoPb={dadosMes.desconto_pb} aoFechar={() => setFolha(null)} aoSalvar={(recebido) => {
+        setFolha(null);
+        apiAtencao.receber(e.id, { recebido, data: new Date().toISOString().slice(0, 10) }).then((r) => { recarregar(); avisar({ texto: r.desconto ? `Recebido. O PayPal ficou com R$ ${r.desconto.replace(".", ",")} contra a PTAX.` : "Recebido." }); }).catch((x: Error) => avisar({ texto: x.message }));
+      }} /> : null; })()}
       {folha?.tipo === "editar" && <Editar l={folha.l} aoFechar={() => setFolha(null)} aoSalvar={(c) => salvarEdicao(folha.l, c)} aoExcluir={() => excluir(folha.l)} />}
       {folha?.tipo === "categoria" && <DetalheDaCategoria c={folha.c} mes={mes} aoFechar={() => setFolha(null)} aoSalvar={(valor, padrao) => {
         setFolha(null);

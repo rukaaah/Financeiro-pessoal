@@ -97,12 +97,12 @@ export function rotasDeLancamentos<E extends object>(app: Hono<{ Bindings: E }>,
           consulta(
             // A categoria precisa ser do tipo do lançamento: despesa em categoria de despesa.
             `insert into transactions (user_id, kind, account_id, category_id, amount, occurred_on, description,
-                                       installment_no, installment_total, installment_group_id)
-             select current_app_user(), $1::transaction_kind, $2::uuid, k.id, $4::numeric, $5::date, $6, $7, $8, $9::uuid
+                                       installment_no, installment_total, installment_group_id, recurring_bill_id)
+             select current_app_user(), $1::transaction_kind, $2::uuid, k.id, $4::numeric, $5::date, $6, $7, $8, $9::uuid, $10::uuid
                from categories k where k.id = $3::uuid and k.kind::text = $1::text and k.active
              returning id, invoice_month::text as mes_da_fatura`,
             l.tipo, b.conta_id, b.categoria_id, paraNumeric(l.valor), b.data, String(b.descricao ?? "").slice(0, 200),
-            l.parcela, l.totalDeParcelas, grupo,
+            l.parcela, l.totalDeParcelas, grupo, UUID.test(String(b.conta_recorrente_id ?? "")) ? b.conta_recorrente_id : null,
           ),
         ),
       );

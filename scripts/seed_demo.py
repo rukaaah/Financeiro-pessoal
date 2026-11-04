@@ -109,13 +109,21 @@ CATEGORIAS = (
 # diferença entre padrão e exceção.
 PREVISTO = {
     "mercado": "1100.00",
-    "moradia": "1900.00",
+    "moradia": "2200.00",
     "transporte": "150.00",
     "lazer": "120.00",
     "saude": "150.00",
     "salario": "4200.00",
 }
 AJUSTE_DO_MES = ("mercado", "1250.00")
+
+# Contas recorrentes (RF20): o aluguel já é lançado todo mês e fica ligado à conta;
+# luz e internet ainda não, e aparecem como "a pagar" e na Atenção.
+CONTAS_RECORRENTES = (
+    ("aluguel", "Aluguel", "1450.00", 10, "moradia", "picpay", "essential"),
+    ("luz", "Conta de luz", "150.00", 28, "moradia", "picpay", "essential"),
+    ("internet", "Internet", "100.00", 30, "moradia", "picpay", "important"),
+)
 
 
 def primeiro_dia(referencia: date, meses_atras: int) -> date:
@@ -237,6 +245,70 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 Decimal(AJUSTE_DO_MES[1]),
             ),
         )
+        for chave, nome, valor_conta, dia, categoria, conta, urgencia in CONTAS_RECORRENTES:
+            cur.execute(
+                "INSERT INTO recurring_bills (id, user_id, name, amount, due_day, category_id,"
+                " account_id, urgency, valid_from) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    ident(f"conta:{chave}"),
+                    USUARIO,
+                    nome,
+                    Decimal(valor_conta),
+                    dia,
+                    ident(categoria),
+                    ident(conta),
+                    urgencia,
+                    primeiro_dia(hoje, 2),
+                ),
+            )
+        # Freelance em dólar pelo PayPal (ideia 21): o do mês passado já chegou, com o
+        # desconto medido contra a PTAX; o deste mês está previsto para o dia 25.
+        recebido_em = primeiro_dia(hoje, 1).replace(day=25)
+        cur.execute(
+            "INSERT INTO transactions (id, user_id, kind, account_id, category_id, amount,"
+            " occurred_on, description) VALUES (%s, %s, 'income', %s, %s, %s, %s, %s)",
+            (
+                ident("freelance:recebido"),
+                USUARIO,
+                ident("picpay"),
+                ident("salario"),
+                Decimal("1565.10"),
+                recebido_em,
+                "Freelance (PayPal)",
+            ),
+        )
+        cur.execute(
+            "INSERT INTO expected_incomes (id, user_id, description, currency, amount,"
+            " expected_on, account_id, category_id, transaction_id, received_brl,"
+            " reference_rate, fee_brl)"
+            " VALUES (%s, %s, %s, 'USD', %s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                ident("entrada:passada"),
+                USUARIO,
+                "Freelance (PayPal)",
+                Decimal("300.00"),
+                recebido_em,
+                ident("picpay"),
+                ident("salario"),
+                ident("freelance:recebido"),
+                Decimal("1565.10"),
+                Decimal("5.40000"),
+                Decimal("54.90"),
+            ),
+        )
+        cur.execute(
+            "INSERT INTO expected_incomes (id, user_id, description, currency, amount,"
+            " expected_on, account_id, category_id) VALUES (%s, %s, %s, 'USD', %s, %s, %s, %s)",
+            (
+                ident("entrada:prevista"),
+                USUARIO,
+                "Freelance (PayPal)",
+                Decimal("300.00"),
+                max(hoje, primeiro_dia(hoje, 0).replace(day=25)),
+                ident("picpay"),
+                ident("salario"),
+            ),
+        )
         # Três meses de histórico, terminando no mês corrente.
         for meses_atras in (2, 1, 0):
             mes = primeiro_dia(hoje, meses_atras)
@@ -250,8 +322,8 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 cur.execute(
                     "INSERT INTO transactions"
                     " (id, user_id, kind, account_id, category_id, amount,"
-                    "  occurred_on, description)"
-                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    "  occurred_on, description, recurring_bill_id)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         ident(f"{rotulo}:{indice}"),
                         USUARIO,
@@ -261,6 +333,7 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                         valor,
                         quando,
                         lanc.descricao,
+                        ident("conta:aluguel") if lanc.descricao == "Aluguel" else None,
                     ),
                 )
 
