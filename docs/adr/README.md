@@ -25,3 +25,8 @@ substitui o anterior, e o antigo passa a `Status: substituído pelo ADR-NNN`.
 | [012](012-decimal-e-a-borda-de-renderizacao.md) | `Decimal` em toda conta; `float` só na borda de renderização | Aceito |
 | [013](013-modelo-recorrente-de-previsto.md) | Modelo recorrente de previsto | **Pendente** |
 | [014](014-natureza-da-categoria-e-cofrinho.md) | Natureza da categoria e a categoria com cofrinho | Aceito |
+| [015](015-pwa-e-api-no-cloudflare-workers.md) | PWA com API num Cloudflare Worker, no lugar do Streamlit | **Proposto** |
+| [016](016-typescript-na-api-e-python-nos-jobs.md) | TypeScript na API e na interface; Python nos jobs e testes de banco | **Proposto** |
+| [017](017-login-google-no-worker.md) | Login Google por OIDC no Worker, sessão em cookie assinado | **Proposto** |
+| [018](018-ia-no-workers-ai.md) | IA no Cloudflare Workers AI, pelo binding do Worker | **Proposto** |
+| [019](019-previsto-padrao-com-vigencia.md) | Previsto: padrão com vigência, ajuste do mês como exceção | **Proposto** |

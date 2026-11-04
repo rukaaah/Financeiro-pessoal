@@ -22,8 +22,8 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
 - [x] **Etapa 5** — Representação e arquitetura de informação → `05-arquitetura-de-informacao.md`
 - [x] **Etapa 6a** — Estilo (`/design-md-library`) → `06a-estilo.md`
 - [x] **Etapa 6b** — Telas (`/design-taste-frontend`) → `06b-telas.md`
-- [ ] 🔒 **Portão 2** — design aprovado
-- [ ] **Etapa 7** — Arquitetura técnica → `07-arquitetura.md` + ADRs
+- [x] 🔒 **Portão 2** — aprovado em 2026-11-04 (esboço navegável em `esbocos/mes-navegavel.html`)
+- [x] **Etapa 7** — Arquitetura técnica → `07-arquitetura.md` + ADRs
 - [ ] 🔒 **Portão 3** — stack aprovada
 - [ ] **Etapa 8** — Plano de construção → `08-plano-de-construcao.md`
 - [ ] **Etapa 9** — Construção, uma fatia por PR
