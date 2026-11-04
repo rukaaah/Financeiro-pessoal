@@ -12,11 +12,11 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
 ## Etapas
 
 - [x] **Etapa 1** — Diagnóstico do sistema atual → `01-diagnostico.md`
-  - [ ] Medição no app publicado (falta a URL do app no Community Cloud)
+  - [x] Medição no app publicado (Fase 0, 2026-11-04)
 - [x] **Etapa 2** — Produtos de referência → `02-referencias.md`
-- [ ] **Etapa 3** — Praticidade no Reddit → `03-ideias.md`
+- [x] **Etapa 3** — Praticidade no Reddit → `03-ideias.md`
   - [x] Facilitações vindas da Etapa 2 e do diagnóstico
-  - [ ] Leitura das discussões do Reddit (bloqueada: o ambiente não abre reddit.com; ver `03-ideias.md`)
+  - [x] Reddit dispensado pelo Pedro em 2026-11-04 (nenhum caminho de leitura funcionou)
 - [ ] 🔒 **Portão 1** — lista de ideias aprovada (sim / não / depois em cada linha)
 - [ ] **Etapa 4** — Onde a IA ajuda → `04-ia.md` + `prompts/ia/<funcionalidade>.md`
 - [ ] **Etapa 5** — Representação e arquitetura de informação → `05-arquitetura-de-informacao.md`

@@ -1,7 +1,11 @@
-# Etapa 3 — Ideias de praticidade (parcial)
+# Etapa 3 — Ideias de praticidade
 
-Data: 2026-11-04. **Estado: incompleto.** A parte do Reddit está bloqueada; o que
-está abaixo vem da Etapa 2 (produtos) e da Etapa 1 (diagnóstico).
+Data: 2026-11-04. As ideias vêm da Etapa 2 (produtos) e da Etapa 1 (diagnóstico).
+**Sem Reddit**, por decisão do Pedro em 2026-11-04, depois que nenhum caminho de
+leitura funcionou (registro abaixo). Por isso não há coluna de repetições.
+
+Nenhum requisito do Apêndice A sai por esta lista: as ideias que tocam um RF dizem
+qual, e o resto do Apêndice A continua valendo como está.
 
 ## Por que a parte do Reddit não foi feita
 
@@ -17,7 +21,7 @@ Tentei três caminhos e os três foram recusados pelo ambiente desta sessão:
 As buscas devolveram títulos e trechos de discussões, mas o pedido exige fonte
 aberta e lida ("snippet de busca não é fonte"), então nada do Reddit entrou aqui.
 
-**Caminhos possíveis** (decisão do Pedro):
+**Caminhos que foram oferecidos** (o Pedro escolheu o 3):
 
 1. ~~Claude in Chrome~~: tentado, o Reddit também é bloqueado ali.
 2. **O Pedro cola o conteúdo**: abrir as discussões no próprio navegador e salvar o
@@ -38,7 +42,7 @@ Português: `app de finanças pessoais`, `controle financeiro aplicativo`,
 Subreddits: r/personalfinance, r/ynab, r/budget, r/povertyfinance, r/frugal,
 r/investimentos, r/brasil.
 
-## Ideias até aqui
+## 🔒 Portão 1 — marque sim, não ou depois em cada linha
 
 Esforço: P (dias), M (uma a duas semanas), G (mais que isso). Impacto para o uso
 diário de uma pessoa. "Apêndice A" diz se o requisito já existe.

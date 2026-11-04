@@ -8,17 +8,18 @@ Data: 2026-11-04. Branch analisada: `design/reestruturacao-da-interface` no comm
 1. **A leitura inicial se confirma, mas a causa principal não é de tela.** Hoje o
    sistema **não tem nenhum caso de uso de finanças**: dos dez módulos de
    `src/financeiro/`, só `identity` e `shared` têm código (459 linhas no total).
-   Toda a interface roda sobre `app/dados.py` com `DADOS_DE_EXEMPLO = True` e 52
+   Toda a interface roda sobre `app/dados.py` com `DADOS_DE_EXEMPLO = True` e 53
    marcas `TODO(claude-code)`. Nada que se lança é gravado.
 2. O app publicado (`main`) é o esqueleto da Fase 0: sete páginas com um aviso "em
    construção". O usuário real não tem controle financeiro nenhum hoje.
 3. A interface da branch é rica, mas **mostra números que deveriam bater e não batem**:
    três respostas diferentes para "quanto ainda posso gastar", dois "gastos do mês",
    dois patrimônios. É isso que faz as páginas parecerem confusas.
-4. Desempenho local é bom (troca de tela 110 a 400 ms, sem banco e sem rede), mas
-   o caminho real soma um ida e volta do celular até o servidor do Streamlit nos
-   EUA (~157 ms medidos daqui) a cada toque, mais as consultas ao Neon em São Paulo.
-   A meta de 200 ms de resposta a toque **não cabe** no modelo atual.
+4. **O app publicado já passa das metas com páginas vazias**: primeira tela útil em
+   2,3 a 2,7 s (meta 1,5 s) e troca de tela em 211 a 278 ms, sem nenhuma consulta de
+   finanças e numa conexão fixa, não 4G. Cada toque é uma ida ao servidor do
+   Streamlit (~157 ms daqui) mais as consultas ao Neon em São Paulo. A meta de
+   200 ms de resposta a toque **não cabe** no modelo atual.
 5. Faltam peças de um controle completo: editar e excluir lançamento, contas
    recorrentes que viram lançamento, saldo projetado por dia, conciliação, exportar,
    comparação entre meses no lugar onde se decide.
@@ -37,9 +38,12 @@ Data: 2026-11-04. Branch analisada: `design/reestruturacao-da-interface` no comm
 - Região do banco confirmada no Neon: projeto `Financeiro pessoal`,
   `aws-sa-east-1`, Postgres 18, 0,25 a 2 CU.
 
-**Não medido:** o app publicado. A URL do app no Community Cloud não está no
-repositório (por decisão, o repo é público) e `financeiro-pessoal.streamlit.app`
-não é o app. Ver "O que falta medir" no fim.
+- App publicado (`personal-finance-port.streamlit.app`, versão de `main`, Fase 0)
+  medido em 2026-11-04 no navegador embutido, viewport de 375 × 812, conexão fixa
+  de banda larga em Paranavaí (não 4G; num 4G os tempos só aumentam). Primeira tela:
+  do pedido do documento do app (`/~/+/`) até o texto da tela aparecer, três
+  amostras. Troca de tela: do clique no link da lateral até o título mudar, duas
+  rodadas pelas seis páginas.
 
 ## O que existe por trás das telas
 
@@ -155,11 +159,11 @@ valor, categoria, conta e data, com "Mais opções". Bom desenho; nada é gravad
 
 | Métrica | Meta | Medido local (sem rede, sem banco) | Estimativa no app publicado |
 |---|---|---|---|
-| Primeira tela útil, app acordado, 4G | ≤ 1,5 s | DOM pronto em 248 ms | **não medido**; somar handshake TLS + websocket + 1 rerun completo com as consultas da tela |
-| Troca de tela | ≤ 300 ms | 110 a 400 ms (Resumo 163, Orçamento 136 a 276, Investimentos 339 a 417, Ajustes 361 a 395) | local + ≥ 157 ms de ida e volta até o servidor + consultas |
+| Primeira tela útil, app acordado, 4G | ≤ 1,5 s | DOM pronto em 248 ms | **2.311, 2.323 e 2.672 ms medidos**, com uma página que só tem a tarja e um aviso. **Acima da meta** antes de qualquer número |
+| Troca de tela | ≤ 300 ms | 110 a 400 ms (Resumo 163, Orçamento 136 a 276, Investimentos 339 a 417, Ajustes 361 a 395) | **211 a 278 ms medidos** (12 trocas) em páginas sem consulta. Com a UI da branch (local 110 a 400 ms) e as consultas, passa da meta |
 | Resposta a um toque (abrir Lançar) | ≤ 200 ms | 147 a 173 ms | **acima da meta**: só a ida e volta até o servidor já é ~157 ms |
 | Troca de aba | — | 11 a 17 ms na maioria; 137 a 267 ms nas abas que redesenham gráfico (Atenção, Proventos, Ajustes → Investimentos) | igual ao local nas abas puramente visuais |
-| Cold start | medir, nunca tela branca | Neon acorda em ~0,4 s (`validacoes.md`); o container do Community Cloud dorme após 12 h e mostra a tela de sono do Streamlit (ADR-009) | a tela de sono é exatamente a "tela branca" que a meta proíbe |
+| Cold start | medir, nunca tela branca | Neon acorda em ~0,4 s (`validacoes.md`) | Na primeira visita de hoje o app mostrou "Your app is waking up!" do Streamlit e acordou **sem clique**, em menos de 48 s (o tempo exato não foi capturado: a página recarrega no meio). Não é tela branca, mas é tela do Streamlit, em inglês, sem nada do app |
 
 ### Por que o modelo atual tem um teto
 
@@ -249,7 +253,8 @@ diário (a comparação com os produtos de referência está na Etapa 2):
 
 ## O que falta medir
 
-1. **App publicado**: preciso da URL do app no Community Cloud para medir primeira
-   tela, troca de tela e toque no celular real ou emulado.
-2. **Latência servidor do Streamlit → Neon**: só medível de dentro do app. Proposta:
+1. **App publicado com a UI da branch**: o publicado é a Fase 0. A medição que
+   importa é a da v3, ao fim de cada tela (Etapa 9).
+2. **Cold start com precisão**: cronometrar de fora, com o app dormindo há mais de 12 h.
+3. **Latência servidor do Streamlit → Neon**: só medível de dentro do app. Proposta:
    um registro de tempo por consulta no próprio app, ligado só para o dono.
