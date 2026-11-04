@@ -39,7 +39,8 @@ export function numerosConferem(citados: unknown, resultados: unknown): boolean 
   if (!Array.isArray(citados)) return true;
   const pool = new Set<string>();
   JSON.stringify(resultados).replace(/-?\d+(?:\.\d+)?/g, (n) => { pool.add(Number(n).toFixed(2)); pool.add(String(Number(n))); return n; });
-  return citados.every((c) => { const n = Number(String(c).replace(/\./g, "").replace(",", ".")); return Number.isFinite(n) && (pool.has(n.toFixed(2)) || pool.has(String(n))); });
+  const numero = (c: unknown) => { const t = String(c).replace(/R\$\s?/, "").trim(); return Number(t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t); };
+  return citados.every((c) => { const n = numero(c); return Number.isFinite(n) && (pool.has(n.toFixed(2)) || pool.has(String(n))); });
 }
 
 function jsonDe(saida: unknown): Record<string, unknown> | null {

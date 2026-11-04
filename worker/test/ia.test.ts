@@ -7,7 +7,7 @@ describe("IA: o que sai e o que volta", () => {
   });
   it("número citado que não está nos resultados reprova a resposta", () => {
     const resultados = [{ linhas: [{ gasto: "312.00" }, { quantidade: 9 }] }];
-    expect(numerosConferem(["312,00", "9"], resultados)).toBe(true);
+    expect(numerosConferem(["312,00", "9", "312.00", "R$ 312,00"], resultados)).toBe(true);
     expect(numerosConferem(["313.00"], resultados)).toBe(false);
   });
 });
