@@ -60,6 +60,17 @@ CREATE TYPE public.category_kind AS ENUM (
 
 
 --
+-- Name: category_nature; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.category_nature AS ENUM (
+    'variable',
+    'fixed',
+    'goal_backed'
+);
+
+
+--
 -- Name: transaction_kind; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -68,6 +79,97 @@ CREATE TYPE public.transaction_kind AS ENUM (
     'expense',
     'transfer'
 );
+
+
+--
+-- Name: accounts_cofrinho_em_uso_tg(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.accounts_cofrinho_em_uso_tg() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    IF OLD.kind = 'goal' AND NEW.kind <> 'goal' AND (
+           EXISTS (SELECT 1 FROM public.categories WHERE goal_account_id = OLD.id)
+        OR EXISTS (SELECT 1 FROM public.goal_contributions WHERE account_id = OLD.id)
+        OR EXISTS (SELECT 1 FROM public.transactions
+                    WHERE account_id = OLD.id AND funds_expense_id IS NOT NULL)
+    ) THEN
+        RAISE EXCEPTION 'a conta % é cofrinho em uso e não pode mudar de tipo', OLD.id
+            USING ERRCODE = '23F20';
+    END IF;
+    RETURN NEW;
+END
+$$;
+
+
+--
+-- Name: admin_list_app_users(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.admin_list_app_users() RETURNS TABLE(id uuid, email text, display_name text, is_demo boolean, is_admin boolean, active boolean, created_at timestamp with time zone)
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    -- `current_app_user()` lê app.user_id, que a unit of work define por
+    -- transação (ADR-004). Sem isso, não há quem perguntar.
+    IF NOT EXISTS (
+        SELECT 1 FROM public.app_users u
+         WHERE u.id = current_app_user() AND u.is_admin AND u.active
+    ) THEN
+        RAISE EXCEPTION 'esta operação é só para quem administra o app (RF19)'
+            USING ERRCODE = '42501';
+    END IF;
+
+    RETURN QUERY
+        SELECT u.id, u.email, u.display_name, u.is_demo, u.is_admin,
+               u.active, u.created_at
+          FROM public.app_users u
+         ORDER BY u.is_demo, u.email;
+END
+$$;
+
+
+--
+-- Name: FUNCTION admin_list_app_users(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.admin_list_app_users() IS 'Lista a allowlist inteira para quem administra (RF19). SECURITY DEFINER porque a policy de app_users deixa ver só a própria linha; a permissão é checada por dentro da função, não pela tela.';
+
+
+--
+-- Name: categories_cofrinho_tg(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.categories_cofrinho_tg() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    IF NEW.goal_account_id IS NOT NULL THEN
+        PERFORM public.exige_cofrinho(NEW.goal_account_id);
+    END IF;
+
+    IF TG_OP = 'UPDATE'
+       AND OLD.goal_account_id IS NOT NULL
+       AND NEW.goal_account_id IS DISTINCT FROM OLD.goal_account_id
+       AND EXISTS (
+           SELECT 1
+             FROM public.transactions d
+             JOIN public.transactions r ON r.funds_expense_id = d.id
+            WHERE d.category_id = OLD.id
+       ) THEN
+        RAISE EXCEPTION
+            'a categoria % tem despesa paga pelo cofrinho; não pode trocar de cofrinho',
+            OLD.id
+            USING ERRCODE = '23F24';
+    END IF;
+
+    RETURN NEW;
+END
+$$;
 
 
 --
@@ -105,6 +207,40 @@ $$;
 --
 
 COMMENT ON FUNCTION public.demo_app_user() IS 'Id do usuário demo ativo, destino de quem não está na allowlist (ADR-003).';
+
+
+--
+-- Name: exige_cofrinho(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.exige_cofrinho(p_account_id uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE
+    v_kind account_kind;
+BEGIN
+    SELECT kind INTO v_kind FROM public.accounts WHERE id = p_account_id;
+    IF v_kind IS DISTINCT FROM 'goal' THEN
+        RAISE EXCEPTION 'a conta % não é cofrinho (é %)', p_account_id, v_kind
+            USING ERRCODE = '23F20';
+    END IF;
+END
+$$;
+
+
+--
+-- Name: goal_contributions_conta_tg(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.goal_contributions_conta_tg() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    PERFORM exige_cofrinho(NEW.account_id);
+    RETURN NEW;
+END
+$$;
 
 
 --
@@ -183,6 +319,49 @@ COMMENT ON FUNCTION public.resolve_app_user(p_email text) IS 'E-mail verificado 
 
 
 --
+-- Name: transactions_custeio_tg(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.transactions_custeio_tg() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE
+    v_tx    public.transactions%ROWTYPE;
+    v_conta account_kind;
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RETURN NULL;
+    END IF;
+
+    -- Diferido: a linha pode ter mudado entre o comando e o fim da transação.
+    -- Lê o estado atual, não o NEW do evento.
+    SELECT * INTO v_tx FROM public.transactions WHERE id = NEW.id;
+    IF NOT FOUND THEN
+        RETURN NULL;
+    END IF;
+
+    IF v_tx.funds_expense_id IS NOT NULL THEN
+        SELECT kind INTO v_conta FROM public.accounts WHERE id = v_tx.account_id;
+        IF v_tx.kind <> 'transfer' OR v_tx.amount >= 0 OR v_conta <> 'goal' THEN
+            RAISE EXCEPTION
+                'só a perna de saída de um cofrinho aponta despesa (lançamento %)', v_tx.id
+                USING ERRCODE = '23F21';
+        END IF;
+        PERFORM public.verifica_custeio(v_tx.funds_expense_id);
+    END IF;
+
+    -- A própria despesa mudou (valor, categoria, tipo): confere de novo.
+    IF EXISTS (SELECT 1 FROM public.transactions WHERE funds_expense_id = v_tx.id) THEN
+        PERFORM public.verifica_custeio(v_tx.id);
+    END IF;
+
+    RETURN NULL;
+END
+$$;
+
+
+--
 -- Name: transactions_invoice_month_tg(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -194,6 +373,36 @@ DECLARE
     v_esperado date;
 BEGIN
     SELECT kind INTO v_kind FROM accounts WHERE id = NEW.account_id;
+
+    -- Quem quita uma fatura é, necessariamente, uma perna de transferência de
+    -- entrada numa conta de cartão. Qualquer outra combinação é erro de quem
+    -- escreveu, e falhar alto aqui é melhor que um total de fatura errado numa
+    -- tela.
+    IF NEW.settles_invoice_month IS NOT NULL THEN
+        IF NEW.kind <> 'transfer' THEN
+            RAISE EXCEPTION
+                'só transferência quita fatura; este lançamento é % (ADR-010)',
+                NEW.kind
+                USING ERRCODE = '23F05';
+        END IF;
+
+        IF v_kind IS DISTINCT FROM 'credit_card' THEN
+            RAISE EXCEPTION
+                'só conta de cartão tem fatura a quitar; esta é % (ADR-010)',
+                v_kind
+                USING ERRCODE = '23F06';
+        END IF;
+
+        -- Na conta do cartão a compra é negativa e o pagamento é positivo: é o
+        -- lado que reduz a dívida. A perna que sai da conta corrente não quita
+        -- nada, ela só paga.
+        IF NEW.amount <= 0 THEN
+            RAISE EXCEPTION
+                'a perna que quita a fatura é a de entrada no cartão, e esta é de % (ADR-010)',
+                NEW.amount
+                USING ERRCODE = '23F07';
+        END IF;
+    END IF;
 
     -- Perna de transferência numa conta de cartão é pagamento de fatura (ou
     -- estorno): move dinheiro, não é compra, e por isso não pertence a fatura
@@ -230,6 +439,13 @@ BEGIN
     RETURN NEW;
 END
 $$;
+
+
+--
+-- Name: FUNCTION transactions_invoice_month_tg(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.transactions_invoice_month_tg() IS 'Calcula e verifica invoice_month (ADR-005/008) e verifica o contexto de settles_invoice_month (ADR-010).';
 
 
 --
@@ -289,6 +505,52 @@ BEGIN
     END IF;
 
     RETURN NULL;
+END
+$$;
+
+
+--
+-- Name: verifica_custeio(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.verifica_custeio(p_despesa uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE
+    v_kind     transaction_kind;
+    v_amount   numeric(14, 2);
+    v_nature   category_nature;
+    v_cofrinho uuid;
+    v_pago     numeric(14, 2);
+BEGIN
+    SELECT t.kind, t.amount, c.nature, c.goal_account_id
+      INTO v_kind, v_amount, v_nature, v_cofrinho
+      FROM public.transactions t
+      LEFT JOIN public.categories c ON c.id = t.category_id
+     WHERE t.id = p_despesa;
+
+    IF v_kind IS DISTINCT FROM 'expense'
+       OR v_nature IS DISTINCT FROM 'goal_backed'
+       OR EXISTS (
+           SELECT 1 FROM public.transactions
+            WHERE funds_expense_id = p_despesa
+              AND account_id <> v_cofrinho
+       ) THEN
+        RAISE EXCEPTION
+            'o lançamento % não é despesa de categoria com este cofrinho', p_despesa
+            USING ERRCODE = '23F22';
+    END IF;
+
+    SELECT COALESCE(sum(-amount), 0) INTO v_pago
+      FROM public.transactions
+     WHERE funds_expense_id = p_despesa;
+
+    IF v_pago > -v_amount THEN
+        RAISE EXCEPTION
+            'resgates pagam % da despesa %, que vale %', v_pago, p_despesa, -v_amount
+            USING ERRCODE = '23F23';
+    END IF;
 END
 $$;
 
@@ -357,6 +619,8 @@ CREATE TABLE public.app_users (
     is_demo boolean DEFAULT false NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    is_admin boolean DEFAULT false NOT NULL,
+    CONSTRAINT app_users_demo_nao_administra CHECK ((NOT (is_demo AND is_admin))),
     CONSTRAINT app_users_display_name_nao_vazio CHECK ((length(btrim(display_name)) > 0)),
     CONSTRAINT app_users_email_formato CHECK ((email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'::text)),
     CONSTRAINT app_users_email_minusculo CHECK ((email = lower(email)))
@@ -371,6 +635,13 @@ COMMENT ON TABLE public.app_users IS 'Allowlist de acesso (ADR-003). E-mail ause
 
 
 --
+-- Name: COLUMN app_users.is_admin; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.app_users.is_admin IS 'Pode liberar e desativar acesso de outras pessoas (RF19). A regra vale no banco, por função SECURITY DEFINER: esconder a tela não protege nada.';
+
+
+--
 -- Name: categories; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -382,8 +653,26 @@ CREATE TABLE public.categories (
     kind public.category_kind NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    nature public.category_nature DEFAULT 'variable'::public.category_nature NOT NULL,
+    goal_account_id uuid,
+    CONSTRAINT categories_cofrinho_so_em_goal_backed CHECK (((nature = 'goal_backed'::public.category_nature) = (goal_account_id IS NOT NULL))),
+    CONSTRAINT categories_natureza_so_em_despesa CHECK (((kind = 'expense'::public.category_kind) OR (nature = 'variable'::public.category_nature))),
     CONSTRAINT categories_nome_nao_vazio CHECK ((length(btrim(name)) > 0))
 );
+
+
+--
+-- Name: COLUMN categories.nature; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.categories.nature IS 'Natureza da categoria (ADR-014). Decide se ela aparece em "Onde ainda cabe" e como o Resumo a lê. Só despesa foge de variable.';
+
+
+--
+-- Name: COLUMN categories.goal_account_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.categories.goal_account_id IS 'Cofrinho que paga os gastos desta categoria. Existe se, e só se, nature = goal_backed (ADR-014).';
 
 
 --
@@ -415,6 +704,29 @@ CREATE TABLE public.counterparties (
 
 
 --
+-- Name: goal_contributions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.goal_contributions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    account_id uuid NOT NULL,
+    vigencia daterange NOT NULL,
+    amount numeric(14,2) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT goal_contributions_valor_positivo CHECK ((amount > (0)::numeric)),
+    CONSTRAINT goal_contributions_vigencia_nao_vazia CHECK ((NOT isempty(vigencia)))
+);
+
+
+--
+-- Name: TABLE goal_contributions; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.goal_contributions IS 'Quanto do salário vai para o cofrinho por mês, com vigência (ADR-014).';
+
+
+--
 -- Name: transactions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -434,13 +746,30 @@ CREATE TABLE public.transactions (
     installment_total smallint,
     installment_group_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    settles_invoice_month date,
+    funds_expense_id uuid,
     CONSTRAINT transactions_categoria_exceto_transferencia CHECK (((kind = 'transfer'::public.transaction_kind) = (category_id IS NULL))),
     CONSTRAINT transactions_invoice_month_e_primeiro_dia CHECK (((invoice_month IS NULL) OR (EXTRACT(day FROM invoice_month) = (1)::numeric))),
     CONSTRAINT transactions_parcelamento_coerente CHECK ((((installment_no IS NULL) = (installment_total IS NULL)) AND ((installment_no IS NULL) = (installment_group_id IS NULL)) AND ((installment_no IS NULL) OR ((installment_no >= 1) AND (installment_total >= 2) AND (installment_no <= installment_total))))),
+    CONSTRAINT transactions_settles_invoice_month_e_primeiro_dia CHECK (((settles_invoice_month IS NULL) OR (EXTRACT(day FROM settles_invoice_month) = (1)::numeric))),
     CONSTRAINT transactions_sinal_casa_com_tipo CHECK ((((kind = 'income'::public.transaction_kind) AND (amount > (0)::numeric)) OR ((kind = 'expense'::public.transaction_kind) AND (amount < (0)::numeric)) OR (kind = 'transfer'::public.transaction_kind))),
     CONSTRAINT transactions_transfer_id_so_em_transferencia CHECK (((kind = 'transfer'::public.transaction_kind) = (transfer_id IS NOT NULL))),
     CONSTRAINT transactions_valor_nao_zero CHECK ((amount <> (0)::numeric))
 );
+
+
+--
+-- Name: COLUMN transactions.settles_invoice_month; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.transactions.settles_invoice_month IS 'Mês de vencimento da fatura que esta perna de pagamento quita (ADR-010). Só em perna de transferência de entrada numa conta de cartão. Anulável: crédito no cartão sem fatura apontada é estorno, não pagamento. Continua sem invoice_month, porque pagamento não é compra (ADR-007).';
+
+
+--
+-- Name: COLUMN transactions.funds_expense_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.transactions.funds_expense_id IS 'Na perna de saída de um cofrinho: a despesa que este resgate pagou (modalidade "do cofrinho", ADR-014). Nulo em todo o resto.';
 
 
 --
@@ -572,6 +901,22 @@ ALTER TABLE ONLY public.counterparties
 
 
 --
+-- Name: goal_contributions goal_contributions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.goal_contributions
+    ADD CONSTRAINT goal_contributions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: goal_contributions goal_contributions_sem_sobreposicao; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.goal_contributions
+    ADD CONSTRAINT goal_contributions_sem_sobreposicao EXCLUDE USING gist (account_id WITH =, vigencia WITH &&);
+
+
+--
 -- Name: transactions transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -580,10 +925,32 @@ ALTER TABLE ONLY public.transactions
 
 
 --
+-- Name: transactions transactions_user_id_id; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_user_id_id UNIQUE (user_id, id);
+
+
+--
 -- Name: app_users_um_demo_ativo; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX app_users_um_demo_ativo ON public.app_users USING btree (is_demo) WHERE (is_demo AND active);
+
+
+--
+-- Name: categories_um_cofrinho_por_categoria; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX categories_um_cofrinho_por_categoria ON public.categories USING btree (goal_account_id) WHERE (goal_account_id IS NOT NULL);
+
+
+--
+-- Name: transactions_custeio; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX transactions_custeio ON public.transactions USING btree (funds_expense_id) WHERE (funds_expense_id IS NOT NULL);
 
 
 --
@@ -629,10 +996,45 @@ CREATE INDEX transactions_user_fatura ON public.transactions USING btree (user_i
 
 
 --
+-- Name: transactions_user_quita; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX transactions_user_quita ON public.transactions USING btree (user_id, settles_invoice_month) WHERE (settles_invoice_month IS NOT NULL);
+
+
+--
+-- Name: accounts accounts_cofrinho_em_uso; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER accounts_cofrinho_em_uso BEFORE UPDATE OF kind ON public.accounts FOR EACH ROW EXECUTE FUNCTION public.accounts_cofrinho_em_uso_tg();
+
+
+--
+-- Name: categories categories_cofrinho; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER categories_cofrinho BEFORE INSERT OR UPDATE OF nature, goal_account_id ON public.categories FOR EACH ROW EXECUTE FUNCTION public.categories_cofrinho_tg();
+
+
+--
+-- Name: goal_contributions goal_contributions_conta; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER goal_contributions_conta BEFORE INSERT OR UPDATE OF account_id ON public.goal_contributions FOR EACH ROW EXECUTE FUNCTION public.goal_contributions_conta_tg();
+
+
+--
+-- Name: transactions transactions_custeio; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER transactions_custeio AFTER INSERT OR UPDATE ON public.transactions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.transactions_custeio_tg();
+
+
+--
 -- Name: transactions transactions_invoice_month; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER transactions_invoice_month BEFORE INSERT OR UPDATE OF kind, account_id, occurred_on, installment_no, invoice_month ON public.transactions FOR EACH ROW EXECUTE FUNCTION public.transactions_invoice_month_tg();
+CREATE TRIGGER transactions_invoice_month BEFORE INSERT OR UPDATE OF kind, account_id, occurred_on, installment_no, invoice_month, amount, settles_invoice_month ON public.transactions FOR EACH ROW EXECUTE FUNCTION public.transactions_invoice_month_tg();
 
 
 --
@@ -675,6 +1077,14 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: categories categories_goal_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT categories_goal_fk FOREIGN KEY (user_id, goal_account_id) REFERENCES public.accounts(user_id, id) ON DELETE RESTRICT;
+
+
+--
 -- Name: categories categories_group_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -707,6 +1117,22 @@ ALTER TABLE ONLY public.counterparties
 
 
 --
+-- Name: goal_contributions goal_contributions_account_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.goal_contributions
+    ADD CONSTRAINT goal_contributions_account_fk FOREIGN KEY (user_id, account_id) REFERENCES public.accounts(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: goal_contributions goal_contributions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.goal_contributions
+    ADD CONSTRAINT goal_contributions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: transactions transactions_account_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -728,6 +1154,14 @@ ALTER TABLE ONLY public.transactions
 
 ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_counterparty_fk FOREIGN KEY (user_id, counterparty_id) REFERENCES public.counterparties(user_id, id) ON DELETE RESTRICT;
+
+
+--
+-- Name: transactions transactions_funds_expense_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_funds_expense_fk FOREIGN KEY (user_id, funds_expense_id) REFERENCES public.transactions(user_id, id) ON DELETE RESTRICT;
 
 
 --
@@ -817,6 +1251,19 @@ CREATE POLICY counterparties_isolamento ON public.counterparties TO app USING ((
 
 
 --
+-- Name: goal_contributions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.goal_contributions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: goal_contributions goal_contributions_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY goal_contributions_isolamento ON public.goal_contributions TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: transactions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -835,6 +1282,14 @@ CREATE POLICY transactions_isolamento ON public.transactions TO app USING ((user
 
 GRANT USAGE ON SCHEMA public TO app;
 GRANT USAGE ON SCHEMA public TO jobs;
+
+
+--
+-- Name: FUNCTION admin_list_app_users(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.admin_list_app_users() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.admin_list_app_users() TO app;
 
 
 --
@@ -893,6 +1348,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.category_groups TO app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.counterparties TO app;
+
+
+--
+-- Name: TABLE goal_contributions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_contributions TO app;
 
 
 --

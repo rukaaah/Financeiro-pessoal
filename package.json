@@ -1,6 +1,26 @@
 {
-  "dependencies": {
+  "name": "financeiro-pessoal-v3",
+  "private": true,
+  "description": "Interface (PWA) e API (Cloudflare Worker) da v3. Python continua em jobs/, scripts/, migrations/ e tests/ (ADR-016). As dependências @neon/* são do neon.ts (configuração da CLI do Neon), que já existia.",
+  "workspaces": [
+    "packages/dominio",
+    "worker",
+    "web"
+  ],
+  "scripts": {
+    "tipos": "tsc -b packages/dominio worker web",
+    "teste": "vitest run --project dominio --project worker",
+    "teste:integracao": "vitest run --project integracao",
+    "build": "npm run build -w web",
+    "dev": "npm run build && npm run dev -w worker"
+  },
+  "devDependencies": {
     "@neon/config": "^1.8.4",
-    "@neon/env": "^1.5.1"
+    "@neon/env": "^1.5.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

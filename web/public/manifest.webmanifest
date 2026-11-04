@@ -1,0 +1,11 @@
+{
+  "name": "Financeiro pessoal",
+  "short_name": "Financeiro",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbfbf9",
+  "theme_color": "#18264f",
+  "icons": [{ "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }],
+  "shortcuts": [{ "name": "Gastei", "short_name": "Gastei", "url": "/?lancar=gastei" }]
+}
