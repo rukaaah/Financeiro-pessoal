@@ -49,3 +49,21 @@ export function faturasDe(linhas: readonly LinhaDeFatura[], diaDoVencimento: num
 export function comprometido(faturas: readonly Fatura[]): Centavos {
   return faturas.filter((f) => f.situacao === "futura").reduce((s, f) => s + f.falta, 0n);
 }
+
+/**
+ * Pagar ou antecipar uma fatura (total ou parcial). O pagamento é transferência com a perna do
+ * cartão apontando o mês da fatura (ADR-010), sem `invoice_month`: não é gasto. Antecipar é só
+ * pagar antes do vencimento, inclusive uma fatura futura; o que já foi pago abate o que falta.
+ * Não se paga mais do que falta, para o valor não sumir num mês que nenhuma tela mostra.
+ */
+export type PagamentoDaFatura =
+  | { readonly ok: true; readonly quita: boolean; readonly resta: Centavos; readonly antecipado: boolean; readonly diasAntes: number }
+  | { readonly ok: false; readonly motivo: "valor-invalido" | "nada-a-pagar" | "acima-do-que-falta" };
+
+export function pagamentoDaFatura(f: { readonly vencimento: string; readonly falta: Centavos }, valor: Centavos, data: string): PagamentoDaFatura {
+  if (valor <= 0n) return { ok: false, motivo: "valor-invalido" };
+  if (f.falta <= 0n) return { ok: false, motivo: "nada-a-pagar" };
+  if (valor > f.falta) return { ok: false, motivo: "acima-do-que-falta" };
+  const diasAntes = Math.round((Date.parse(`${f.vencimento}T12:00:00Z`) - Date.parse(`${data}T12:00:00Z`)) / 86_400_000);
+  return { ok: true, quita: valor === f.falta, resta: f.falta - valor, antecipado: diasAntes > 0, diasAntes: Math.max(diasAntes, 0) };
+}

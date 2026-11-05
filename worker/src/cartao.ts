@@ -1,4 +1,4 @@
-import { comprometido, deDigitado, faturasDe, type LinhaDeFatura, paraNumeric } from "@financeiro/dominio";
+import { comprometido, deDigitado, deNumeric, faturasDe, formatar, type LinhaDeFatura, pagamentoDaFatura, paraNumeric, vencimentoDe } from "@financeiro/dominio";
 import type { Hono } from "hono";
 import type { Rodar } from "./app.ts";
 import { consulta } from "./banco.ts";
@@ -53,18 +53,39 @@ export function rotasDoCartao<E extends object>(app: Hono<{ Bindings: E }>, roda
     });
   });
 
-  /** Pagar fatura: transferência com a perna de entrada apontando a fatura que quita (ADR-010). */
+  /**
+   * Pagar fatura: transferência com a perna de entrada apontando a fatura que quita (ADR-010).
+   * Vale para qualquer fatura com algo a pagar, inclusive aberta ou futura antes do vencimento
+   * (antecipar), no total ou em parte; nunca acima do que falta.
+   */
   app.post("/api/pagar-fatura", async (c) => {
     const b = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
     const cartao = String(b.cartao_id ?? ""), origem = String(b.conta_id ?? ""), mes = String(b.mes ?? ""), data = String(b.data ?? hojeEmSaoPaulo());
     if (!UUID.test(cartao) || !UUID.test(origem) || !MES.test(mes) || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return c.json({ erro: "Pedido inválido." }, 400);
-    let valor: string;
+    let centavos: bigint;
     try {
-      const v = deDigitado(String(b.valor ?? ""));
-      if (v <= 0n) throw new Error();
-      valor = paraNumeric(v);
+      centavos = deDigitado(String(b.valor ?? ""));
+      if (centavos <= 0n) throw new Error();
     } catch {
       return c.json({ erro: "Digite o valor como 843,40." }, 400);
+    }
+    const valor = paraNumeric(centavos);
+    // Sob RLS: o cartão de outra pessoa não aparece, e a fatura dele fica "sem nada a pagar".
+    const [situacao = []] = await rodar(c, [consulta(
+      `select coalesce(sum(-t.amount) filter (where t.invoice_month = x.m), 0)::numeric(14,2)::text as total,
+              coalesce(sum(t.amount) filter (where t.settles_invoice_month = x.m), 0)::numeric(14,2)::text as pago,
+              (select p.due_day from account_terms p where p.account_id = $1 and p.vigencia @> current_date) as dia
+         from (select ($2 || '-01')::date as m) x
+         left join transactions t on t.account_id = $1 and (t.invoice_month = x.m or t.settles_invoice_month = x.m)
+        group by x.m`,
+      cartao, mes,
+    )]);
+    const total = deNumeric(String(situacao[0]?.total ?? "0")), pago = deNumeric(String(situacao[0]?.pago ?? "0"));
+    const falta = total > pago ? total - pago : 0n;
+    const conferido = pagamentoDaFatura({ vencimento: vencimentoDe(`${mes}-01`, Number(situacao[0]?.dia ?? 10)), falta }, centavos, data);
+    if (!conferido.ok) {
+      if (conferido.motivo === "acima-do-que-falta") return c.json({ erro: `Falta ${formatar(falta)} nesta fatura; o pagamento não pode passar disso.` }, 400);
+      return c.json({ erro: "Esta fatura não tem nada a pagar." }, 400);
     }
     const transferencia = crypto.randomUUID();
     const descricao = `Pagamento da fatura de ${mes.slice(5, 7)}/${mes.slice(0, 4)}`;
@@ -86,7 +107,7 @@ export function rotasDoCartao<E extends object>(app: Hono<{ Bindings: E }>, roda
       // Se uma das pernas não entrou, o trigger de soma zero recusa o commit; chegar aqui com
       // uma só é impossível, mas a resposta não deve fingir sucesso.
       if (!saida.length || !entrada.length) return c.json({ erro: "Conta de origem ou cartão não encontrados." }, 400);
-      return c.json({ ok: true }, 201);
+      return c.json({ ok: true, quita: conferido.quita, falta: paraNumeric(conferido.resta), antecipado: conferido.antecipado }, 201);
     } catch (e) {
       if (/^(22|23)/.test((e as { code?: string })?.code ?? "")) return c.json({ erro: "Conta de origem ou cartão não encontrados." }, 400);
       throw e;
