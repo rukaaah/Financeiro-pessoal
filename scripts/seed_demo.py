@@ -79,7 +79,10 @@ RECORRENTES = (
     Lancamento("unicred", "mercado", "-612.40", 8, "Supermercado"),
     Lancamento("unicred", "mercado", "-184.90", 19, "Feira e padaria"),
     Lancamento("unicred", "transporte", "-96.00", 14, "Combustível"),
-    Lancamento("unicred", "lazer", "-55.90", 21, "Streaming"),
+    Lancamento("unicred", "assinaturas", "-55.90", 21, "Streaming"),
+    Lancamento("unicred", "restaurantes", "-86.40", 16, "Restaurante"),
+    Lancamento("unicred", "lazer", "-64.00", 23, "Cinema"),
+    Lancamento("picpay", "tarifas", "-12.90", 2, "Tarifa do pacote de serviços"),
     # Dia 4 e dia 5 de propósito: um dia de diferença, duas faturas diferentes.
     # É a regra do ADR-008 visível na tela, não só no teste.
     Lancamento("unicred", "mercado", "-238.70", 4, "Compra no dia do fechamento"),
@@ -105,26 +108,49 @@ ATIVOS = (
 )
 METAS = (("paper", 30), ("brick", 20), ("logistics", 15), ("infra", 10), ("treasury", 25))
 
-GRUPOS = (("essenciais", "Essenciais", 1), ("pessoal", "Pessoal", 2), ("renda", "Renda", 3))
+# Categorias base: as mesmas que uma conta real ganha na primeira entrada. A cópia
+# em TypeScript fica em `packages/dominio/src/categorias-base.ts`, e
+# `tests/unit/test_categorias_base.py` confere que as duas listas são iguais.
+GRUPOS = (
+    ("essenciais", "Essenciais", 1),
+    ("pessoal", "Pessoal", 2),
+    ("financeiro", "Financeiro", 3),
+    ("renda", "Renda", 4),
+)
 
 CATEGORIAS = (
     ("mercado", "Mercado", "essenciais", "expense"),
     ("moradia", "Moradia", "essenciais", "expense"),
+    ("contas_casa", "Contas da casa", "essenciais", "expense"),
     ("transporte", "Transporte", "essenciais", "expense"),
+    ("saude", "Saúde", "essenciais", "expense"),
+    ("educacao", "Educação", "essenciais", "expense"),
+    ("restaurantes", "Restaurantes", "pessoal", "expense"),
     ("lazer", "Lazer", "pessoal", "expense"),
-    ("saude", "Saúde", "pessoal", "expense"),
+    ("assinaturas", "Assinaturas", "pessoal", "expense"),
+    ("vestuario", "Vestuário", "pessoal", "expense"),
+    ("cuidados", "Cuidados pessoais", "pessoal", "expense"),
+    ("presentes", "Presentes", "pessoal", "expense"),
+    ("tarifas", "Tarifas bancárias", "financeiro", "expense"),
     ("salario", "Salário", "renda", "income"),
+    ("freelance", "Freelance", "renda", "income"),
 )
 
 # Previsto padrão por categoria (ADR-019), valendo desde o primeiro mês do
 # histórico. Mercado ganha um ajuste no mês corrente para o demo mostrar a
 # diferença entre padrão e exceção.
+# Categorias sem previsto (Educação, Vestuário...) aparecem com zero, como numa
+# conta real recém-criada.
 PREVISTO = {
     "mercado": "1100.00",
-    "moradia": "2200.00",
+    "moradia": "1900.00",
+    "contas_casa": "250.00",
     "transporte": "150.00",
-    "lazer": "120.00",
     "saude": "150.00",
+    "restaurantes": "200.00",
+    "lazer": "120.00",
+    "assinaturas": "60.00",
+    "tarifas": "15.00",
     "salario": "4200.00",
 }
 AJUSTE_DO_MES = ("mercado", "1250.00")
@@ -133,8 +159,8 @@ AJUSTE_DO_MES = ("mercado", "1250.00")
 # luz e internet ainda não, e aparecem como "a pagar" e na Atenção.
 CONTAS_RECORRENTES = (
     ("aluguel", "Aluguel", "1450.00", 10, "moradia", "picpay", "essential"),
-    ("luz", "Conta de luz", "150.00", 28, "moradia", "picpay", "essential"),
-    ("internet", "Internet", "100.00", 30, "moradia", "picpay", "important"),
+    ("luz", "Conta de luz", "150.00", 28, "contas_casa", "picpay", "essential"),
+    ("internet", "Internet", "100.00", 30, "contas_casa", "picpay", "important"),
 )
 
 
@@ -336,7 +362,7 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 ident("freelance:recebido"),
                 USUARIO,
                 ident("picpay"),
-                ident("salario"),
+                ident("freelance"),
                 Decimal("1565.10"),
                 recebido_em,
                 "Freelance (PayPal)",
@@ -354,7 +380,7 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 Decimal("300.00"),
                 recebido_em,
                 ident("picpay"),
-                ident("salario"),
+                ident("freelance"),
                 ident("freelance:recebido"),
                 Decimal("1565.10"),
                 Decimal("5.40000"),
@@ -371,7 +397,7 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 Decimal("300.00"),
                 max(hoje, primeiro_dia(hoje, 0).replace(day=25)),
                 ident("picpay"),
-                ident("salario"),
+                ident("freelance"),
             ),
         )
         # Saldo com que a conta começou o histórico: sem ele, três meses de aluguel,
