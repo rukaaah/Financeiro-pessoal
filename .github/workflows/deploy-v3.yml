@@ -68,3 +68,8 @@ jobs:
               echo "::notice::$nome não cadastrado; login desligado."
             fi
           done
+
+      # De fora, sem login: o app publicado cai no demo, não mostra dado real, não chama a IA,
+      # não deixa administrar acessos nem forjar sessão, e não expõe segredo no que serve.
+      - name: Teste de segurança no app publicado
+        run: node scripts/teste_seguranca_v3.mjs
