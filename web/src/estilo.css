@@ -50,7 +50,7 @@ h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em}
 .achado{margin-top:12px;background:var(--fora-f);color:var(--fora-t);border-radius:6px;padding:12px 14px;display:flex;gap:10px;font-size:15px}
 .achado .ms{color:var(--fora)}
 section{margin-top:24px}
-h2{font-size:18px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px;text-wrap:balance}
+h2{font-size:18px;font-weight:700;display:flex;flex-wrap:wrap;column-gap:12px;justify-content:space-between;align-items:baseline;margin:0 0 8px;text-wrap:balance}
 h2 .lado{font-size:14px;color:var(--t2);font-weight:500}
 h2 a,h2 button.link{font-size:14px;color:var(--azul);font-weight:600;text-decoration:none}
 .lista{background:var(--sup);border-radius:6px;padding:0 14px}
