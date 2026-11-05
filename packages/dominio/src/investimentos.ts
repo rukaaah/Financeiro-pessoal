@@ -1,4 +1,4 @@
-import type { Centavos } from "./dinheiro.ts";
+import { type Centavos, formatar } from "./dinheiro.ts";
 
 /**
  * Carteira (RF09, RF15): posição calculada das operações, alocação contra a meta e
@@ -44,7 +44,11 @@ export interface Sugestao { ticker: string; valor: Centavos; cotas: number | nul
  * da classe, o ativo elegível de menor P/VP; cota inteira; a sobra vai para o destino
  * da sobra. Ativo barrado diz por quê.
  */
-export function ondeAportar(ativos: readonly AtivoNaCarteira[], regras: Regras, aporte: Centavos): { sugestoes: Sugestao[]; fora: { ticker: string; motivo: string }[]; sobra: Centavos } {
+export interface ResultadoDoAporte { sugestoes: Sugestao[]; fora: { ticker: string; motivo: string }[]; sobra: Centavos; avisos: string[] }
+
+const pp = (v: number) => v.toFixed(1).replace(".", ",");
+
+export function ondeAportar(ativos: readonly AtivoNaCarteira[], regras: Regras, aporte: Centavos): ResultadoDoAporte {
   const total = ativos.reduce((s, a) => s + a.valor, 0n) + aporte;
   const fora: { ticker: string; motivo: string }[] = [];
   const elegivel = (a: AtivoNaCarteira) => {
@@ -60,27 +64,51 @@ export function ondeAportar(ativos: readonly AtivoNaCarteira[], regras: Regras, 
   const faltas = (Object.entries(regras.metas) as [Classe, number][])
     .map(([c, pct]) => [c, (total * BigInt(Math.round(pct * 100))) / 10000n - (porClasse.get(c) ?? 0n)] as const)
     .filter(([, f]) => f > 0n);
-  const somaFaltas = faltas.reduce((s, [, f]) => s + f, 0n);
   const sugestoes: Sugestao[] = [];
+  const avisos: string[] = [];
   let sobra = aporte;
+  if (ativos.length === 0) avisos.push("Nenhum ativo na carteira ainda. Registre a primeira compra em \"Comprei\" para a conta ter onde distribuir.");
+  else if (Object.values(regras.metas).every((v) => !v)) avisos.push("Sem meta por classe, não há o que completar. Defina as metas em Ajustes, Investimentos.");
+  else if (faltas.length === 0) avisos.push("Todas as classes já estão na meta ou acima com este aporte.");
+
+  // Só entram na divisão as classes com quem comprar; as outras viram aviso, e a parte
+  // delas vai para as demais em vez de sumir na sobra.
+  const abaixo = (falta: Centavos) => pp(Number((falta * 10000n) / (total || 1n)) / 100);
+  type Alvo = { classe: Classe; falta: Centavos; ativo: AtivoNaCarteira; cota: Centavos | null; gasto: Centavos; cotas: bigint };
+  const alvos: Alvo[] = [];
   for (const [classe, falta] of faltas) {
-    const parte = somaFaltas > 0n ? (aporte * falta) / somaFaltas : 0n;
-    const escolhido = candidatos.filter((a) => a.classe === classe).sort((x, y) => (x.pvp ?? 9) - (y.pvp ?? 9))[0];
-    if (!escolhido || parte <= 0n) continue;
-    const pp = Number(((falta * 10000n) / (total || 1n))) / 100;
-    if (classe === "treasury" || !escolhido.preco) {
-      sugestoes.push({ ticker: escolhido.ticker, valor: parte, cotas: null, motivo: `${NOME_DA_CLASSE[classe]} está ${pp.toFixed(1).replace(".", ",")} p.p. abaixo da meta.` });
-      sobra -= parte;
+    const ativo = candidatos.filter((a) => a.classe === classe).sort((x, y) => (x.pvp ?? 9) - (y.pvp ?? 9))[0];
+    if (!ativo) {
+      const temNaClasse = ativos.some((a) => a.classe === classe);
+      avisos.push(`${NOME_DA_CLASSE[classe]} está ${abaixo(falta)} p.p. abaixo da meta, mas ${temNaClasse ? "nenhum ativo dessa classe passou nas suas regras" : "você não tem ativo dessa classe"}. O valor foi para as outras classes.`);
       continue;
     }
-    const precoC = centavosDe(ESCALA, deDecimal6(escolhido.preco));
-    const cotas = precoC > 0n ? parte / precoC : 0n;
-    if (cotas <= 0n) continue;
-    const valor = cotas * precoC;
-    sobra -= valor;
-    sugestoes.push({ ticker: escolhido.ticker, valor, cotas: Number(cotas), motivo: `${NOME_DA_CLASSE[classe]} está ${pp.toFixed(1).replace(".", ",")} p.p. abaixo da meta; menor P/VP elegível da classe${escolhido.pvp != null ? ` (${escolhido.pvp.toFixed(2).replace(".", ",")})` : ""}.` });
+    const cota = classe === "treasury" || !ativo.preco ? null : centavosDe(ESCALA, deDecimal6(ativo.preco));
+    alvos.push({ classe, falta, ativo, cota: cota && cota > 0n ? cota : null, gasto: 0n, cotas: 0n });
   }
-  return { sugestoes, fora, sobra };
+  const somaFaltas = alvos.reduce((s, x) => s + x.falta, 0n);
+  // 1ª passada: cada classe recebe em proporção ao que falta, em cotas inteiras.
+  for (const x of alvos) {
+    const parte = somaFaltas > 0n ? (aporte * x.falta) / somaFaltas : 0n;
+    if (x.cota == null) x.gasto = parte;
+    else { x.cotas = parte / x.cota; x.gasto = x.cotas * x.cota; }
+    sobra -= x.gasto;
+  }
+  // 2ª passada: a sobra compra mais uma cota de quem ainda está mais longe da meta e cabe nela.
+  for (;;) {
+    const cabe = alvos.filter((x) => x.cota != null && x.cota <= sobra && x.gasto < x.falta).sort((x, y) => { const d = (y.falta - y.gasto) - (x.falta - x.gasto); return d > 0n ? 1 : d < 0n ? -1 : 0; })[0];
+    if (!cabe || cabe.cota == null) break;
+    cabe.cotas += 1n; cabe.gasto += cabe.cota; sobra -= cabe.cota;
+  }
+  for (const x of alvos) {
+    if (x.gasto <= 0n) {
+      if (x.cota != null) avisos.push(`${x.ativo.ticker} (${NOME_DA_CLASSE[x.classe]}): a cota de ${formatar(x.cota)} não coube neste aporte.`);
+      continue;
+    }
+    const motivo = `${NOME_DA_CLASSE[x.classe]} está ${abaixo(x.falta)} p.p. abaixo da meta${x.cota != null ? `; menor P/VP elegível da classe${x.ativo.pvp != null ? ` (${x.ativo.pvp.toFixed(2).replace(".", ",")})` : ""}` : ""}.`;
+    sugestoes.push({ ticker: x.ativo.ticker, valor: x.gasto, cotas: x.cota != null ? Number(x.cotas) : null, motivo });
+  }
+  return { sugestoes, fora, sobra, avisos };
 }
 
 /** Projeção com premissas visíveis: aporte mensal, DY ao ano reinvestido. Não é previsão. */
@@ -90,4 +118,45 @@ export function projetar(inicial: Centavos, aporteMensal: Centavos, dyAnoPct: nu
   const pontos: Centavos[] = [BigInt(Math.round(v))];
   for (let m = 1; m <= anos * 12; m++) { v = v * (1 + r) + Number(aporteMensal); if (m % 12 === 0) pontos.push(BigInt(Math.round(v))); }
   return pontos;
+}
+
+/** Linha do relatório da carteira: o que mudou e o que pede atenção, pelas regras do Pedro. */
+export interface AtivoNoRelatorio {
+  ticker: string; classe: Classe; valor: Centavos; preco: number | null; precoAnterior: number | null; preco30d: number | null;
+  pvp: number | null; dy: number | null; liquidez: number | null; cotadoEm: string | null;
+}
+export interface Alerta { ticker: string; tipo: "oportunidade" | "atencao"; texto: string }
+export interface Relatorio { rendaMensal: Centavos; alertas: Alerta[]; desatualizado: string | null }
+
+const variacao = (agora: number | null, antes: number | null) => (agora != null && antes != null && antes > 0 ? ((agora - antes) / antes) * 100 : null);
+const virgula = (v: number, casas = 1) => v.toFixed(casas).replace(".", ",");
+
+/** Dia útil anterior a `hoje` (só fim de semana; feriado conta como dia útil). */
+export function diaUtilAnterior(hoje: string): string {
+  const d = new Date(`${hoje}T12:00:00Z`);
+  do d.setUTCDate(d.getUTCDate() - 1); while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Renda estimada por mês (DY de 12 meses sobre o valor de hoje, dividido por 12), alertas
+ * de P/VP, liquidez e queda forte, e aviso quando a cotação mais nova é velha demais.
+ */
+export function relatorioDaCarteira(ativos: readonly AtivoNoRelatorio[], regras: Regras, hoje: string): Relatorio {
+  const alertas: Alerta[] = [];
+  let renda = 0n;
+  for (const a of ativos) {
+    if (a.dy != null) renda += (a.valor * BigInt(Math.round(a.dy * 100))) / 120000n;
+    if (a.classe === "treasury") continue;
+    const dia = variacao(a.preco, a.precoAnterior), mes = variacao(a.preco, a.preco30d);
+    if (a.pvp != null && a.pvp <= regras.maxPvp * 0.9) alertas.push({ ticker: a.ticker, tipo: "oportunidade", texto: `P/VP ${virgula(a.pvp, 2)}, 10% ou mais abaixo do seu máximo (${virgula(regras.maxPvp, 2)}).` });
+    if (a.pvp != null && a.pvp > regras.maxPvp) alertas.push({ ticker: a.ticker, tipo: "atencao", texto: `P/VP ${virgula(a.pvp, 2)} passou do seu máximo (${virgula(regras.maxPvp, 2)}): fica fora do "Onde aportar".` });
+    if (a.liquidez != null && a.liquidez < regras.minLiquidez) alertas.push({ ticker: a.ticker, tipo: "atencao", texto: `Liquidez média de R$ ${Math.round(a.liquidez / 1000)} mil/dia, abaixo do seu mínimo.` });
+    if (dia != null && dia <= -3) alertas.push({ ticker: a.ticker, tipo: "atencao", texto: `Caiu ${virgula(-dia)}% desde o pregão anterior.` });
+    if (mes != null && mes <= -8) alertas.push({ ticker: a.ticker, tipo: "atencao", texto: `Caiu ${virgula(-mes)}% em 30 dias.` });
+  }
+  const datas = ativos.filter((a) => a.classe !== "treasury" && a.cotadoEm).map((a) => a.cotadoEm!).sort();
+  const maisNova = datas[datas.length - 1] ?? null;
+  const desatualizado = maisNova && maisNova < diaUtilAnterior(hoje) ? maisNova : null;
+  return { rendaMensal: renda, alertas, desatualizado };
 }

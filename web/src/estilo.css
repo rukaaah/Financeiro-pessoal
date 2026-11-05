@@ -108,6 +108,7 @@ nav.barra .lancar .ms{font-size:30px}
 .dia{font-size:13px;font-weight:700;color:var(--t2);padding:14px 0 6px}
 .entrada{color:var(--dentro)}
 .heroi .acao-heroi{display:flex;gap:8px;margin-top:14px}
+.heroi .acao-heroi>button{flex:1 1 0;min-width:0;padding-left:6px;padding-right:6px;font-size:clamp(13px,4vw,15px)}
 .btn-cheio{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--heroi-t);color:var(--heroi);border-radius:4px;padding:10px 16px;min-height:44px;font-weight:700;font-size:15px}
 .btn-tinta{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--tinta);color:var(--papel);border-radius:4px;padding:12px 16px;min-height:48px;font-weight:700;font-size:16px;width:100%}
 .colfat{display:flex;align-items:flex-end;gap:10px;height:90px;margin-top:8px}

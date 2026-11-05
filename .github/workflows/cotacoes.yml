@@ -1,12 +1,27 @@
 name: Cotações dos FIIs
 
-# RF10: uma leitura por dia, depois do fechamento do pregão (19:30 em Brasília).
-# Só dos tickers em carteira de alguém. A tela lê do banco, nunca da web.
-# Por enquanto no branch dev do Neon; produção entra no corte (fatia 11), com o papel `jobs`.
+# RF10 e ADR-020. Fontes públicas e gratuitas, sem scraping:
+#   - intradia, de hora em hora no pregão: brapi (plano gratuito; secret BRAPI_TOKEN);
+#   - fechamento, à noite: arquivo diário da B3 (preço e volume) e informe mensal da CVM
+#     (valor patrimonial da cota e DY do mês), com que o job calcula P/VP e DY 12m.
+# Só os tickers em carteira de alguém. A tela lê do banco, nunca da web.
+#
+# O GitHub só dispara `schedule` pelo arquivo que está no branch padrão (main). Até o
+# corte (fatia 11), este mesmo arquivo vive no main e roda o código da v3 pelo `ref`
+# abaixo, contra o branch `dev` do Neon. No corte: tirar o `ref` e trocar o secret
+# para o papel `jobs` de produção.
 on:
   schedule:
-    - cron: "30 22 * * 1-5"
+    - cron: "17 13-20 * * 1-5" # intradia: 10h17 a 17h17 em Brasília
+    - cron: "40 23 * * 1-5" # fechamento: 20h40 (a B3 publica o arquivo por volta das 20h30)
+    - cron: "10 2 * * 2-6" # fechamento de novo às 23h10, se o arquivo atrasou
   workflow_dispatch:
+    inputs:
+      modo:
+        description: O que atualizar
+        type: choice
+        options: [fechamento, intradia]
+        default: fechamento
 
 concurrency:
   group: cotacoes
@@ -18,6 +33,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: replanejamento/v3
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
@@ -25,4 +42,6 @@ jobs:
       - name: Atualizar cotações
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_OWNER_DEV }}
-        run: uv run python jobs/atualizar_cotacoes.py
+          BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
+          MODO: ${{ inputs.modo || (github.event.schedule == '17 13-20 * * 1-5' && 'intradia' || 'fechamento') }}
+        run: uv run python jobs/atualizar_cotacoes.py "$MODO"

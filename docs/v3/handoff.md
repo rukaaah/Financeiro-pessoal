@@ -34,7 +34,7 @@ Para continuar o replanejamento numa conversa nova. Fonte da verdade do plano:
    1. Snapshot ou branch de backup do `production` no Neon.
    2. Aplicar as migrations 005 a 012 em `production` com o papel `owner`
       (`yoyo apply`, a URL vem do secret `DATABASE_URL_OWNER`; rodar pelo workflow
-      `migrar-banco.yml`, adaptado para `production`, ou localmente pelo Pedro).
+      `migrar-banco.yml`, adaptado para `production`, ou localmente pelo Pedro). Hoje vão até a 013.
    3. Conferir que `app` e `jobs` continuam sem `BYPASSRLS` e rodar o seed do demo em produção.
    4. Criar o secret `DATABASE_URL` de produção (papel `app`) e publicar o Worker de produção.
       Atualizar o redirect do cliente OAuth do Google para o domínio novo.
@@ -42,7 +42,11 @@ Para continuar o replanejamento numa conversa nova. Fonte da verdade do plano:
       de `cotacoes.yml` e `reset-demo.yml` passam a rodar.
    6. Rodar `node scripts/teste_seguranca_v3.mjs <url de produção>` e entrar como dono.
    7. Desligar o app no Streamlit Community Cloud.
-4. Do Pedro: um extrato PDF do PicPay de exemplo (só para ler localmente, nunca commitar);
+4. **Cotações (ADR-020)**: o job troca o Investidor10 por B3, CVM e brapi. Para o intradia,
+   o Pedro cria uma conta grátis na brapi e cadastra o secret `BRAPI_TOKEN` no GitHub. O
+   `cotacoes.yml` precisa estar também no `main` para o agendamento disparar; no corte,
+   tirar o `ref: replanejamento/v3` dele.
+5. Do Pedro: um extrato PDF do PicPay de exemplo (só para ler localmente, nunca commitar);
    prints de investimentos com números fictícios (RF23); confirmar que o login funciona no `dev`
    (o e-mail dele precisa estar em `app_users` do branch `dev`).
 

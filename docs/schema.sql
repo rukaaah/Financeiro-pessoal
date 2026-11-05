@@ -1055,6 +1055,21 @@ COMMENT ON COLUMN public.expected_incomes.fee_brl IS 'Quanto o intermediário (P
 
 
 --
+-- Name: fii_reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_reports (
+    ticker text NOT NULL,
+    ref_month date NOT NULL,
+    cnpj text NOT NULL,
+    nav_per_share numeric(18,6) NOT NULL,
+    dy_month numeric(10,6) NOT NULL,
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_reports_mes CHECK ((ref_month = (date_trunc('month'::text, (ref_month)::timestamp with time zone))::date))
+);
+
+
+--
 -- Name: goal_contributions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1450,6 +1465,14 @@ ALTER TABLE ONLY public.counterparties
 
 ALTER TABLE ONLY public.expected_incomes
     ADD CONSTRAINT expected_incomes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fii_reports fii_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_reports
+    ADD CONSTRAINT fii_reports_pkey PRIMARY KEY (ticker, ref_month);
 
 
 --
@@ -2461,6 +2484,14 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.counterparties TO app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.expected_incomes TO app;
+
+
+--
+-- Name: TABLE fii_reports; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_reports TO app;
+GRANT SELECT,INSERT,UPDATE ON TABLE public.fii_reports TO jobs;
 
 
 --
