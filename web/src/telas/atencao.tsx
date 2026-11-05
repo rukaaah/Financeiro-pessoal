@@ -77,8 +77,8 @@ export function NovaConta({ opcoes, aoFechar, aoSalvar }: { opcoes: Opcoes | nul
       <div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-nc">
         <div class="topo"><h3 id="t-nc">Conta recorrente</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
         <form onSubmit={(e) => { e.preventDefault(); aoSalvar({ nome, valor, dia, categoria_id: cat || cats[0]?.id, conta_id: conta || contas[0]?.id, urgencia: urg }); }}>
-          <div class="campo"><label for="nc-nome">Nome</label><input id="nc-nome" value={nome} placeholder="Conta de luz" onInput={(e) => setNome(e.currentTarget.value)} /></div>
-          <div class="campo"><label for="nc-val">Valor (R$)</label><input id="nc-val" inputMode="decimal" value={valor} placeholder="120,00" onInput={(e) => setValor(e.currentTarget.value)} /></div>
+          <div class="campo"><label for="nc-nome">Nome</label><input id="nc-nome" value={nome} placeholder="Conta de luz…" onInput={(e) => setNome(e.currentTarget.value)} /></div>
+          <div class="campo"><label for="nc-val">Valor (R$)</label><input id="nc-val" inputMode="decimal" autoComplete="off" value={valor} placeholder="120,00…" onInput={(e) => setValor(e.currentTarget.value)} /></div>
           <div class="campo"><label for="nc-dia">Vence todo dia</label><input id="nc-dia" type="number" min={1} max={31} value={dia} onInput={(e) => setDia(Number(e.currentTarget.value))} /></div>
           <div class="campo"><label for="nc-cat">Categoria</label><select id="nc-cat" value={cat} onChange={(e) => setCat(e.currentTarget.value)}>{cats.map((c) => <option value={c.id}>{c.grupo} · {c.nome}</option>)}</select></div>
           <div class="campo"><label for="nc-conta">Paga com</label><select id="nc-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{contas.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
@@ -98,7 +98,7 @@ export function Receber({ entrada, ptax, descontoPb, aoFechar, aoSalvar }: { ent
       <div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-rec">
         <div class="topo"><h3 id="t-rec">{entrada.descricao} chegou</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
         <form onSubmit={(e) => { e.preventDefault(); aoSalvar(recebido); }}>
-          <div class="campo"><label for="r-val">Chegou em reais (como o PayPal mostra)</label><input id="r-val" class="grande-in" inputMode="decimal" value={recebido} onInput={(e) => setRecebido(e.currentTarget.value)} /></div>
+          <div class="campo"><label for="r-val">Chegou em reais (como o PayPal mostra)</label><input id="r-val" class="grande-in" inputMode="decimal" autoComplete="off" value={recebido} onInput={(e) => setRecebido(e.currentTarget.value)} /></div>
           <p class="nota">{ptax ? `PTAX de hoje ${ptax.replace(".", ",")}. A estimativa já descontava ${(descontoPb / 100).toFixed(1).replace(".", ",")}%, a média medida até agora.` : "Sem PTAX agora: o desconto do PayPal fica sem medir neste recebimento."} Ao salvar, o app mostra quanto o PayPal ficou.</p>
           <div style="margin-top:12px"><button type="submit" class="btn-tinta">Registrar recebimento</button></div>
         </form>

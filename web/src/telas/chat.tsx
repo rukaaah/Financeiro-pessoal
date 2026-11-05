@@ -28,7 +28,7 @@ export function Chat({ contexto, titulo, mes, categoriaId, aoFechar }: { context
       <div class="chips">{sugestoes.map((s) => <button class="chip" onClick={() => perguntar(s)}>{s}</button>)}</div>
       <div aria-live="polite">{conversa.map((m) => (<><div class="msg eu">{m.eu}</div><div class="msg ia">{m.ia ?? "pensando…"}</div></>))}</div>
       <form onSubmit={(e) => { e.preventDefault(); perguntar(texto); }} style="display:flex;gap:8px;margin-top:12px">
-        <input aria-label="Pergunta" value={texto} onInput={(e) => setTexto(e.currentTarget.value)} placeholder="Pergunte sobre os seus números" style="flex:1;font:inherit;font-size:16px;padding:10px;border-radius:4px;border:1px solid var(--t2);background:var(--sup);color:var(--tinta)" />
+        <input aria-label="Pergunta" value={texto} onInput={(e) => setTexto(e.currentTarget.value)} placeholder="Pergunte sobre os seus números…" style="flex:1;font:inherit;font-size:16px;padding:10px;border-radius:4px;border:1px solid var(--t2);background:var(--sup);color:var(--tinta)" />
         <button class="btn" type="submit">Perguntar</button>
       </form>
       <p class="aviso">{aviso || "A IA escolhe as consultas e responde só com os seus números; o app confere cada valor. Não faz recomendação de investimento."}</p>

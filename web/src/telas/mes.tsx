@@ -4,9 +4,9 @@ import { Icone } from "../icone.tsx";
 import { ListaDeAtencao, SaldoProjetado } from "./atencao.tsx";
 import type { ItemAtencao } from "../api.ts";
 
-const NOMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-export const nomeDoMes = (m: string) => `${NOMES[Number(m.slice(5, 7)) - 1]} de ${m.slice(0, 4)}`.replace(/^./, (c) => c.toUpperCase());
+const FMT_MES = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
+export const nomeDoMes = (m: string) => FMT_MES.format(new Date(`${m}-15T12:00:00Z`)).replace(/^./, (c) => c.toUpperCase());
 export const andarMes = (m: string, d: number) => { const t = Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7)) - 1 + d; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`; };
 const pct = (a: string, b: string) => (num(b) > 0 ? Math.round((num(a) / num(b)) * 100) : 0);
 const semRS = (t: string) => brl(t).replace("R$ ", "");
@@ -20,6 +20,7 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
         <div class="mes"><button aria-label="Mês anterior" onClick={() => aoTrocarMes(andarMes(mes, -1))}>‹</button>{nomeDoMes(mes)}<button aria-label="Próximo mês" onClick={() => aoTrocarMes(andarMes(mes, 1))}>›</button></div>
       </div></header>
 
+      <div class="grade-desk"><div class="col">
       <div class="heroi" aria-busy={!d}>
         <div class="rot">Livre para gastar até {d ? `${d.dias_no_mes}/${mes.slice(5, 7)}` : "o fim do mês"}</div>
         <div class="grande">{d ? brl(d.livre) : <span class="esqueleto" />}</div>
@@ -44,6 +45,7 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
         </section>
       )}
       {d && <SaldoProjetado dados={d} />}
+      </div><div class="col">
 
       <section aria-labelledby="h-cat">
         <h2 id="h-cat">Categorias <span class="lado">gasto · previsto</span></h2>
@@ -85,6 +87,7 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
           <p class="sub">Renda − gasto − guardado.</p>
         </section>
       )}
+      </div></div>
     </>
   );
 }
@@ -106,7 +109,7 @@ export function DetalheDaCategoria({ c, mes, aoFechar, aoSalvar, aoPerguntar }: 
         </div>
         <div class="colunas-rot"><span>{det?.serie[0] ? `${CURTOS[Number(det.serie[0].mes.slice(5)) - 1]}/${det.serie[0].mes.slice(2, 4)}` : ""}</span><span>{nomeDoMes(mes)}</span></div>
         <form onSubmit={(e) => { e.preventDefault(); aoSalvar(valor, padrao); }}>
-          <div class="campo"><label for="p-val">Previsto (R$)</label><input id="p-val" inputMode="decimal" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
+          <div class="campo"><label for="p-val">Previsto (R$)</label><input id="p-val" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
           <div class="chips" role="group" aria-label="Vale para">
             <button type="button" class="chip" aria-pressed={!padrao} onClick={() => setPadrao(false)}>Só {nomeDoMes(mes).split(" ")[0]?.toLowerCase()}</button>
             <button type="button" class="chip" aria-pressed={padrao} onClick={() => setPadrao(true)}>Daqui em diante</button>

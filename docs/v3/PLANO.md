@@ -40,6 +40,8 @@ Marque cada item ao concluir, para que a execução possa ser retomada numa sess
   - [ ] Fatia 10 — Ajustes, acesso e RF23 👤 prints de exemplo
   - [ ] Fatia 11 — corte e entrega 👤 desligar o Community Cloud
 - [ ] **Etapa 10** — Auditoria (`/web-design-guidelines`) e entrega → `10-auditoria.md`
+  - [x] auditoria de interface aplicada e versão desktop (sidebar, duas colunas, diálogos)
+  - [ ] medição final em 4G, teste de segurança automatizado, README de portfólio
 
 ## Pendências abertas que precisam ir a um portão
 

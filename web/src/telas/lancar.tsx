@@ -68,7 +68,7 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
           <form onSubmit={salvar}>
             {intencao === "vou-receber" && <div class="chips" role="group" aria-label="Moeda">{(["USD", "BRL"] as const).map((m) => <button type="button" class="chip" aria-pressed={m === moeda} onClick={() => setMoeda(m)}>{m === "USD" ? "Dólar" : "Real"}</button>)}</div>}
             <div class="campo"><label for="f-valor">Valor ({intencao === "vou-receber" && moeda === "USD" ? "US$" : "R$"})</label>
-              <input id="f-valor" ref={campoValor} class="grande-in" inputMode="decimal" placeholder="0,00" value={valor} onInput={(e) => { setValor(e.currentTarget.value); setErro(""); }} /></div>
+              <input id="f-valor" ref={campoValor} class="grande-in" inputMode="decimal" autoComplete="off" placeholder="0,00" value={valor} onInput={(e) => { setValor(e.currentTarget.value); setErro(""); }} /></div>
             <div class="campo"><label for="f-cat">Categoria</label>
               <select id="f-cat" value={categoriaId} onChange={(e) => setCategoriaId(e.currentTarget.value)}>
                 {categorias.map((c) => <option value={c.id}>{c.grupo} · {c.nome}</option>)}

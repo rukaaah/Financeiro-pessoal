@@ -23,6 +23,7 @@ export function Cartao({ dados, aoPagar }: { dados: { cartoes: CartaoDados[]; co
       <div class="chips" role="group" aria-label="Fatura">
         {(cartao?.faturas ?? []).map((f) => <button class="chip" aria-pressed={f.mes === fatura?.mes} onClick={() => setMesEscolhido(f.mes)}>{rotulo(f.mes)} · {f.situacao}</button>)}
       </div>
+      <div class="grade-desk"><div class="col">
       <div class="heroi" aria-busy={!dados}>
         <div class="rot">{fatura ? `Fatura de ${rotulo(fatura.mes).toLowerCase()} · ${fatura.situacao}` : "Fatura"}</div>
         <div class="grande">{fatura ? brl(fatura.situacao === "paga" ? fatura.total : fatura.falta) : <span class="esqueleto" />}</div>
@@ -40,6 +41,7 @@ export function Cartao({ dados, aoPagar }: { dados: { cartoes: CartaoDados[]; co
           ))}</div></div>
         </section>
       )}
+      </div><div class="col">
       <section aria-labelledby="h-compras"><h2 id="h-compras">Compras da fatura <span class="lado">{compras.length}</span></h2>
         {compras.length === 0 ? <div class="vazio">Nenhuma compra nesta fatura.</div> : (
           <div class="lista">{compras.map((c) => (
@@ -48,6 +50,7 @@ export function Cartao({ dados, aoPagar }: { dados: { cartoes: CartaoDados[]; co
           ))}</div>
         )}
       </section>
+      </div></div>
       <p class="sub" style="margin-top:16px">Compra no dia do fechamento ainda entra nesta fatura. O pagamento é transferência, não gasto: não aparece aqui nem no orçamento.</p>
     </>
   );
@@ -64,7 +67,7 @@ export function PagarFatura({ cartao, fatura, opcoes, aoFechar, aoPagar }: { car
         <div class="topo"><h3 id="t-pagar">Pagar fatura</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
         <form onSubmit={(e) => { e.preventDefault(); aoPagar({ cartao_id: cartao.id, conta_id: conta || origens[0]?.id || "", mes: fatura.mes, valor, data }); }}>
           <div class="campo"><label for="pg-fat">Fatura que este pagamento quita</label><input id="pg-fat" value={`${cartao.nome} · ${rotulo(fatura.mes)} · ${brl(fatura.falta)}`} readOnly /></div>
-          <div class="campo"><label for="pg-val">Valor (R$)</label><input id="pg-val" class="grande-in" inputMode="decimal" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
+          <div class="campo"><label for="pg-val">Valor (R$)</label><input id="pg-val" class="grande-in" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
           <div class="campo"><label for="pg-conta">Sai de</label><select id="pg-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{origens.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
           <div class="campo"><label for="pg-data">Data</label><input id="pg-data" type="date" value={data} onInput={(e) => setData(e.currentTarget.value)} /></div>
           <p class="nota">Valor igual ao que falta: a fatura fica paga. Menor: fica parcial. Não entra como gasto.</p>
