@@ -167,6 +167,24 @@ nav.barra button:active,.btn:active,.chip:active,.item:active{transform:scale(.9
 .app{position:relative}
 .ajustes-topo{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 52px);z-index:2}
 
+/* Celular: nada passa da largura da tela. O campo de data do iOS tem largura mínima própria e
+   empurrava a folha do Lançar para fora; as faixas que rolam de lado vão até a borda do aparelho. */
+html,body{overflow-x:clip}
+.campo,.kv>*{min-width:0}
+.campo input[type="date"]{-webkit-appearance:none;appearance:none;min-width:0;display:block;text-align:left}
+.campo input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0}
+.folha{overflow-x:hidden}
+@media (max-width:899px){
+  .chips,.abas{margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px));scroll-padding-inline:16px;scrollbar-width:none}
+  .chips::-webkit-scrollbar,.abas::-webkit-scrollbar{display:none}
+}
+/* Na tela de início do iPhone (app instalado) a barra ficava alta demais sobre o indicador de início. */
+@media (display-mode:standalone) and (max-width:899px){
+  nav.barra{padding-bottom:max(6px,calc(env(safe-area-inset-bottom,0px) - 14px))}
+  nav.barra .in{height:60px}
+  nav.barra .lancar{width:52px;height:52px;margin-top:-18px}
+}
+
 /* Desktop: a barra vira uma coluna à esquerda, o conteúdo ganha largura e as telas principais abrem em duas colunas. As folhas viram diálogos centrados. */
 @media (min-width:900px){
   html{scroll-padding-bottom:0}
