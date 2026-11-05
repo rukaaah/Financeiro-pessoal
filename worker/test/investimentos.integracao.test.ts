@@ -26,6 +26,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await owner.query("delete from asset_quotes where ticker = $1", [ticker]);
+  await owner.query("delete from fii_reports where ticker = $1", [ticker]);
   await owner.query("delete from app_users where email like $1", [`%-${sufixo}@teste.dev`]);
   await owner.end();
   await banco.fechar();
@@ -43,6 +44,20 @@ describe("investimentos pelo Worker, como papel app", () => {
     expect([r.total, r.custo]).toEqual(["2046.00", "2100.00"]);
     const pernas = (await owner.query("select sum(amount)::text s, count(*)::int n from transactions where description = $1", [`Compra de ${ticker}`])).rows[0];
     expect(pernas).toEqual({ s: "0.00", n: 4 });
+  });
+
+  it("relatório usa o pregão anterior, a liquidez média e o informe da CVM; aporte inválido é recusado", async () => {
+    await owner.query("insert into asset_quotes (ticker, quoted_on, price, liquidity, source) values ($1, current_date - 1, 110.00, 400000, 'b3'), ($1, current_date - 2, 100.00, 200000, 'b3')", [ticker]);
+    await owner.query("insert into fii_reports (ticker, ref_month, cnpj, nav_per_share, dy_month) values ($1, date_trunc('month', current_date - 40)::date, '00.000.000/0001-00', 110.0, 0.008)", [ticker]);
+    const r = (await (await como("a").request("/api/investimentos?aporte=300")).json()) as I & {
+      ativos: { variacao_dia: number | null; liquidez: number | null; vp_cota: number | null }[];
+      relatorio: { atualizado_em: string | null; alertas: { ticker: string }[] }; onde_aportar: { avisos: string[] };
+    };
+    expect(r.ativos[0]).toMatchObject({ variacao_dia: -7, liquidez: 300000, vp_cota: 110 });
+    expect(r.relatorio.atualizado_em).not.toBeNull();
+    expect(r.relatorio.alertas.some((a) => a.ticker === ticker)).toBe(true);
+    expect(r.onde_aportar.avisos[0]).toMatch(/Sem meta por classe/);
+    expect((await como("a").request("/api/investimentos?aporte=abc")).status).toBe(400);
   });
 
   it("B não vê a carteira de A nem compra na conta de A", async () => {

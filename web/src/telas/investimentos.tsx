@@ -3,6 +3,8 @@ import { apiInvest, brl, hoje, type Investimentos as Dados, num, type Opcoes } f
 import { Icone } from "../icone.tsx";
 
 const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const FONTES: Record<string, string> = { b3: "fechamento da B3", brapi: "brapi, até 30 min de atraso", demo: "dados fictícios", investidor10: "Investidor10" };
+const quando = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}${iso.length > 10 ? ` às ${iso.slice(11, 16)}` : ""}` : "");
 const pct = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1).replace(".", ",")}%`);
 
 function Barras({ vals, destacaUltimo, rotulo }: { vals: { mes: string; v: number }[]; destacaUltimo?: boolean; rotulo: string }) {
@@ -19,6 +21,7 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
   const [d, setD] = useState<Dados | null>(null);
   const [face, setFace] = useState<"Resumo" | "Carteira" | "Proventos">("Resumo");
   const [folha, setFolha] = useState<null | "comprar" | "aportar">(null);
+  const [aberto, setAberto] = useState<string | null>(null);
   const carregar = (aporte?: string) => apiInvest.ver(aporte).then(setD).catch((e: Error) => aoAvisar(e.message));
   useEffect(() => { carregar(); }, []);
   const proventos12 = d?.series.reduce((s, x) => s + num(x.proventos), 0) ?? 0;
@@ -34,6 +37,7 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
       <div class="seg" role="group" aria-label="Investimentos">{(["Resumo", "Carteira", "Proventos"] as const).map((f) => <button aria-pressed={f === face} onClick={() => setFace(f)}>{f}</button>)}</div>
       {d && face === "Resumo" && (
         <>
+          {d.ativos.length > 0 && <Relatorio d={d} />}
           <section><h2>Aportes por mês <span class="lado">12 meses</span></h2><div class="graf"><Barras vals={d.series.map((x) => ({ mes: x.mes, v: num(x.aporte) }))} destacaUltimo rotulo="Aportes por mês" />
             <p class="sub">Você colocou {brl(d.series.reduce((s, x) => s + num(x.aporte), 0).toFixed(2))} em 12 meses. Comparação com CDI e IFIX entra com o job do CDI.</p></div></section>
           <section><h2>Alocação contra a meta</h2><div class="proj">{d.classes.map((k) => (
@@ -42,26 +46,64 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
         </>
       )}
       {d && face === "Carteira" && (
-        <section><h2>Ativos <span class="lado">variação no mês · sobre o preço médio</span></h2>
+        <section><h2>Ativos <span class="lado">hoje · no mês · sobre o preço médio</span></h2>
           {d.ativos.length === 0 && <div class="vazio">Nenhum ativo ainda. Toque em "Comprei" para registrar a primeira compra.</div>}
           {d.classes.filter((k) => num(k.valor) > 0).map((k) => (
             <div class="grupo"><div class="grupo-cab"><span>{k.nome}</span><span>{brl(k.valor)}</span></div>
               {d.ativos.filter((a) => a.classe === k.classe).map((a) => (
-                <div class="item"><span class="nome">{a.ticker}</span><span class="valor">{brl(a.valor)}</span>
-                  <span class="sub">{a.quantidade.toLocaleString("pt-BR")} cotas · PM {brl(a.preco_medio)}{a.pvp != null ? ` · P/VP ${a.pvp.toFixed(2).replace(".", ",")}` : ""}{a.dy != null ? ` · DY ${a.dy.toFixed(1).replace(".", ",")}%` : ""}</span>
-                  <span class={`sub ${a.variacao_pm >= 0 ? "pos" : "neg"}`}>{pct(a.variacao_mes)} · {pct(a.variacao_pm)}</span></div>
+                <button type="button" class="item" aria-haspopup="dialog" onClick={() => setAberto(a.id)}><span class="nome">{a.ticker}</span><span class="valor">{brl(a.valor)}</span>
+                  <span class="sub" style="grid-column:1/-1">{a.quantidade.toLocaleString("pt-BR")} cotas · PM {brl(a.preco_medio)}{a.pvp != null ? ` · P/VP ${a.pvp.toFixed(2).replace(".", ",")}` : ""}{a.dy != null ? ` · DY ${a.dy.toFixed(1).replace(".", ",")}%` : ""}{a.vp_mes ? ` · VP de ${a.vp_mes.slice(5)}/${a.vp_mes.slice(2, 4)}` : ""}</span>
+                  <span class={`sub ${a.variacao_pm >= 0 ? "pos" : "neg"}`} style="grid-column:1/-1">{a.variacao_dia != null ? `${pct(a.variacao_dia)} hoje · ` : ""}{pct(a.variacao_mes)} · {pct(a.variacao_pm)}</span></button>
               ))}</div>
           ))}
-          <p class="sub">{d.ativos[0]?.cotado_em ? `Cotação, P/VP e DY lidos em ${d.ativos[0].cotado_em.slice(8, 10)}/${d.ativos[0].cotado_em.slice(5, 7)} (Investidor10).` : "Sem cotação ainda: o valor mostrado é o custo."}</p>
+          <p class="sub">{d.relatorio.atualizado_em ? `Cotação de ${quando(d.relatorio.atualizado_em)} (${FONTES[d.relatorio.fonte ?? ""] ?? d.relatorio.fonte}). P/VP e DY calculados com o informe mensal da CVM.` : "Sem cotação ainda: o valor mostrado é o custo."}</p>
         </section>
       )}
       {d && face === "Proventos" && (
         <section><h2>Recebido por mês</h2><div class="graf"><Barras vals={d.series.map((x) => ({ mes: x.mes, v: num(x.proventos) }))} destacaUltimo rotulo="Proventos por mês" />
           <p class="sub">{brl(proventos12.toFixed(2))} em 12 meses. Proventos são as receitas lançadas na conta de investimento.</p></div></section>
       )}
+      {aberto && d && (() => { const a = d.ativos.find((x) => x.id === aberto); return a ? <Detalhe a={a} d={d} aoFechar={() => setAberto(null)} /> : null; })()}
       {folha === "aportar" && d && <OndeAportar d={d} aoFechar={() => setFolha(null)} aoRecalcular={(v) => carregar(v)} />}
       {folha === "comprar" && <Comprar opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => { setFolha(null); apiInvest.comprar(corpo).then(() => carregar()).then(() => aoAvisar("Compra registrada.")).catch((e: Error) => aoAvisar(e.message)); }} />}
     </>
+  );
+}
+
+function Detalhe({ a, d, aoFechar }: { a: Dados["ativos"][number]; d: Dados; aoFechar(): void }) {
+  const v2 = (x: number | null, casas = 2) => (x == null ? "—" : x.toFixed(casas).replace(".", ","));
+  const fora = d.onde_aportar.fora.find((f) => f.ticker === a.ticker);
+  const kv: [string, string][] = [
+    ["Cotas", a.quantidade.toLocaleString("pt-BR")], ["Preço médio", brl(a.preco_medio)],
+    ["Preço", a.preco ? brl(Number(a.preco).toFixed(2)) : "sem cotação"], ["Valor", brl(a.valor)],
+    ["Resultado", `${brl((num(a.valor) - num(a.custo)).toFixed(2), true)} (${pct(a.variacao_pm)})`], ["Peso na carteira", `${v2(a.peso, 1)}%`],
+    ["Hoje", pct(a.variacao_dia)], ["30 dias", pct(a.variacao_30d)],
+    ["P/VP", v2(a.pvp)], ["VP da cota", a.vp_cota != null ? `${brl(a.vp_cota.toFixed(2))}${a.vp_mes ? ` (${a.vp_mes.slice(5)}/${a.vp_mes.slice(2, 4)})` : ""}` : "—"],
+    ["DY 12 meses", a.dy != null ? `${v2(a.dy, 1)}%` : "—"], ["Liquidez média", a.liquidez != null ? `R$ ${Math.round(a.liquidez / 1000).toLocaleString("pt-BR")} mil/dia` : "—"],
+  ];
+  return (
+    <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}><div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-at">
+      <div class="topo"><h3 id="t-at">{a.ticker}</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
+      <p class="nota">{a.nome} · {a.classe_nome}</p>
+      <div class="kv">{kv.map(([r, v]) => <div><div class="r">{r}</div><div class="v">{v}</div></div>)}</div>
+      <p class="nota">{a.atualizado_em ? <>Dado de <b>{quando(a.atualizado_em)}</b>, fonte: {FONTES[a.fonte ?? ""] ?? a.fonte}.</> : "Ainda sem cotação: o valor é o custo."}{a.fonte === "demo" ? " No modo demonstração os números são inventados; entre com sua conta para ver dados reais." : ""}</p>
+      <p class="nota">{fora ? `Fora do "Onde aportar": ${fora.motivo}.` : "Passa nas suas regras do \"Onde aportar\"."}</p>
+    </div></div>
+  );
+}
+
+function Relatorio({ d }: { d: Dados }) {
+  const r = d.relatorio;
+  const ordem = [...d.ativos].filter((a) => a.variacao_dia != null).sort((x, y) => (y.variacao_dia ?? 0) - (x.variacao_dia ?? 0));
+  const melhor = ordem[0], pior = ordem[ordem.length - 1];
+  return (
+    <section><h2>Relatório <span class="lado">{r.atualizado_em ? quando(r.atualizado_em) : "sem cotação"}</span></h2><div class="lista">
+      {r.desatualizado && <div class="item"><span class="nome neg">Cotação parada</span><span /><span class="sub" style="grid-column:1/-1">A mais nova é de {quando(r.desatualizado)}. A atualização automática pode ter falhado.</span></div>}
+      <div class="item"><span class="nome">Renda estimada</span><span class="valor">{brl(r.renda_mensal)}/mês</span><span class="sub" style="grid-column:1/-1">Pelo DY dos últimos 12 meses sobre o valor de hoje. Não é promessa de rendimento.</span></div>
+      {melhor && pior && melhor !== pior && <div class="item"><span class="nome">No dia</span><span class="valor" /><span class="sub" style="grid-column:1/-1">Maior alta {melhor.ticker} ({pct(melhor.variacao_dia)}), maior queda {pior.ticker} ({pct(pior.variacao_dia)}).</span></div>}
+      {r.alertas.map((a) => <div class="item"><span class={`nome ${a.tipo === "oportunidade" ? "pos" : "neg"}`}>{a.ticker}</span><span /><span class="sub" style="grid-column:1/-1">{a.texto}</span></div>)}
+      {r.alertas.length === 0 && <div class="item"><span class="sub" style="grid-column:1/-1">Nenhum ativo fora das suas regras.</span></div>}
+    </div></section>
   );
 }
 
@@ -75,6 +117,7 @@ function OndeAportar({ d, aoFechar, aoRecalcular }: { d: Dados; aoFechar(): void
         <div class="campo"><label for="oa-v">Quanto vai aportar (R$)</label><input id="oa-v" class="grande-in" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
         <div class="rodape" style="margin-top:8px"><button class="btn" type="submit">Recalcular</button></div>
       </form>
+      {o.avisos.length > 0 && <div class="lista" role="status">{o.avisos.map((t) => <div class="item"><span class="sub" style="grid-column:1/-1">{t}</span></div>)}</div>}
       <section><h2>Distribuição <span class="lado">{brl(o.aporte)}</span></h2><div class="lista">
         {o.sugestoes.map((s) => <div class="item"><span class="nome">{s.ticker}</span><span class="valor">{brl(s.valor)}</span><span class="sub">{s.motivo}</span><span class="sub">{s.cotas != null ? `${s.cotas} cotas` : ""}</span></div>)}
         {num(o.sobra) > 0 && <div class="item"><span class="nome">Sobra</span><span class="valor">{brl(o.sobra)}</span><span class="sub">Não fechou cota inteira.</span><span /></div>}

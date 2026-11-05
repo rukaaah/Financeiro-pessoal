@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ondeAportar, posicaoDe, projetar, valorDe } from "../src/investimentos.ts";
+import { diaUtilAnterior, ondeAportar, posicaoDe, projetar, relatorioDaCarteira, valorDe } from "../src/investimentos.ts";
 
 describe("posição", () => {
   it("preço médio ponderado; venda não mexe no preço médio", () => {
@@ -20,7 +20,27 @@ describe("onde aportar", () => {
   it("barra quem passa das regras, compra cota inteira e devolve a sobra", () => {
     const r = ondeAportar(ativos, regras, 50000n);
     expect(r.fora.map((f) => f.ticker)).toEqual(["FICTA11", "MODEL11"]);
-    expect(r.sugestoes.map((s) => [s.ticker, s.cotas])).toEqual([["DEMO11", 2], ["TESTE11", 4]]);
+    // 1ª passada: 2 DEMO11 e 4 TESTE11; a sobra (R$ 71,56) não paga um TESTE11 e compra mais 7 DEMO11.
+    expect(r.sugestoes.map((s) => [s.ticker, s.cotas])).toEqual([["DEMO11", 9], ["TESTE11", 4]]);
+    expect(r.sobra).toBe(422n);
+    expect(r.sugestoes.reduce((s, x) => s + x.valor, 0n) + r.sobra).toBe(50000n);
+  });
+  it("sem ativo ou sem meta, explica por que não sugeriu nada", () => {
+    expect(ondeAportar([], regras, 50000n).avisos[0]).toMatch(/Nenhum ativo/);
+    const semMeta = ondeAportar(ativos, { ...regras, metas: {} }, 50000n);
+    expect([semMeta.sugestoes.length, semMeta.sobra]).toEqual([0, 50000n]);
+    expect(semMeta.avisos[0]).toMatch(/Sem meta por classe/);
+  });
+  it("aporte pequeno não vira só sobra: a parte de uma classe sem ativo vai para as outras", () => {
+    const tesouroSemAtivo = { ...regras, metas: { paper: 40, brick: 35, treasury: 25 } };
+    const r = ondeAportar(ativos, tesouroSemAtivo, 50000n);
+    expect(r.sugestoes.length).toBeGreaterThan(0);
+    expect(r.sobra < 962n).toBe(true); // menos que a cota mais barata elegível (DEMO11)
+    expect(r.avisos.some((a) => a.startsWith("Tesouro"))).toBe(true);
+  });
+  it("classe abaixo da meta sem ativo elegível vira aviso, não some", () => {
+    const r = ondeAportar(ativos, { ...regras, metas: { ...regras.metas, logistics: 10 } }, 50000n);
+    expect(r.avisos.some((a) => a.startsWith("Logística") && a.includes("não tem ativo dessa classe"))).toBe(true);
     expect(r.sugestoes.reduce((s, x) => s + x.valor, 0n) + r.sobra).toBe(50000n);
   });
 });
@@ -28,5 +48,26 @@ describe("onde aportar", () => {
 describe("projeção", () => {
   it("sem rendimento, é só a soma dos aportes", () => {
     expect(projetar(100000n, 10000n, 0, 1)).toEqual([100000n, 220000n]);
+  });
+});
+
+describe("relatório da carteira", () => {
+  const regras = { maxPvp: 1, maxPeso: 40, minLiquidez: 500000, metas: {} };
+  const base = { classe: "paper" as const, precoAnterior: 10, preco30d: 10, liquidez: 900000, cotadoEm: "2026-11-04" };
+  it("renda estimada pelo DY e alertas pelas regras", () => {
+    const r = relatorioDaCarteira([
+      { ...base, ticker: "BARAT11", valor: 120000n, preco: 10, pvp: 0.85, dy: 12 },
+      { ...base, ticker: "CARO11", valor: 60000n, preco: 9.6, pvp: 1.08, dy: null, liquidez: 200000 },
+      { ...base, ticker: "QUEDA11", valor: 0n, preco: 9, preco30d: 10, pvp: 0.95, dy: null },
+    ], regras, "2026-11-05");
+    expect(r.rendaMensal).toBe(1200n); // R$ 1.200 x 12% / 12
+    expect(r.alertas.map((a) => [a.ticker, a.tipo])).toEqual([
+      ["BARAT11", "oportunidade"], ["CARO11", "atencao"], ["CARO11", "atencao"], ["CARO11", "atencao"], ["QUEDA11", "atencao"], ["QUEDA11", "atencao"],
+    ]);
+    expect(r.desatualizado).toBeNull();
+  });
+  it("avisa quando a cotação mais nova é de antes do dia útil anterior", () => {
+    expect(diaUtilAnterior("2026-11-09")).toBe("2026-11-06"); // segunda → sexta
+    expect(relatorioDaCarteira([{ ...base, ticker: "VELHO11", valor: 1n, preco: 10, pvp: null, dy: null, cotadoEm: "2026-11-02" }], regras, "2026-11-05").desatualizado).toBe("2026-11-02");
   });
 });

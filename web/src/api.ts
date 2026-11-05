@@ -84,13 +84,14 @@ export const apiPatrimonio = {
   conciliar: (corpo: object) => pedir<{ diferenca: string }>("/api/conciliar", { method: "POST", body: JSON.stringify(corpo) }),
 };
 
-export interface Ativo { id: string; ticker: string; nome: string; classe: string; classe_nome: string; quantidade: number; preco_medio: string; preco: string | null; valor: string; custo: string; peso: number; variacao_pm: number; variacao_mes: number | null; pvp: number | null; dy: number | null; liquidez: number | null; cotado_em: string | null }
+export interface Ativo { id: string; ticker: string; nome: string; classe: string; classe_nome: string; quantidade: number; preco_medio: string; preco: string | null; valor: string; custo: string; peso: number; variacao_pm: number; variacao_mes: number | null; pvp: number | null; dy: number | null; liquidez: number | null; cotado_em: string | null; fonte: string | null; atualizado_em: string | null; variacao_dia: number | null; variacao_30d: number | null; vp_cota: number | null; vp_mes: string | null }
 export interface Investimentos {
   total: string; custo: string; variacao_mes: string; ativos: Ativo[];
   classes: { classe: string; nome: string; valor: string; peso: number; meta: number | null }[];
   series: { mes: string; aporte: string; proventos: string; aportado_acumulado: string }[];
   regras: { maxPvp: number; maxPeso: number; minLiquidez: number };
-  onde_aportar: { aporte: string; sugestoes: { ticker: string; valor: string; cotas: number | null; motivo: string }[]; fora: { ticker: string; motivo: string }[]; sobra: string };
+  onde_aportar: { aporte: string; sugestoes: { ticker: string; valor: string; cotas: number | null; motivo: string }[]; fora: { ticker: string; motivo: string }[]; sobra: string; avisos: string[] };
+  relatorio: { renda_mensal: string; alertas: { ticker: string; tipo: "oportunidade" | "atencao"; texto: string }[]; desatualizado: string | null; atualizado_em: string | null; fonte: string | null };
 }
 export const apiInvest = {
   ver: (aporte?: string) => pedir<Investimentos>(`/api/investimentos${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),

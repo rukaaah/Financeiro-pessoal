@@ -30,3 +30,4 @@ substitui o anterior, e o antigo passa a `Status: substituído pelo ADR-NNN`.
 | [017](017-login-google-no-worker.md) | Login Google por OIDC no Worker, sessão em cookie assinado | Aceito |
 | [018](018-ia-no-workers-ai.md) | IA no Cloudflare Workers AI, pelo binding do Worker | Aceito |
 | [019](019-previsto-padrao-com-vigencia.md) | Previsto: padrão com vigência, ajuste do mês como exceção | Aceito |
+| [020](020-cotacoes-por-fontes-oficiais.md) | Cotações e indicadores de FII por B3, CVM e brapi, sem scraping | Proposto |

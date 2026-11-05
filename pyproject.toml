@@ -86,8 +86,7 @@ docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.12"
-# jobs/ entra nesta lista quando for criado.
-files = ["src", "tests", "scripts", "app", "streamlit_app.py"]
+files = ["src", "tests", "scripts", "app", "jobs", "streamlit_app.py"]
 strict = true
 warn_unreachable = true
 disallow_any_explicit = false
