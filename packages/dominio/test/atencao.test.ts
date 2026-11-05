@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { itensDeAtencao, saldoProjetado } from "../src/atencao.ts";
+import { contaRecorrenteDoGasto, itensDeAtencao, saldoProjetado } from "../src/atencao.ts";
 import { formatar } from "../src/dinheiro.ts";
 
 const contas = [
@@ -34,5 +34,19 @@ describe("saldo projetado", () => {
     const fim = p[p.length - 1]!.saldo;
     expect(fim).toBe(184035n - 27000n - 12000n - 10000n - 84340n + 156840n);
     expect(p.find((x) => x.dia === "2026-11-11")!.saldo).toBe(184035n - 1000n * 8n - 12000n - 84340n);
+  });
+});
+
+describe("repetir todo mês", () => {
+  const g = { descricao: "  Aluguel ", valor: "1.500,00", data: "2026-11-05", contaId: "c", categoriaId: "k" };
+  it("vira conta recorrente no mesmo dia, valor, conta e categoria", () => {
+    expect(contaRecorrenteDoGasto(g)).toEqual({ nome: "Aluguel", valor: "1.500,00", dia: 5, conta_id: "c", categoria_id: "k", urgencia: "important" });
+  });
+  it("dia 31 fica 31 (o vencimento cai no último dia nos meses curtos)", () => {
+    expect(contaRecorrenteDoGasto({ ...g, data: "2026-12-31" })).toMatchObject({ dia: 31 });
+  });
+  it("sem nome ou sem data, pede para completar", () => {
+    expect(contaRecorrenteDoGasto({ ...g, descricao: " " })).toHaveProperty("erro");
+    expect(contaRecorrenteDoGasto({ ...g, data: "" })).toHaveProperty("erro");
   });
 });

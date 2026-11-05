@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { contaRecorrenteDoGasto } from "@financeiro/dominio";
 import { api, hoje, type Opcoes } from "../api.ts";
 import { Icone } from "../icone.tsx";
 
@@ -8,7 +9,7 @@ const mesDaFatura = (m: string) => `${MESES[Number(m.slice(5, 7)) - 1]}/${m.slic
 /** Folha "Lançar" (06b-telas.md): abre em Gastei, com o valor focado. */
 export interface Inicial { valor?: string | undefined; contaId?: string | undefined; categoriaId?: string | undefined; descricao?: string | undefined; contaRecorrenteId?: string | undefined }
 
-export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoFechar, aoLancar, aoPrever }: { opcoes: Opcoes | null; inicial?: Inicial | undefined; intencaoInicial?: "gastei" | "recebi" | undefined; ptax?: string | null; descontoPb?: number; aoFechar(): void; aoLancar(corpo: object): void; aoPrever(corpo: object): void }) {
+export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoFechar, aoLancar, aoPrever, aoRepetir }: { opcoes: Opcoes | null; inicial?: Inicial | undefined; intencaoInicial?: "gastei" | "recebi" | undefined; ptax?: string | null; descontoPb?: number; aoFechar(): void; aoLancar(corpo: object): void; aoPrever(corpo: object): void; aoRepetir(conta: object, corpo: object): void }) {
   const [intencao, setIntencao] = useState<"gastei" | "recebi" | "vou-receber">(intencaoInicial ?? "gastei");
   const [valor, setValor] = useState(inicial?.valor ?? "");
   const [contaId, setContaId] = useState(inicial?.contaId ?? "");
@@ -18,6 +19,7 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
   const [descricao, setDescricao] = useState(inicial?.descricao ?? "");
   const [parcelas, setParcelas] = useState(1);
   const [fatura, setFatura] = useState<string | null>(null);
+  const [repetir, setRepetir] = useState(false);
   const [erro, setErro] = useState("");
   const campoValor = useRef<HTMLInputElement>(null);
 
@@ -30,6 +32,9 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
   const categorias = opcoes?.categorias.filter((c) => c.tipo === tipo) ?? [];
   const contas = opcoes?.contas.filter((c) => intencao === "gastei" || c.tipo !== "credit_card") ?? [];
   const conta = contas.find((c) => c.id === contaId);
+  // "Repetir todo mês" só para gasto avulso: pagar uma conta que já é recorrente ou parcelar não combina com isso.
+  const podeRepetir = intencao === "gastei" && !inicial?.contaRecorrenteId;
+  const repete = podeRepetir && repetir;
 
   useEffect(() => { campoValor.current?.focus(); }, [intencao]);
   useEffect(() => {
@@ -52,7 +57,13 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
       if (!descricao.trim()) return setErro("Dê um nome, como Freelance.");
       return aoPrever({ descricao: descricao.trim(), moeda, valor: valor.trim(), data, conta_id: contaId, categoria_id: categoriaId });
     }
-    aoLancar({ intencao, valor: valor.trim(), conta_id: contaId, categoria_id: categoriaId, data, descricao: descricao.trim(), parcelas: conta?.tipo === "credit_card" ? parcelas : 1, conta_recorrente_id: inicial?.contaRecorrenteId });
+    const corpo = { intencao, valor: valor.trim(), conta_id: contaId, categoria_id: categoriaId, data, descricao: descricao.trim(), parcelas: conta?.tipo === "credit_card" && !repete ? parcelas : 1, conta_recorrente_id: inicial?.contaRecorrenteId };
+    if (repete) {
+      const recorrente = contaRecorrenteDoGasto({ descricao, valor, data, contaId, categoriaId });
+      if ("erro" in recorrente) return setErro(recorrente.erro);
+      return aoRepetir(recorrente, corpo);
+    }
+    aoLancar(corpo);
   }
 
   return (
@@ -77,19 +88,23 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
               <select id="f-conta" value={contaId} onChange={(e) => setContaId(e.currentTarget.value)}>
                 {contas.map((c) => <option value={c.id}>{c.nome}</option>)}
               </select></div>
+            {podeRepetir && <div class="chips" role="group" aria-label="Repetição">
+              <button type="button" class="chip" aria-pressed={repetir} onClick={() => { setRepetir(!repetir); setErro(""); }}>Repetir todo mês</button>
+            </div>}
+            {repete && <p class="nota">Vira <b>conta recorrente</b> com vencimento todo dia {Number(data.slice(8, 10)) || "—"}, neste valor. Este lançamento já conta como o pagamento deste mês; nos próximos, ela aparece na Atenção. Encerrar fica em Ajustes.</p>}
             {conta?.tipo === "credit_card" && (
               <>
                 {fatura && <p class="nota">Entra na <b>fatura que vence em {mesDaFatura(fatura)}</b>.</p>}
-                <div class="campo"><label for="f-parc">Parcelas</label>
+                {!repete && <div class="campo"><label for="f-parc">Parcelas</label>
                   <select id="f-parc" value={parcelas} onChange={(e) => setParcelas(Number(e.currentTarget.value))}>
                     {Array.from({ length: 12 }, (_, i) => <option value={i + 1}>{i === 0 ? "À vista" : `${i + 1}x`}</option>)}
-                  </select></div>
+                  </select></div>}
               </>
             )}
             {estimativa !== null && <p class="nota">≈ <b>R$ {estimativa.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>: PTAX de hoje ({ptax!.replace(".", ",")}) menos o desconto médio do PayPal ({((descontoPb ?? 0) / 100).toFixed(1).replace(".", ",")}%). Entra no saldo projetado na data.</p>}
             {intencao === "vou-receber" && moeda === "USD" && !ptax && <p class="nota">Sem a PTAX agora; a estimativa em reais aparece quando ela voltar.</p>}
             <div class="campo"><label for="f-data">{intencao === "vou-receber" ? "Data prevista" : "Data"}</label><input id="f-data" type="date" value={data} onInput={(e) => setData(e.currentTarget.value)} /></div>
-            <div class="campo"><label for="f-desc">{intencao === "vou-receber" ? "Nome" : "Descrição (opcional)"}</label><input id="f-desc" value={descricao} maxLength={200} onInput={(e) => setDescricao(e.currentTarget.value)} /></div>
+            <div class="campo"><label for="f-desc">{intencao === "vou-receber" ? "Nome" : repete ? "Nome da conta" : "Descrição (opcional)"}</label><input id="f-desc" value={descricao} placeholder={repete ? "Aluguel, academia…" : undefined} maxLength={200} onInput={(e) => setDescricao(e.currentTarget.value)} /></div>
             {erro && <p class="erro-campo" role="alert">{erro}</p>}
             <div style="margin-top:16px"><button type="submit" class="btn-tinta">{intencao === "vou-receber" ? "Salvar previsão" : "Salvar"}</button></div>
           </form>

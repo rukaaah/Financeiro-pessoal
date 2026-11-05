@@ -64,7 +64,7 @@ export const apiCartao = {
 
 export const apiAtencao = {
   contasRecorrentes: () => pedir<{ contas: { id: string; nome: string; valor: string; dia: number; categoria_id: string; conta_id: string }[] }>("/api/contas-recorrentes"),
-  novaConta: (corpo: object) => pedir("/api/contas-recorrentes", { method: "POST", body: JSON.stringify(corpo) }),
+  novaConta: (corpo: object) => pedir<{ id: string }>("/api/contas-recorrentes", { method: "POST", body: JSON.stringify(corpo) }),
   novaEntrada: (corpo: object) => pedir("/api/entradas-previstas", { method: "POST", body: JSON.stringify(corpo) }),
   receber: (id: string, corpo: { recebido: string; data: string }) => pedir<{ desconto: string | null; ptax: string | null }>(`/api/entradas-previstas/${id}/receber`, { method: "POST", body: JSON.stringify(corpo) }),
   adiar: (chave: string, ate: string | null) => pedir("/api/atencao/adiar", { method: "POST", body: JSON.stringify({ chave, ate }) }),

@@ -100,7 +100,7 @@ function Recorrentes({ d, feito }: P) {
           ? <button class="link-sub" style="color:var(--fora)" onClick={() => { setConfirmar(null); feito(apiAjustes.encerrarRecorrente(r.id), "Encerrada a partir deste mês."); }}>Confirmar encerramento</button>
           : <button class="link-sub" onClick={() => setConfirmar(r.id)}>Encerrar</button>}
       </div>
-    ))}<p class="sub">Encerrar vale a partir deste mês; os meses passados continuam como foram. Para criar, use “+ Conta recorrente” na Atenção.</p></div>
+    ))}<p class="sub">Encerrar vale a partir deste mês; os meses passados continuam como foram. Para criar, marque “Repetir todo mês” no Lançar ou use “+ Conta recorrente” na Atenção.</p></div>
   );
 }
 
