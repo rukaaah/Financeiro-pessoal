@@ -18,11 +18,15 @@
   --fora:#ff8a80; --fora-f:#3a1d1b; --fora-t:#ffd7d3; --perto:#e8b45a; --perto-f:#352a14; --dentro:#6fcfa5; --dentro-f:#15302a;
   --sombra:0 8px 32px rgb(0 0 0 / 50%); color-scheme:dark}
 *{box-sizing:border-box}
+html{scroll-padding-bottom:96px;-webkit-tap-highlight-color:transparent}
+button,a,input,select,textarea,label{touch-action:manipulation}
+select{background:var(--papel);color:var(--tinta)}
+.lista>.item{content-visibility:auto;contain-intrinsic-size:auto 56px}
 body{background:var(--papel);color:var(--tinta);font:16px/1.45 var(--fonte);font-variant-numeric:tabular-nums}
 .app{max-width:440px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
 .ms{font-family:"Material Symbols Outlined";font-weight:normal;font-style:normal;font-size:24px;line-height:1;display:inline-block;vertical-align:middle;-webkit-font-feature-settings:"liga";font-feature-settings:"liga"}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-button:focus-visible,a:focus-visible{outline:2px solid var(--azul);outline-offset:2px;border-radius:4px}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[role="tab"]:focus-visible{outline:2px solid var(--azul);outline-offset:2px;border-radius:4px}
 .tarja{background:var(--tarja);color:var(--tarja-t);font-size:13px;display:flex;justify-content:space-between;gap:8px;padding:8px 14px;border-radius:0 0 6px 6px}
 .tarja b{font-weight:600}
 header{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0 6px}
@@ -80,7 +84,7 @@ nav.barra .lancar .ms{font-size:30px}
 .vazio{background:var(--sup);border-radius:6px;padding:20px;margin-top:16px}
 /* folha inferior */
 .veu{position:fixed;inset:0;background:rgb(0 0 0 / 40%);z-index:20;display:flex;align-items:flex-end;justify-content:center}
-.folha{background:var(--papel);width:100%;max-width:440px;border-radius:6px 6px 0 0;box-shadow:var(--sombra);max-height:86%;overflow:auto;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.folha{background:var(--papel);width:100%;max-width:440px;border-radius:6px 6px 0 0;box-shadow:var(--sombra);max-height:86%;overflow:auto;overscroll-behavior:contain;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .folha .topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .folha h3{margin:0;font-size:18px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px}
@@ -162,3 +166,26 @@ nav.barra button:active,.btn:active,.chip:active,.item:active{transform:scale(.9
 .item .acao{background:none;border:0;min-height:32px}
 .app{position:relative}
 .ajustes-topo{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 52px);z-index:2}
+
+/* Desktop: a barra vira uma coluna à esquerda, o conteúdo ganha largura e as telas principais abrem em duas colunas. As folhas viram diálogos centrados. */
+@media (min-width:900px){
+  html{scroll-padding-bottom:0}
+  nav.barra{top:0;bottom:0;right:auto;width:232px;border-top:0;border-right:1px solid var(--regua);padding:24px 12px}
+  nav.barra .in{height:auto;max-width:none;display:flex;flex-direction:column;align-items:stretch;gap:4px;text-align:left;font-size:15px}
+  nav.barra button{flex-direction:row;justify-content:flex-start;gap:12px;min-height:44px;padding:0 12px;border-radius:6px}
+  nav.barra button:hover{background:var(--sup)}
+  nav.barra button[aria-current="page"]{background:var(--sup2)}
+  nav.barra button:has(.lancar){order:-1;padding:0;min-height:0;margin-bottom:16px}
+  nav.barra button:has(.lancar):hover{background:none}
+  nav.barra .lancar{width:100%;height:48px;border-radius:6px;margin:0;display:flex;align-items:center;gap:8px;justify-content:center;font-weight:600}
+  nav.barra .lancar::after{content:"Lançar"}
+  nav.barra .lancar .ms,nav.barra .lancar svg{font-size:22px;width:22px;height:22px}
+  .app{max-width:1160px;margin-left:232px;margin-right:auto;padding-left:40px;padding-right:40px;padding-block:8px 48px}
+  .ajustes-topo{right:40px;margin-right:0}
+  .grade-desk{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:32px;align-items:start}
+  .grade-desk>.col{min-width:0}
+  .grade-desk>.col>section:first-child{margin-top:0}
+  .veu{align-items:center}
+  .folha{max-width:560px;border-radius:8px;max-height:84vh;padding:20px 24px 24px}
+  .item:hover{background:var(--sup)}
+}

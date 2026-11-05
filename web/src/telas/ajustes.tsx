@@ -30,7 +30,7 @@ export function Ajustes({ demo, nome, aoAvisar, aoVoltar }: { demo: boolean; nom
       {area === "Contas" && d && <Contas d={d} feito={feito} />}
       {area === "Cartões" && d && <Cartoes d={d} feito={feito} />}
       {area === "Categorias e previsto" && d && <Categorias d={d} feito={feito} />}
-      {area === "Recorrentes" && d && <div class="lista">{d.recorrentes.map((r) => <div class="item"><span class="nome">{r.nome}</span><span class="valor">{brl(r.valor)}</span><span class="sub">todo dia {r.dia}</span><button class="link-sub" onClick={() => feito(apiAjustes.encerrarRecorrente(r.id), "Encerrada a partir deste mês.")}>Encerrar</button></div>)}<p class="sub">Para criar, use "+ Conta recorrente" na Atenção.</p></div>}
+      {area === "Recorrentes" && d && <Recorrentes d={d} feito={feito} />}
       {area === "Investimentos" && d && <Investimento d={d} feito={feito} />}
       {area === "Regras" && d && <Regras d={d} feito={feito} />}
       {area === "Acesso" && <Acesso aoAvisar={aoAvisar} />}
@@ -39,7 +39,7 @@ export function Ajustes({ demo, nome, aoAvisar, aoVoltar }: { demo: boolean; nom
 }
 
 type P = { d: Dados; feito(p: Promise<unknown>, msg?: string): void };
-const Campo = ({ id, rot, ...r }: { id: string; rot: string; value: string | number; onInput(e: Event): void; type?: string; inputMode?: string }) => (
+const Campo = ({ id, rot, ...r }: { id: string; rot: string; value: string | number; onInput(e: Event): void; type?: string; inputMode?: string; autoComplete?: string }) => (
   <div class="campo"><label for={id}>{rot}</label><input id={id} {...(r as object)} /></div>
 );
 const valor = (e: Event) => (e.currentTarget as HTMLInputElement).value;
@@ -85,10 +85,23 @@ function Categorias({ d, feito }: P) {
       <Campo id="a-kn" rot="Nova categoria" value={nome} onInput={(e) => setNome(valor(e))} />
       <Campo id="a-kg" rot="Grupo (existente ou novo)" value={grupo} onInput={(e) => setGrupo(valor(e))} />
       <div class="chips"><button type="button" class="chip" aria-pressed={tipo === "expense"} onClick={() => setTipo("expense")}>Despesa</button><button type="button" class="chip" aria-pressed={tipo === "income"} onClick={() => setTipo("income")}>Receita</button></div>
-      <Campo id="a-kp" rot="Previsto por mês (R$)" inputMode="decimal" value={prev} onInput={(e) => setPrev(valor(e))} />
+      <Campo id="a-kp" rot="Previsto por mês (R$)" inputMode="decimal" autoComplete="off" value={prev} onInput={(e) => setPrev(valor(e))} />
       <div style="margin-top:8px"><button class="btn-tinta" type="submit">Criar categoria</button></div>
     </form>
   </>);
+}
+
+function Recorrentes({ d, feito }: P) {
+  const [confirmar, setConfirmar] = useState<string | null>(null);
+  return (
+    <div class="lista">{d.recorrentes.map((r) => (
+      <div class="item"><span class="nome">{r.nome}</span><span class="valor">{brl(r.valor)}</span><span class="sub">todo dia {r.dia}</span>
+        {confirmar === r.id
+          ? <button class="link-sub" style="color:var(--fora)" onClick={() => { setConfirmar(null); feito(apiAjustes.encerrarRecorrente(r.id), "Encerrada a partir deste mês."); }}>Confirmar encerramento</button>
+          : <button class="link-sub" onClick={() => setConfirmar(r.id)}>Encerrar</button>}
+      </div>
+    ))}<p class="sub">Encerrar vale a partir deste mês; os meses passados continuam como foram. Para criar, use “+ Conta recorrente” na Atenção.</p></div>
+  );
 }
 
 function Investimento({ d, feito }: P) {
@@ -100,10 +113,10 @@ function Investimento({ d, feito }: P) {
     <form onSubmit={(e) => { e.preventDefault(); feito(apiAjustes.regrasInvestimento({ max_pvp: Number(r.max_pvp.replace(",", ".")), max_peso: Number(r.max_peso), min_liquidez: Number(r.min_liquidez), metas: Object.fromEntries(Object.entries(metas).map(([k, v]) => [k, Number(v || 0)])) })); }}>
       <p class="sub">Regras que o "Onde aportar" usa. São suas: o app só aplica.</p>
       <h2>Meta por classe <span class="lado">soma {soma}%</span></h2>
-      <div class="kv">{CLASSES.map(([k, n]) => <Campo id={`m-${k}`} rot={`${n} (%)`} inputMode="decimal" value={metas[k] ?? ""} onInput={(e) => setMetas({ ...metas, [k]: valor(e) })} />)}</div>
+      <div class="kv">{CLASSES.map(([k, n]) => <Campo id={`m-${k}`} rot={`${n} (%)`} inputMode="decimal" autoComplete="off" value={metas[k] ?? ""} onInput={(e) => setMetas({ ...metas, [k]: valor(e) })} />)}</div>
       <h2 style="margin-top:16px">Critérios</h2>
-      <div class="kv"><Campo id="r-p" rot="P/VP máximo" inputMode="decimal" value={r.max_pvp} onInput={(e) => setR({ ...r, max_pvp: valor(e) })} /><Campo id="r-w" rot="Peso máximo por ativo (%)" inputMode="decimal" value={r.max_peso} onInput={(e) => setR({ ...r, max_peso: valor(e) })} /></div>
-      <Campo id="r-l" rot="Liquidez mínima (R$ por dia)" inputMode="decimal" value={r.min_liquidez} onInput={(e) => setR({ ...r, min_liquidez: valor(e) })} />
+      <div class="kv"><Campo id="r-p" rot="P/VP máximo" inputMode="decimal" autoComplete="off" value={r.max_pvp} onInput={(e) => setR({ ...r, max_pvp: valor(e) })} /><Campo id="r-w" rot="Peso máximo por ativo (%)" inputMode="decimal" autoComplete="off" value={r.max_peso} onInput={(e) => setR({ ...r, max_peso: valor(e) })} /></div>
+      <Campo id="r-l" rot="Liquidez mínima (R$ por dia)" inputMode="decimal" autoComplete="off" value={r.min_liquidez} onInput={(e) => setR({ ...r, min_liquidez: valor(e) })} />
       {soma > 100 && <p class="erro-campo">As metas somam mais de 100%.</p>}
       <div style="margin-top:12px"><button class="btn-tinta" type="submit" disabled={soma > 100}>Salvar regras</button></div>
     </form>

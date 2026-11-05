@@ -3,9 +3,8 @@ import { useState } from "preact/hooks";
 import { brl, type Lancamento, type ListaDoMes } from "../api.ts";
 import { Icone } from "../icone.tsx";
 
-const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-const nomeDoDia = (d: string) => { const x = new Date(`${d}T12:00:00`); return `${DIAS[x.getDay()]}, ${x.getDate()} de ${MESES[x.getMonth()]}`; };
+const FMT_DIA = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const nomeDoDia = (d: string) => FMT_DIA.format(new Date(`${d}T12:00:00Z`)).replace(/\./g, "");
 const FILTROS = { Tudo: () => true, Gastos: (l: Lancamento) => l.tipo === "expense", Entradas: (l: Lancamento) => l.tipo === "income", Transferências: (l: Lancamento) => l.tipo === "transfer" } as const;
 
 export function Lancamentos({ lista, ocultos, aoEditar, aoAbrirLancar, aoColar, aoImportar }: { lista: ListaDoMes | null; ocultos: Set<string>; aoEditar(l: Lancamento): void; aoAbrirLancar(): void; aoColar(): void; aoImportar(): void }) {
@@ -72,7 +71,7 @@ export function Editar({ l, aoFechar, aoSalvar, aoExcluir }: { l: Lancamento; ao
         <div class="topo"><h3 id="t-editar">Editar lançamento</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
         <form onSubmit={(e) => { e.preventDefault(); aoSalvar({ descricao, valor, data }); }}>
           <div class="campo"><label for="e-desc">Descrição</label><input id="e-desc" value={descricao} maxLength={200} onInput={(e) => setDescricao(e.currentTarget.value)} /></div>
-          <div class="campo"><label for="e-val">Valor (R$)</label><input id="e-val" class="grande-in" inputMode="decimal" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
+          <div class="campo"><label for="e-val">Valor (R$)</label><input id="e-val" class="grande-in" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
           <div class="campo"><label for="e-data">Data</label><input id="e-data" type="date" value={data} onInput={(e) => setData(e.currentTarget.value)} /></div>
           <p class="nota">{[l.categoria, l.conta].filter(Boolean).join(" · ")}</p>
           <div style="margin-top:16px"><button type="submit" class="btn-tinta">Salvar</button></div>

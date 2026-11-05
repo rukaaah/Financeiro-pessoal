@@ -19,7 +19,11 @@ interface Aviso { texto: string; desfazer?: () => void }
 const mesAtual = () => new Date().toISOString().slice(0, 7);
 
 function App() {
-  const [tela, setTela] = useState<Tela>("mes");
+  const TELAS: Tela[] = ["mes", "lancamentos", "cartao", "patrimonio", "ajustes"];
+  const daHash = (): Tela => { const h = location.hash.slice(1) as Tela; return TELAS.includes(h) ? h : "mes"; };
+  const [tela, setTelaEstado] = useState<Tela>(daHash());
+  const setTela = (t: Tela) => { if (t !== tela) history.pushState(null, "", t === "mes" ? location.pathname + location.search : `#${t}`); setTelaEstado(t); window.scrollTo(0, 0); };
+  useEffect(() => { const volta = () => setTelaEstado(daHash()); addEventListener("popstate", volta); return () => removeEventListener("popstate", volta); }, []);
   const [sessao, setSessao] = useState<{ modo: "dono" | "demo"; nome: string } | null>(null);
   const [opcoes, setOpcoes] = useState<Opcoes | null>(null);
   const [lista, setLista] = useState<ListaDoMes | null>(null);
@@ -45,6 +49,8 @@ function App() {
     recarregarCartao();
     recarregarPatrimonio();
     if (new URLSearchParams(location.search).get("lancar") === "gastei") setFolha({ tipo: "lancar" });
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setFolha(null); };
+    addEventListener("keydown", esc);
   }, []);
 
   function lancar(corpo: object) {

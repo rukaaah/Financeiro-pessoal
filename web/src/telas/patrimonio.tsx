@@ -19,9 +19,9 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
       <header><div><h1>Patrimônio</h1><div class="sub">hoje, {dm(hoje())}</div></div></header>
       <div class="abas" role="tablist">{(["Visão", "Cofrinhos", "Investimentos", "A receber"] as Aba[]).map((a) => <button role="tab" aria-selected={a === aba} onClick={() => setAba(a)}>{a}</button>)}</div>
       {aba === "Visão" && (
-        <>
-          {heroi("Patrimônio líquido hoje", d?.patrimonio, "sem os valores a receber")}
-          {d && (
+        <div class="grade-desk">
+          <div class="col">{heroi("Patrimônio líquido hoje", d?.patrimonio, "sem os valores a receber")}</div>
+          <div class="col">{d && (
             <section><h2>As partes</h2>
               <div class="lista">
                 <div class="item"><span class="nome">Contas</span><span class="valor">{brl(d.partes.contas)}</span><span class="sub">{d.contas.filter((k) => k.tipo !== "investment").map((k) => k.nome).join(", ") || "—"}</span><span /></div>
@@ -37,8 +37,8 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
               <div class="rodape"><button class="btn" onClick={() => aoMover({ tipo: "conciliar" })}><Icone nome="ajustes" tamanho={18} />Conciliar saldo</button></div>
               <p class="sub">{d.contas.filter((k) => k.conciliado).map((k) => `Última conciliação: ${k.nome} em ${dm(k.conciliado)}.`).join(" ") || "Nenhuma conciliação ainda."}</p>
             </section>
-          )}
-        </>
+          )}</div>
+        </div>
       )}
       {aba === "Cofrinhos" && (
         <>
@@ -90,7 +90,7 @@ export function Mover({ m, contas, aoFechar, aoSalvar }: { m: Movimento; contas:
       <div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-mov">
         <div class="topo"><h3 id="t-mov">{titulo}</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
         <form onSubmit={(e) => { e.preventDefault(); aoSalvar({ valor, conta_id: conta, devolucao, finalidade, data: hoje(), saldo_banco: valor }); }}>
-          <div class="campo"><label for="m-val">{m.tipo === "conciliar" ? "Quanto o banco mostra agora (R$)" : "Valor (R$)"}</label><input id="m-val" class="grande-in" inputMode="decimal" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
+          <div class="campo"><label for="m-val">{m.tipo === "conciliar" ? "Quanto o banco mostra agora (R$)" : "Valor (R$)"}</label><input id="m-val" class="grande-in" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
           <div class="campo"><label for="m-conta">{m.tipo === "guardar" ? "Sai de" : m.tipo === "conciliar" ? "Conta" : "Entra em"}</label><select id="m-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{contas.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
           {m.tipo === "guardar" && num(m.cofrinho.a_devolver) > 0 && (
             <>
