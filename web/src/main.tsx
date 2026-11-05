@@ -24,6 +24,9 @@ function App() {
   const [tela, setTelaEstado] = useState<Tela>(daHash());
   const setTela = (t: Tela) => { if (t !== tela) history.pushState(null, "", t === "mes" ? location.pathname + location.search : `#${t}`); setTelaEstado(t); window.scrollTo(0, 0); };
   useEffect(() => { const volta = () => setTelaEstado(daHash()); addEventListener("popstate", volta); return () => removeEventListener("popstate", volta); }, []);
+  // Ajustes abre de qualquer tela; ao fechar, volta para onde a pessoa estava.
+  const [origemDosAjustes, setOrigemDosAjustes] = useState<Tela>("mes");
+  const abrirAjustes = () => { setOrigemDosAjustes(tela); setTela("ajustes"); };
   const [sessao, setSessao] = useState<{ modo: "dono" | "demo"; nome: string } | null>(null);
   const [opcoes, setOpcoes] = useState<Opcoes | null>(null);
   const [lista, setLista] = useState<ListaDoMes | null>(null);
@@ -117,9 +120,9 @@ function App() {
     <>
       <div class="app">
         {demo && <div class="tarja"><span><b>Dados fictícios</b> · modo demonstração</span><a href="/auth/entrar">Entrar</a></div>}
-        {tela !== "ajustes" && <button class="icone ajustes-topo" style={demo ? undefined : "top:calc(env(safe-area-inset-top,0px) + 10px)"} aria-label="Ajustes" onClick={() => setTela("ajustes")}><Icone nome="ajustes" /></button>}
+        {tela !== "ajustes" && <button class="icone ajustes-topo" style={demo ? undefined : "top:calc(env(safe-area-inset-top,0px) + 10px)"} aria-label="Ajustes" onClick={abrirAjustes}><Icone nome="ajustes" /></button>}
         <main>
-          {tela === "ajustes" ? <Ajustes demo={demo} nome={sessao?.nome ?? ""} aoAvisar={(texto) => { avisar({ texto }); api.opcoes().then(setOpcoes).catch(() => {}); recarregar(); }} aoVoltar={() => setTela("mes")} />
+          {tela === "ajustes" ? <Ajustes demo={demo} nome={sessao?.nome ?? ""} aoAvisar={(texto) => { avisar({ texto }); api.opcoes().then(setOpcoes).catch(() => {}); recarregar(); }} aoVoltar={() => setTela(origemDosAjustes)} />
             : tela === "mes" ? <Mes mes={mes} dados={dadosMes} aoTrocarMes={setMes} aoAbrirCategoria={(c) => setFolha({ tipo: "categoria", c })} aoVerAtencao={() => setFolha({ tipo: "atencao" })} aoAgir={agir} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "mes", titulo: "Orçamento do mês" })} />
             : tela === "patrimonio" ? <Patrimonio dados={dadosPatrimonio} opcoes={opcoes} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "investimentos", titulo: "Investimentos" })} aoMover={(m) => setFolha({ tipo: "mover", m })} aoAvisar={(texto) => avisar({ texto })} />
             : tela === "cartao" ? <Cartao dados={dadosCartao} aoPagar={(c, f) => setFolha({ tipo: "pagar", c, f })} />
