@@ -41,13 +41,24 @@ function App() {
   const avisar = (a: Aviso) => { clearTimeout(relogio.current); setAviso(a); relogio.current = window.setTimeout(() => setAviso(null), 5000); };
   const recarregarMes = (m = mes) => apiMes.mes(m).then((d) => d.mes === m && setDadosMes(d)).catch((e: Error) => avisar({ texto: e.message }));
   const recarregar = () => { recarregarMes(); recarregarCartao(); recarregarPatrimonio(); return api.lancamentos(mes).then(setLista).catch((e: Error) => avisar({ texto: e.message })); };
-  useEffect(() => { setDadosMes(null); setLista(null); recarregarMes(mes); api.lancamentos(mes).then(setLista).catch(() => {}); }, [mes]);
+  // Primeiro os dados da tela aberta; o resto vem depois, para não disputar a rede do celular com o número que a pessoa veio ver.
+  const primeiraCarga = useRef<Promise<unknown> | null>(null);
+  useEffect(() => {
+    setDadosMes(null); setLista(null);
+    const lista = () => api.lancamentos(mes).then(setLista).catch(() => {});
+    if (tela === "lancamentos") { lista(); recarregarMes(mes); return; }
+    const p = recarregarMes(mes);
+    primeiraCarga.current ??= tela === "cartao" ? recarregarCartao() : tela === "patrimonio" ? recarregarPatrimonio() : p;
+    p.finally(lista);
+  }, [mes]);
 
   useEffect(() => {
     api.sessao().then(setSessao).catch(() => setSessao({ modo: "demo", nome: "Visitante" }));
-    api.opcoes().then(setOpcoes).catch(() => {});
-    recarregarCartao();
-    recarregarPatrimonio();
+    (primeiraCarga.current ?? Promise.resolve()).finally(() => {
+      api.opcoes().then(setOpcoes).catch(() => {});
+      if (tela !== "cartao") recarregarCartao();
+      if (tela !== "patrimonio") recarregarPatrimonio();
+    });
     if (new URLSearchParams(location.search).get("lancar") === "gastei") setFolha({ tipo: "lancar" });
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setFolha(null); };
     addEventListener("keydown", esc);
