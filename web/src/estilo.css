@@ -175,7 +175,7 @@ html,body{overflow-x:clip}
 .campo input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0}
 .folha{overflow-x:hidden}
 @media (max-width:899px){
-  .chips,.abas{margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px));scroll-padding-inline:16px;scrollbar-width:none}
+  .chips,.abas{margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px));scroll-padding-inline:16px;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 32px),transparent)}
   .chips::-webkit-scrollbar,.abas::-webkit-scrollbar{display:none}
 }
 /* Na tela de início do iPhone (app instalado) a barra ficava alta demais sobre o indicador de início. */
