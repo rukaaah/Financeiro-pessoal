@@ -1,152 +1,137 @@
 # Financeiro pessoal
 
-Sistema de finanças pessoais que substitui uma planilha de orçamento: lançamentos,
-orçamento mensal, faturas de cartão, cofrinhos, valores a receber e carteira de
-investimentos.
+App de finanças pessoais que substitui uma planilha de orçamento. Mostra quanto
+ainda dá para gastar no mês, o que vence, a fatura do cartão, os cofrinhos, o que
+os outros te devem e a carteira de investimentos.
 
-Projeto de portfólio, em desenvolvimento. **Fase 0 concluída** — repositório,
-banco com RLS, CI, identidade e esqueleto do app. A Fase 1 começa pelos casos de
-uso de lançamentos e orçamento.
+O app é aberto: quem entra sem login cai num **modo demonstração** com dados
+fictícios. Os dados reais ficam atrás do login Google e de uma allowlist, e quem
+garante o isolamento é o Postgres, não a tela.
 
-## Como funciona
+<p>
+  <img src="docs/imagens/mes-celular.png" alt="Tela Mês no celular: livre para gastar, previsto, gasto e a pagar, e a lista de atenção" width="260">
+  &nbsp;
+  <img src="docs/imagens/mes-desktop.png" alt="Tela Mês no desktop, em duas colunas: resumo e atenção à esquerda, categorias à direita" width="560">
+</p>
 
-O app é público, os dados não. Quem acessa sem estar na allowlist cai no **modo
-demo**, com dados fictícios e uma faixa avisando disso. O isolamento entre usuários
-é imposto pelo Postgres, via Row Level Security — não por filtros na aplicação.
+## O que ele faz
 
-## Stack
+- **Mês**: livre para gastar até o fim do mês, por dia; previsto, gasto e a pagar
+  por categoria, comparados à média de 3 meses; saldo projetado até o fim do mês.
+- **Atenção**: contas que vencem, categorias perto do limite, fatura a pagar,
+  freela em dólar a receber. Cada item tem a ação na mesma linha.
+- **Lançar em 3 toques**: valor, categoria, salvar. Parcelado no cartão, "vou
+  receber" e importação de extrato (PDF do PicPay, lido no próprio navegador).
+- **Cartão**: a compra vive na fatura em que cai, e o gasto entra no orçamento do
+  mês em que a fatura vence. Fechamento inclusivo e prazos com vigência.
+- **Patrimônio**: contas, cofrinhos, investimentos, cartão e valores a receber de
+  pessoas. Recebimento em dólar convertido pela taxa do PayPal, com o quanto ele
+  ficou contra a PTAX do dia.
+- **Investimentos**: posição, preço médio, onde aportar segundo as metas e regras
+  de cada um, projeção de renda.
+- **Perguntar**: chat sobre os próprios números. O modelo só planeja; quem consulta
+  é o servidor, sob RLS, e todo número da resposta é conferido contra o resultado.
+  No modo demonstração as respostas são fixas e o modelo nunca é chamado.
 
-| Peça | Escolha |
-|---|---|
-| Interface | Streamlit (multipage com `st.navigation`) |
-| Hospedagem | Streamlit Community Cloud |
-| Banco | Postgres no Neon |
-| Acesso ao banco | `psycopg` 3, SQL à mão, transações explícitas |
-| Login | Google via `st.login` (OIDC) + allowlist em `app_users` |
-| Migrations | yoyo-migrations, SQL puro |
-| Jobs | GitHub Actions agendado |
-| Ferramentas | uv, Python 3.12, ruff, mypy, pytest, pre-commit, import-linter |
+## Números
 
-As decisões e seus porquês estão em [`docs/adr/`](docs/adr/). Os passos de
-publicação, em [`docs/deploy.md`](docs/deploy.md), e as medições que dependem do
-app no ar, em [`docs/validacoes.md`](docs/validacoes.md).
+Medido num Chrome com o perfil "4G lento" do Lighthouse (150 ms de RTT,
+1,6 Mbps, CPU 4× mais lenta), contra o app publicado ([detalhes](docs/v3/medicoes.md)):
+
+| | Meta | Medido |
+|---|---|---|
+| Primeira visita até o número aparecer | ≤ 1,5 s | ~0,84 s |
+| Visitas seguintes (do cache) | ≤ 1,5 s | ~0,32 s |
+| Troca de tela | ≤ 300 ms | 20 ms |
+| Resposta ao toque | ≤ 200 ms | 16 a 49 ms |
+| API, p95 | ≤ 800 ms | 166 ms |
+
+A versão anterior, em Streamlit, levava 2,3 a 2,7 s em banda larga para abrir, e
+ainda sem número nenhum ([diagnóstico](docs/v3/01-diagnostico.md)).
 
 ## Arquitetura
 
-Monólito modular com arquitetura hexagonal por módulo ([ADR-001](docs/adr/001-monolito-modular-hexagonal.md)).
-
 ```
-src/financeiro/
-├── ledger/          lançamentos: receita, despesa, transferência
-├── budgeting/       orçamento mensal por categoria
-├── cards/           faturas de cartão, fechamento e vencimento
-├── goals/           cofrinhos e objetivos
-├── investments/     carteira
-├── market_data/     cotações e proventos
-├── importing/       extratos (PDF do PicPay, OFX do Inter)
-├── categorization/  classificação automática de lançamentos
-├── identity/        login, allowlist, unit of work
-└── shared/          tipos e utilidades comuns
+celular / navegador
+  └─ PWA (Preact + Vite, ~30 KB gzip, service worker)
+       └─ Cloudflare Worker (Hono): login, API, IA
+            ├─ Neon Postgres (São Paulo), papel `app`, RLS em toda tabela
+            └─ Workers AI (só no modo real)
+GitHub Actions: CI, deploy, migrations, cotações, reset do demo
 ```
 
-A interface fica em `app/`, com uma página por arquivo em `app/paginas/` e o
-ponto de entrada em `streamlit_app.py`.
+- **Isolamento no banco.** Cada pedido é uma transação que começa com
+  `set_config('app.user_id', …, true)`; as policies comparam `user_id` com
+  `current_app_user()`. O papel do app não tem `BYPASSRLS`. Quem não está na
+  allowlist, ou está com a conta desativada, cai no usuário demo
+  ([ADR-004](docs/adr/004-neon-psycopg-rls.md), [ADR-017](docs/adr/017-login-google-no-worker.md)).
+- **Dinheiro sem float.** `numeric(14,2)` no banco, centavos em `bigint` no
+  TypeScript, `Decimal` no Python. Float só na borda que desenha um gráfico
+  ([ADR-012](docs/adr/012-decimal-e-a-borda-de-renderizacao.md)).
+- **Regras no domínio.** Fatura, orçamento, conversão de dólar, carteira e leitura
+  de extrato são funções puras em `packages/dominio`, testadas sem banco.
+- **Primeira tela rápida.** Um script de cinco linhas no `<head>` dispara os pedidos
+  do Mês enquanto o JavaScript baixa; o resto dos dados vem depois.
+- **Custo zero.** Planos gratuitos do Cloudflare, Neon e GitHub Actions.
 
-Cada módulo tem três camadas, com as dependências apontando só para dentro:
+As decisões e os porquês estão em [`docs/adr/`](docs/adr/); o replanejamento que
+levou a esta versão, em [`docs/v3/`](docs/v3/PLANO.md).
 
 ```
-adapters  →  application  →  domain
-(psycopg,    (casos de uso    (regras puras,
- parsers,     e ports como     só stdlib)
- scrapers)    Protocol)
+packages/dominio/   regras puras (TypeScript), sem dependência
+worker/             API, login e IA no Cloudflare Worker
+web/                PWA: telas, estilo, service worker
+migrations/         SQL puro (yoyo), cada uma com rollback
+src/financeiro/     Python: cotações e o que roda nos jobs
+jobs/, scripts/     tarefas agendadas, seed do demo, medições, teste de segurança
+tests/              testes Python (unitários e de banco)
+app/, streamlit_app.py   versão anterior em Streamlit, no ar até a troca para esta
 ```
-
-Três regras, verificadas por import-linter no CI:
-
-1. `app/`, `jobs/` e `scripts/` só chamam casos de uso.
-2. Nenhum módulo lê tabela de outro módulo.
-3. O `domain` não conhece banco nem framework.
-
-## Desenvolvimento
-
-Requer [uv](https://docs.astral.sh/uv/) e Docker.
-
-```bash
-uv sync --group dev        # .venv com Python 3.12, app e ferramentas
-uv run --group dev pre-commit install   # liga os hooks de commit
-cp .env.example .env.local # DATABASE_URL do Postgres local
-docker compose up -d       # sobe o Postgres 18 na porta 5433
-```
-
-Durante o trabalho:
-
-```bash
-uv run --group dev ruff format .      # formata
-uv run --group dev ruff check . --fix # lint
-uv run --group dev mypy               # tipos (strict)
-uv run --group dev lint-imports       # fronteiras da arquitetura
-uv run --group dev pytest             # testes
-```
-
-Migrations ([ADR-006](docs/adr/006-runner-de-migrations.md)), sempre com o papel
-`owner` e com a URL vinda do ambiente:
-
-```bash
-export DATABASE_URL="postgresql+psycopg://owner:dev@localhost:5433/financeiro"
-uv run --group dev yoyo apply --database "$DATABASE_URL"   # aplica as pendentes
-uv run --group dev yoyo list  --database "$DATABASE_URL"   # já aplicado
-./scripts/dump_schema.sh                        # regenera docs/schema.sql
-```
-
-Testes de integração precisam do Postgres local e são marcados com `integration`:
-
-```bash
-uv run --group dev pytest -m integration
-```
-
-Rodar o app:
-
-```bash
-uv run streamlit run streamlit_app.py
-```
-
-`DATABASE_URL` no ambiente tem precedência sobre os secrets do Streamlit, de
-propósito: o `.streamlit/secrets.toml` da máquina aponta para produção, e sem
-essa ordem um `streamlit run` local conectaria lá sem avisar.
-
-O `--group dev` aparece em todo comando de ferramenta porque o `pyproject.toml`
-não instala grupo nenhum por omissão — o Streamlit Community Cloud roda
-`uv sync` a cada boot e não deve carregar mypy, ruff, pytest e companhia. Com a
-flag, o uv instala o grupo na hora se faltar; sem ela, o erro é um
-`Failed to spawn` que não explica a causa.
-
-Dados fictícios do modo demo:
-
-```bash
-uv run python scripts/seed_demo.py   # apaga e recria o usuário demo
-```
-
-É idempotente: rodar duas vezes dá o mesmo resultado. Em produção, um workflow
-agendado faz isso toda noite, para que o que um visitante mexeu não fique para
-o próximo.
 
 ## Segurança
 
-O repositório é **público**. Portanto:
+- Repositório público: nenhum segredo, extrato ou dado real. Testes usam só dados
+  sintéticos, e hooks de pre-commit barram `*.pdf`, `*.ofx` e arquivos de segredo.
+- Isolamento testado como o papel de menor privilégio, nunca como dono: o CI
+  popula todas as tabelas com dois usuários e confere que um não vê nada do outro,
+  direto no banco e pelo Worker.
+- A cada deploy, [`scripts/teste_seguranca_v3.mjs`](scripts/teste_seguranca_v3.mjs)
+  testa o app publicado de fora: sem login e com cookie forjado cai no demo, o demo
+  não cita o dono, não chama a IA, não mexe na allowlist, e o HTML e o JS não têm
+  segredo.
+- Segredos só nos GitHub Secrets e nos secrets do Worker.
 
-- `.env.local`, `.streamlit/secrets.toml` e qualquer URL de conexão ficam fora do
-  Git — e fora de logs, prints e mensagens de commit.
-- Extratos reais (`*.pdf`, `*.ofx`) nunca entram no repositório. Os testes usam
-  apenas fixtures sintéticas em `tests/fixtures/`.
-- Hooks de pre-commit barram os dois casos antes do commit.
-- Valores monetários são `Decimal` no Python e `numeric(14,2)` no banco. Nunca
-  `float`.
+## Desenvolvimento
+
+Requer Node 22+, [uv](https://docs.astral.sh/uv/) e Docker (para os testes de banco).
+
+```bash
+npm install
+npm run tipos          # TypeScript nos três pacotes
+npm run teste          # domínio e Worker
+npm run build          # PWA em web/dist
+```
+
+Testes de banco, contra o Postgres local:
+
+```bash
+docker compose up -d
+export DATABASE_URL="postgresql+psycopg://owner:dev@localhost:5433/financeiro"
+uv sync --group dev
+uv run --group dev yoyo apply --database "$DATABASE_URL"
+npm run teste:integracao
+uv run --group dev pytest
+```
+
+Dados do modo demonstração (apaga e recria o usuário demo; idempotente):
+
+```bash
+uv run python scripts/seed_demo.py
+```
 
 ## Convenções
 
-- GitHub Flow: branches curtas a partir de `main`, PR com CI verde.
-- [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`,
-  `chore:`, `docs:`, `test:`.
-- TDD no `domain`; fakes dos ports na `application`; integração contra Postgres em
-  Docker.
+- GitHub Flow, um PR por fatia, CI verde antes do merge.
+- [Conventional Commits](https://www.conventionalcommits.org/).
+- TDD no domínio; integração contra Postgres de verdade.
 - Texto voltado ao usuário em português do Brasil.
