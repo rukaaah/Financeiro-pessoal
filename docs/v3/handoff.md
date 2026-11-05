@@ -30,7 +30,12 @@ Para continuar o replanejamento numa conversa nova. Fonte da verdade do plano:
    `worker/src/categorias-base.ts`, como papel `app`. A lista em TypeScript fica em
    `packages/dominio/src/categorias-base.ts`; `tests/unit/test_categorias_base.py` confere que
    ela é igual à do Python. Falta o Pedro sair e entrar de novo no `dev` para ver.
-3. **Troca para produção (Fatia 11)**, com o Pedro acompanhando. Passo a passo:
+3. **Troca para produção (Fatia 11)**, com o Pedro acompanhando. Pelos workflows, com
+   gatilho manual na `replanejamento/v3`: `migrar-banco.yml` com `ambiente: production`
+   (branch de backup no Neon pelo secret `NEON_API_KEY`, migrations e checagem de
+   `BYPASSRLS`, nessa ordem; sem backup não migra), `reset-demo.yml` com
+   `ambiente: production` (seed) e `deploy-v3.yml` com `ambiente: production` (Worker
+   `financeiro-pessoal-producao`, secret `DATABASE_URL_APP_PRODUCTION`). Passo a passo:
    1. Snapshot ou branch de backup do `production` no Neon.
    2. Aplicar as migrations 005 a 012 em `production` com o papel `owner`
       (`yoyo apply`, a URL vem do secret `DATABASE_URL_OWNER`; rodar pelo workflow

@@ -2,8 +2,9 @@ name: Migrations no Neon
 
 # Aplica as migrations (yoyo) num branch do Neon e, no dev, reconstrói o demo.
 # No branch `dev` roda sozinho a cada push na integração da v3 (yoyo é
-# idempotente). Produção só por gatilho manual, depois do corte (fatia 11).
-# O gatilho manual só aparece depois que este arquivo chegar ao `main`.
+# idempotente). Produção só por gatilho manual, no corte (fatia 11), e sempre
+# nesta ordem: branch de backup do `production` -> migrations -> checagens.
+# Se o backup falhar, as migrations não rodam.
 on:
   push:
     branches: [replanejamento/v3]
@@ -21,7 +22,74 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Branch do Neon criado a partir do `production`, sem compute e sem prazo de
+  # validade: é o ponto de volta se uma migration estragar algo. Não usa pg_dump
+  # para artefato porque artefatos de repositório público são baixáveis por
+  # qualquer conta do GitHub.
+  backup:
+    if: inputs.ambiente == 'production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      branch: ${{ steps.criar.outputs.branch }}
+    steps:
+      - name: Criar branch de backup do production
+        id: criar
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NEON_API_KEY}" ]; then
+            echo "::error::Secret NEON_API_KEY ausente: sem backup, as migrations de produção não rodam."
+            exit 1
+          fi
+          api="https://console.neon.tech/api/v2"
+          neon() { curl -fsS --retry 2 -H "Authorization: Bearer ${NEON_API_KEY}" -H "Accept: application/json" "$@"; }
+
+          projeto="${NEON_PROJECT_ID}"
+          if [ -z "${projeto}" ]; then
+            projeto=$(neon "${api}/projects?limit=100" | jq -r '[.projects[] | select(.name == "Financeiro pessoal")] | if length == 1 then .[0].id else "" end')
+          fi
+          if [ -z "${projeto}" ]; then
+            echo "::error::Projeto \"Financeiro pessoal\" não encontrado (ou ambíguo) pela API do Neon. Cadastre o secret NEON_PROJECT_ID."
+            exit 1
+          fi
+          echo "::add-mask::${projeto}"
+
+          pai=$(neon "${api}/projects/${projeto}/branches" | jq -r '[.branches[] | select(.name == "production")] | if length == 1 then .[0].id else "" end')
+          if [ -z "${pai}" ]; then
+            echo "::error::Branch production não encontrado no projeto."
+            exit 1
+          fi
+
+          nome="backup-antes-v3-$(date -u +%Y%m%d-%H%M%S)"
+          corpo=$(jq -n --arg pai "${pai}" --arg nome "${nome}" '{branch: {parent_id: $pai, name: $nome}}')
+          novo=$(neon -X POST -H "Content-Type: application/json" -d "${corpo}" "${api}/projects/${projeto}/branches" | jq -r '.branch.id // ""')
+          if [ -z "${novo}" ]; then
+            echo "::error::A API do Neon não devolveu o branch de backup."
+            exit 1
+          fi
+
+          # Espera o branch ficar pronto antes de liberar as migrations.
+          for _ in $(seq 1 30); do
+            estado=$(neon "${api}/projects/${projeto}/branches/${novo}" | jq -r '.branch.current_state // ""')
+            if [ "${estado}" = "ready" ]; then
+              echo "Branch de backup ${nome} pronto."
+              echo "branch=${nome}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Branch de backup ${nome} não ficou pronto em 150 s."
+          exit 1
+
   migrar:
+    needs: backup
+    # Sem backup bem-sucedido, produção não migra. No dev o backup é pulado.
+    if: >-
+      always() && (needs.backup.result == 'success'
+        || (needs.backup.result == 'skipped' && (inputs.ambiente || 'dev') == 'dev'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -48,3 +116,55 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_OWNER_DEV }}
         run: uv run python scripts/seed_demo.py
+
+  # Depois de migrar: `app` e `jobs` continuam sem BYPASSRLS nem SUPERUSER
+  # (ADR-004), e o banco diz qual foi a última migration aplicada.
+  conferir:
+    needs: migrar
+    if: needs.migrar.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Papéis sem BYPASSRLS
+        env:
+          DATABASE_URL: >-
+            ${{ (inputs.ambiente || 'dev') == 'dev'
+                && secrets.DATABASE_URL_OWNER_DEV
+                || secrets.DATABASE_URL_OWNER }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import sys
+
+          import psycopg
+
+          try:
+              with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+                  papeis = conn.execute(
+                      "SELECT rolname, rolbypassrls, rolsuper FROM pg_roles"
+                      " WHERE rolname IN ('app', 'jobs') ORDER BY rolname"
+                  ).fetchall()
+                  ultima = conn.execute(
+                      "SELECT migration_id FROM _yoyo_migration"
+                      " ORDER BY applied_at_utc DESC LIMIT 1"
+                  ).fetchone()
+          except Exception as erro:  # a mensagem pode citar o host: não repetir
+              print(f"::error::Falha ao consultar o banco ({type(erro).__name__}).")
+              sys.exit(1)
+
+          nomes = {nome for nome, _, _ in papeis}
+          if nomes != {"app", "jobs"}:
+              print(f"::error::Papéis esperados app e jobs; encontrados: {sorted(nomes)}.")
+              sys.exit(1)
+          ruins = [nome for nome, bypass, superuser in papeis if bypass or superuser]
+          if ruins:
+              print(f"::error::Papéis com BYPASSRLS ou SUPERUSER: {ruins}.")
+              sys.exit(1)
+          print("app e jobs sem BYPASSRLS e sem SUPERUSER.")
+          print(f"Última migration aplicada: {ultima[0] if ultima else 'nenhuma'}.")
+          PY

@@ -22,3 +22,24 @@ enabled = true
 # Workers AI (ADR-018): sem chave separada; o acesso vem da conta.
 [ai]
 binding = "AI"
+
+# Produção (fatia 11): mesmo código, outro Worker, banco no branch `production`.
+# Publicado só pelo gatilho manual do deploy-v3.yml (`ambiente: production`).
+# Bindings não são herdados entre ambientes do wrangler, então repetem aqui.
+[env.production]
+name = "financeiro-pessoal-producao"
+
+[env.production.placement]
+mode = "smart"
+
+[env.production.assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/auth/*"]
+
+[env.production.observability]
+enabled = true
+
+[env.production.ai]
+binding = "AI"

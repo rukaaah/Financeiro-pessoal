@@ -1,15 +1,23 @@
 name: Deploy da v3 (Cloudflare Worker)
 
 # ADR-015 e ADR-018: o deploy sai daqui, e os secrets do GitHub chegam ao Worker
-# pelo `secrets:` do wrangler-action. Até o corte (fatia 11) o Worker vive em
-# *.workers.dev e não toca no app do Community Cloud.
+# pelo `secrets:` do wrangler-action. O push publica o Worker do dev
+# (`financeiro-pessoal`, banco no branch `dev`). O de produção
+# (`financeiro-pessoal-producao`, `[env.production]` do wrangler.toml) só sai por
+# gatilho manual, com o secret DATABASE_URL_APP_PRODUCTION (papel `app`, nunca `owner`).
 on:
   push:
     branches: [replanejamento/v3]
   workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Qual Worker publicar
+        type: choice
+        options: [dev, production]
+        default: dev
 
 concurrency:
-  group: deploy-v3
+  group: deploy-v3-${{ inputs.ambiente || 'dev' }}
   cancel-in-progress: false
 
 jobs:
@@ -20,7 +28,13 @@ jobs:
         id: tem
         env:
           TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PRODUCAO: ${{ inputs.ambiente == 'production' }}
+          URL_PRODUCAO: ${{ secrets.DATABASE_URL_APP_PRODUCTION }}
         run: |
+          if [ "$PRODUCAO" = "true" ] && { [ -z "$TOKEN" ] || [ -z "$URL_PRODUCAO" ]; }; then
+            echo "::error::Produção precisa de CLOUDFLARE_API_TOKEN e DATABASE_URL_APP_PRODUCTION (papel app do branch production)."
+            exit 1
+          fi
           if [ -z "$TOKEN" ]; then
             echo "::notice::CLOUDFLARE_API_TOKEN ainda não cadastrado; deploy pulado (ADR-015, passo a passo)."
             echo "ok=false" >> "$GITHUB_OUTPUT"
@@ -37,16 +51,21 @@ jobs:
       - run: npm ci && npm run build
         if: steps.tem.outputs.ok == 'true'
       - uses: cloudflare/wrangler-action@v3
+        id: publicar
         if: steps.tem.outputs.ok == 'true'
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
           wranglerVersion: "4.151.2"
+          environment: ${{ inputs.ambiente == 'production' && 'production' || '' }}
           secrets: |
             DATABASE_URL
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_APP }}
+          DATABASE_URL: >-
+            ${{ inputs.ambiente == 'production'
+                && secrets.DATABASE_URL_APP_PRODUCTION
+                || secrets.DATABASE_URL_APP }}
       # Os do login são opcionais: o wrangler-action falha com valor vazio, então
       # cada um só sobe se existir. Sem eles o Worker fica sem login e todo mundo
       # cai no demo, que é o comportamento seguro (ADR-017).
@@ -59,10 +78,13 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          AMBIENTE: ${{ inputs.ambiente == 'production' && 'production' || '' }}
         run: |
+          env_flag=()
+          if [ -n "$AMBIENTE" ]; then env_flag=(--env "$AMBIENTE"); fi
           for nome in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET SESSION_SECRET; do
             if [ -n "${!nome}" ]; then
-              printf '%s' "${!nome}" | npx wrangler secret put "$nome" >/dev/null
+              printf '%s' "${!nome}" | npx wrangler secret put "$nome" "${env_flag[@]}" >/dev/null
               echo "$nome enviado."
             else
               echo "::notice::$nome não cadastrado; login desligado."
@@ -72,4 +94,12 @@ jobs:
       # De fora, sem login: o app publicado cai no demo, não mostra dado real, não chama a IA,
       # não deixa administrar acessos nem forjar sessão, e não expõe segredo no que serve.
       - name: Teste de segurança no app publicado
-        run: node scripts/teste_seguranca_v3.mjs
+        env:
+          URL_PUBLICADA: ${{ steps.publicar.outputs.deployment-url }}
+          PRODUCAO: ${{ inputs.ambiente == 'production' }}
+        run: |
+          if [ "$PRODUCAO" = "true" ]; then
+            node scripts/teste_seguranca_v3.mjs "${URL_PUBLICADA:?URL do Worker de produção não informada pelo wrangler}"
+          else
+            node scripts/teste_seguranca_v3.mjs
+          fi
