@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { api, apiAtencao, apiPatrimonio, type Patrimonio as PatrimonioDados, apiCartao, apiMes, type ItemAtencao, type Cartao as CartaoDados, type Compra, type Fatura, type CategoriaDoMes, type Lancamento, type ListaDoMes, type Mes as MesDados, type Opcoes } from "./api.ts";
+import { api, hoje, apiAtencao, apiPatrimonio, type Patrimonio as PatrimonioDados, apiCartao, apiMes, type ItemAtencao, type Cartao as CartaoDados, type Compra, type Fatura, type CategoriaDoMes, type Lancamento, type ListaDoMes, type Mes as MesDados, type Opcoes } from "./api.ts";
 import { Icone } from "./icone.tsx";
 import { Lancar } from "./telas/lancar.tsx";
 import { Editar, Lancamentos } from "./telas/lancamentos.tsx";
@@ -16,7 +16,7 @@ import "./estilo.css";
 
 type Tela = "mes" | "lancamentos" | "cartao" | "patrimonio" | "ajustes";
 interface Aviso { texto: string; desfazer?: () => void }
-const mesAtual = () => new Date().toISOString().slice(0, 7);
+const mesAtual = () => hoje().slice(0, 7);
 
 function App() {
   const TELAS: Tela[] = ["mes", "lancamentos", "cartao", "patrimonio", "ajustes"];

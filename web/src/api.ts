@@ -4,8 +4,14 @@ export interface Opcoes { investimentos?: { id: string; nome: string }[]; contas
 export interface Lancamento { id: string; tipo: "expense" | "income" | "transfer"; valor: string; data: string; descricao: string; mes_da_fatura: string | null; parcela: number | null; parcelas: number | null; categoria: string | null; conta: string; tipo_conta: string; conta_destino: string | null }
 export interface ListaDoMes { mes: string; lancamentos: Lancamento[]; entrou: string; saiu: string }
 
+// O index.html já dispara /api/mes e /api/sessao antes do JavaScript chegar (no 4G isso é meio segundo).
+// Cada pedido adiantado é usado uma vez só, e só se for igual ao que a tela pede.
+const adiantados = (globalThis as { __adiantados?: Record<string, Promise<Response>> }).__adiantados ?? {};
+
 async function pedir<T>(url: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(url, { ...init, headers: { accept: "application/json", ...(init?.body ? { "content-type": "application/json" } : {}) } });
+  const pronto = init ? undefined : adiantados[url];
+  if (pronto) delete adiantados[url];
+  const r = await (pronto?.catch(() => null) ?? null) ?? await fetch(url, { ...init, headers: { accept: "application/json", ...(init?.body ? { "content-type": "application/json" } : {}) } });
   const corpo = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((corpo as { erro?: string }).erro ?? "Não deu para concluir agora. Tente de novo.");
   return corpo as T;
