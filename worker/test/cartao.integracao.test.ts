@@ -57,6 +57,24 @@ describe("cartão pelo Worker, como papel app", () => {
     expect(gasto).toBe(0);
   });
 
+  it("antecipar uma fatura futura, em parte e depois o resto; acima do que falta é recusado", async () => {
+    const antecipar = (valor: string) => como("a").request("/api/pagar-fatura", { method: "POST", headers: json, body: JSON.stringify({ cartao_id: ids.unicred, conta_id: ids.picpay, mes: "2099-05", valor, data: "2099-03-12" }) });
+    const maio = async () => ((await (await como("a").request("/api/cartao")).json()) as Resp).cartoes[0]!;
+    expect((await antecipar("100,01")).status).toBe(400);
+    const parte = await antecipar("30,00");
+    expect([parte.status, await parte.json()]).toEqual([201, { ok: true, quita: false, falta: "70.00", antecipado: true }]);
+    let c = await maio();
+    expect(c.faturas.find((f) => f.mes === "2099-05")).toMatchObject({ pago: "30.00", situacao: "futura" });
+    expect(c.comprometido).toBe("70.00");
+    expect((await antecipar("70,00")).status).toBe(201);
+    c = await maio();
+    expect(c.faturas.find((f) => f.mes === "2099-05")).toMatchObject({ pago: "100.00", situacao: "paga" });
+    expect(c.comprometido).toBe("0.00");
+    const pernas = (await owner.query("select count(*)::int n from transactions where account_id in ($1, $2) and occurred_on = '2099-03-12' and kind = 'transfer' and invoice_month is null", [ids.unicred, ids.picpay])).rows[0].n;
+    expect(pernas).toBe(4);
+    expect((await antecipar("1,00")).status).toBe(400);
+  });
+
   it("B não paga a fatura de A nem vê o cartão de A", async () => {
     const r = await como("b").request("/api/pagar-fatura", { method: "POST", headers: json, body: JSON.stringify({ cartao_id: ids.unicred, conta_id: ids.picpay, mes: "2099-03", valor: "1,00", data: "2099-03-10" }) });
     expect(r.status).toBe(400);

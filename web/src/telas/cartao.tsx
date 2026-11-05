@@ -1,3 +1,4 @@
+import { deDigitado, deNumeric, formatar, pagamentoDaFatura } from "@financeiro/dominio";
 import { useState } from "preact/hooks";
 import { brl, type Cartao as CartaoDados, type Compra, type Fatura, hoje, num, type Opcoes } from "../api.ts";
 import { Icone } from "../icone.tsx";
@@ -30,8 +31,8 @@ export function Cartao({ dados, aoPagar }: { dados: { cartoes: CartaoDados[]; co
         <p class="conta">{!fatura ? " " : fatura.situacao === "paga" ? `paga · total ${brl(fatura.total)}`
           : fatura.situacao === "futura" ? `parcelas que já caem nesta fatura · vence ${dataCurta(fatura.vencimento)}`
           : `${fatura.situacao === "parcial" ? `faltam, de ${brl(fatura.total)} · ` : ""}vence ${dataCurta(fatura.vencimento)}${diasAte(fatura.vencimento) >= 0 ? `, em ${diasAte(fatura.vencimento)} dias` : `, há ${-diasAte(fatura.vencimento)} dias`}`}</p>
-        {fatura && fatura.situacao !== "paga" && fatura.situacao !== "futura" && cartao && (
-          <div class="acao-heroi"><button class="btn-cheio" onClick={() => aoPagar(cartao, fatura)}>Pagar fatura</button></div>
+        {fatura && fatura.situacao !== "paga" && num(fatura.falta) > 0 && cartao && (
+          <div class="acao-heroi"><button class="btn-cheio" onClick={() => aoPagar(cartao, fatura)}>{fatura.situacao === "futura" ? "Antecipar fatura" : "Pagar fatura"}</button></div>
         )}
       </div>
       {cartao && (
@@ -51,7 +52,7 @@ export function Cartao({ dados, aoPagar }: { dados: { cartoes: CartaoDados[]; co
         )}
       </section>
       </div></div>
-      <p class="sub" style="margin-top:16px">Compra no dia do fechamento ainda entra nesta fatura. O pagamento é transferência, não gasto: não aparece aqui nem no orçamento.</p>
+      <p class="sub" style="margin-top:16px">Compra no dia do fechamento ainda entra nesta fatura. Dá para antecipar qualquer fatura com algo a pagar, no total ou em parte. O pagamento é transferência, não gasto: não aparece aqui nem no orçamento.</p>
     </>
   );
 }
@@ -61,17 +62,29 @@ export function PagarFatura({ cartao, fatura, opcoes, aoFechar, aoPagar }: { car
   const [conta, setConta] = useState(origens[0]?.id ?? "");
   const [valor, setValor] = useState(brl(fatura.falta).replace("R$ ", ""));
   const [data, setData] = useState(hoje());
+  const centavos = (() => { try { return deDigitado(valor); } catch { return null; } })();
+  const conferido = centavos === null ? null : pagamentoDaFatura({ vencimento: fatura.vencimento, falta: deNumeric(fatura.falta) }, centavos, data);
+  const antecipa = data < fatura.vencimento;
+  const titulo = antecipa ? "Antecipar fatura" : "Pagar fatura";
   return (
     <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}>
       <div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-pagar">
-        <div class="topo"><h3 id="t-pagar">Pagar fatura</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
-        <form onSubmit={(e) => { e.preventDefault(); aoPagar({ cartao_id: cartao.id, conta_id: conta || origens[0]?.id || "", mes: fatura.mes, valor, data }); }}>
+        <div class="topo"><h3 id="t-pagar">{titulo}</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
+        <form onSubmit={(e) => { e.preventDefault(); if (conferido?.ok) aoPagar({ cartao_id: cartao.id, conta_id: conta || origens[0]?.id || "", mes: fatura.mes, valor, data }); }}>
           <div class="campo"><label for="pg-fat">Fatura que este pagamento quita</label><input id="pg-fat" value={`${cartao.nome} · ${rotulo(fatura.mes)} · ${brl(fatura.falta)}`} readOnly /></div>
+          <div class="chips" role="group" aria-label="Quanto pagar">
+            <button type="button" class="chip" aria-pressed={conferido?.ok === true && conferido.quita} onClick={() => setValor(brl(fatura.falta).replace("R$ ", ""))}>Tudo · {brl(fatura.falta)}</button>
+            <button type="button" class="chip" aria-pressed={conferido?.ok === true && !conferido.quita} onClick={() => { setValor(""); document.getElementById("pg-val")?.focus(); }}>Parte</button>
+          </div>
           <div class="campo"><label for="pg-val">Valor (R$)</label><input id="pg-val" class="grande-in" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
           <div class="campo"><label for="pg-conta">Sai de</label><select id="pg-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{origens.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
           <div class="campo"><label for="pg-data">Data</label><input id="pg-data" type="date" value={data} onInput={(e) => setData(e.currentTarget.value)} /></div>
-          <p class="nota">Valor igual ao que falta: a fatura fica paga. Menor: fica parcial. Não entra como gasto.</p>
-          <div style="margin-top:16px"><button type="submit" class="btn-tinta">Pagar</button></div>
+          {conferido && !conferido.ok
+            ? <p class="erro-campo" role="alert">{conferido.motivo === "acima-do-que-falta" ? `Falta ${brl(fatura.falta)} nesta fatura; o pagamento não pode passar disso.` : conferido.motivo === "nada-a-pagar" ? "Esta fatura não tem nada a pagar." : "Digite um valor maior que zero."}</p>
+            : <p class="nota">{conferido?.ok && conferido.antecipado
+              ? <>{conferido.quita ? "Antecipa a fatura inteira" : <>Antecipa parte; ficam <b>{formatar(conferido.resta)}</b> para o vencimento</>}, {conferido.diasAntes} {conferido.diasAntes === 1 ? "dia" : "dias"} antes de {dataCurta(fatura.vencimento)}. {fatura.situacao === "aberta" || fatura.situacao === "futura" ? "Compras até o fechamento ainda entram nesta fatura. " : ""}</>
+              : "Valor igual ao que falta: a fatura fica paga. Menor: fica parcial. "}Não entra como gasto.</p>}
+          <div style="margin-top:16px"><button type="submit" class="btn-tinta" disabled={!conferido?.ok}>{antecipa ? "Antecipar" : "Pagar"}</button></div>
         </form>
       </div>
     </div>
