@@ -13,6 +13,7 @@ import { rotasDeImportacao } from "./importar.ts";
 import { rotasDeAjustes } from "./ajustes.ts";
 import { type ModeloDeIA, rotasDaIA, type RodarComSessao } from "./ia.ts";
 import { comSessao } from "./sessao.ts";
+import { criarCategoriasBase } from "./categorias-base.ts";
 import type { Consulta, Linha } from "./banco.ts";
 import type { Context } from "hono";
 
@@ -72,8 +73,9 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
   };
   rotasDaIA(app, rodarComSessao, deps.ia ?? (() => null));
 
+  // A abertura do app também cobre quem já tinha sessão antes das categorias base existirem.
   app.get("/api/sessao", async (c) => {
-    const { sessao } = await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), []);
+    const { sessao } = await comSessao(deps.banco(c.env), await deps.credenciais(c.req.raw, c.env), [criarCategoriasBase()]);
     c.header("Cache-Control", "no-store");
     return c.json({ modo: sessao.modo, nome: sessao.usuario.nome });
   });
@@ -97,7 +99,12 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
     const email = await concluirLogin(c.req.raw, cfg, cfg.segredo, deps.buscar);
     c.header("Set-Cookie", apagarCookie(COOKIE_LOGIN), { append: true });
     // Sem e-mail verificado não há sessão: a pessoa continua no demo.
-    if (email) c.header("Set-Cookie", await criarCookieSessao(email, cfg.segredo), { append: true });
+    if (email) {
+      c.header("Set-Cookie", await criarCookieSessao(email, cfg.segredo), { append: true });
+      // Primeira entrada de uma conta real: categorias base antes da primeira tela.
+      // Falhar aqui não impede o login; /api/sessao tenta de novo.
+      await comSessao(deps.banco(c.env), { email, emailVerificado: true }, [criarCategoriasBase()]).catch((e) => console.error(e));
+    }
     return c.redirect("/", 302);
   });
 

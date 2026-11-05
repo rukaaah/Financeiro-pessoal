@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { criarApp } from "../src/app.ts";
 import { abrir, assinar, concluirLogin, credenciaisDoPedido, criarCookieSessao, iniciarLogin, verificarIdToken } from "../src/auth.ts";
-import type { Banco } from "../src/banco.ts";
+import type { Banco, Consulta } from "../src/banco.ts";
 
 const SEGREDO = "segredo-de-teste-com-mais-de-32-bytes!!";
 const CLIENT = "cliente.apps.googleusercontent.com";
@@ -62,11 +62,12 @@ describe("fluxo de login", () => {
     expect(chamou).toBe(false);
   });
 
-  it("callback válido cria a sessão; e-mail não verificado não cria", async () => {
+  it("callback válido cria a sessão e as categorias base; e-mail não verificado não cria nada", async () => {
     const { par, jwk } = await chaves();
     for (const [claims, esperaSessao] of [[{ ...ok, exp: Date.now() / 1000 + 600 }, true], [{ ...ok, exp: Date.now() / 1000 + 600, email_verified: false }, false]] as const) {
       const token = await idToken(par, claims);
-      const banco: Banco = { lote: async () => [] };
+      const lotes: Consulta[][] = [];
+      const banco: Banco = { lote: async (cs) => (lotes.push([...cs]), [[{}], [{ na_allowlist: true, id: "1", email: "dono@exemplo.com", display_name: "Dono", is_demo: false }], []]) };
       const app = criarApp({
         banco: () => banco, credenciais: async () => null,
         login: () => ({ clientId: CLIENT, clientSecret: "s", segredo: SEGREDO }),
@@ -79,7 +80,28 @@ describe("fluxo de login", () => {
       const volta = await app.request(`https://app.test/auth/callback?code=c&state=${state}`, { headers: { cookie: cookieLogin } });
       expect(volta.status).toBe(302);
       expect((volta.headers.get("set-cookie") ?? "").includes("sessao=e")).toBe(esperaSessao);
+      // A primeira entrada já cria as categorias base, com o e-mail recém-verificado.
+      expect(lotes.length).toBe(esperaSessao ? 1 : 0);
+      if (esperaSessao) {
+        expect(lotes[0]![0]!.params).toEqual(["dono@exemplo.com"]);
+        expect(lotes[0]![2]!.texto).toMatch(/insert into categories/);
+      }
     }
+  });
+
+  it("banco fora do ar na primeira entrada não impede o login", async () => {
+    const { par, jwk } = await chaves();
+    const token = await idToken(par, { ...ok, exp: Date.now() / 1000 + 600 });
+    const app = criarApp({
+      banco: () => ({ lote: async () => { throw new Error("fora do ar"); } }), credenciais: async () => null,
+      login: () => ({ clientId: CLIENT, clientSecret: "s", segredo: SEGREDO }),
+      buscar: async (url) => new Response(JSON.stringify(url.includes("certs") ? { keys: [jwk] } : { id_token: token })),
+    });
+    const entrar = await app.request("https://app.test/auth/entrar");
+    const state = new URL(entrar.headers.get("location")!).searchParams.get("state")!;
+    const volta = await app.request(`https://app.test/auth/callback?code=c&state=${state}`, { headers: { cookie: entrar.headers.get("set-cookie")!.split(";")[0]! } });
+    expect(volta.status).toBe(302);
+    expect(volta.headers.get("set-cookie")).toMatch(/sessao=e/);
   });
 
   it("sem configuração, o login responde que não está ligado", async () => {
