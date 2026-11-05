@@ -181,7 +181,7 @@ html,body{overflow-x:clip}
 /* Na tela de início do iPhone (app instalado) a barra ficava alta demais sobre o indicador de início. */
 @media (display-mode:standalone) and (max-width:899px){
   nav.barra{padding-bottom:max(6px,calc(env(safe-area-inset-bottom,0px) - 14px))}
-  nav.barra .in{height:60px}
+  nav.barra .in{height:60px;padding-inline:12px}
   nav.barra .lancar{width:52px;height:52px;margin-top:-18px}
 }
 
