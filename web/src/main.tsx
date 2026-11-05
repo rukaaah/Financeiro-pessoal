@@ -73,6 +73,17 @@ function App() {
     }).catch((e: Error) => avisar({ texto: e.message }));
   }
 
+  /** "Repetir todo mês": primeiro a conta recorrente, depois o gasto já ligado a ela (conta como paga neste mês). */
+  function lancarRepetindo(conta: object, corpo: object) {
+    setFolha(null);
+    avisar({ texto: "Lançando…" });
+    apiAtencao.novaConta(conta).then((rec) => api.lancar({ ...corpo, conta_recorrente_id: rec.id }).then(async (r) => {
+      await recarregar();
+      avisar({ texto: "Lançado. Repete todo mês.", desfazer: () => api.excluir(r.ids[0]!).then(recarregar).then(() => avisar({ texto: "Lançamento desfeito. A conta recorrente continua em Ajustes." })) });
+    }, (e: Error) => { recarregarMes(); avisar({ texto: `A conta recorrente foi salva, mas o lançamento não: ${e.message}` }); }))
+      .catch((e: Error) => avisar({ texto: e.message }));
+  }
+
   function agir(i: ItemAtencao) {
     const a = i.acao;
     if (a.tipo === "ver-categoria") { const c = dadosMes?.categorias.find((x) => x.id === a.id); if (c) setFolha({ tipo: "categoria", c }); }
@@ -135,7 +146,7 @@ function App() {
         <button aria-label="Lançar" onClick={() => setFolha({ tipo: "lancar" })}><span class="lancar"><Icone nome="mais" tamanho={28} /></span></button>
         {destinos.slice(2).map(([id, nome]) => <button aria-current={tela === id ? "page" : undefined} onClick={() => setTela(id)}><Icone nome={id} />{nome}</button>)}
       </div></nav>
-      {folha?.tipo === "lancar" && <Lancar opcoes={opcoes} inicial={folha.inicial} intencaoInicial={folha.intencao} ptax={dadosMes?.ptax ?? null} descontoPb={dadosMes?.desconto_pb ?? 0} aoFechar={() => setFolha(null)} aoLancar={lancar}
+      {folha?.tipo === "lancar" && <Lancar opcoes={opcoes} inicial={folha.inicial} intencaoInicial={folha.intencao} ptax={dadosMes?.ptax ?? null} descontoPb={dadosMes?.desconto_pb ?? 0} aoFechar={() => setFolha(null)} aoLancar={lancar} aoRepetir={lancarRepetindo}
         aoPrever={(corpo) => { setFolha(null); apiAtencao.novaEntrada(corpo).then(() => recarregarMes()).then(() => avisar({ texto: "Entrada prevista salva." })).catch((e: Error) => avisar({ texto: e.message })); }} />}
       {folha?.tipo === "atencao" && dadosMes && <Atencao dados={dadosMes} aoFechar={() => setFolha(null)} aoAgir={agir} aoAdiar={adiar} aoNovaConta={() => setFolha({ tipo: "nova-conta" })} />}
       {folha?.tipo === "nova-conta" && <NovaConta opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => { setFolha(null); apiAtencao.novaConta(corpo).then(() => recarregarMes()).then(() => avisar({ texto: "Conta recorrente salva." })).catch((e: Error) => avisar({ texto: e.message })); }} />}

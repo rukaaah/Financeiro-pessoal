@@ -95,3 +95,17 @@ export function saldoProjetado(e: {
   }
   return pontos;
 }
+
+/**
+ * "Repetir todo mês" no Lançar: o gasto de hoje vira uma conta recorrente que vence todo
+ * mês no mesmo dia, com o mesmo valor, categoria e conta. Monta o pedido de
+ * /api/contas-recorrentes; quem decide urgência e o resto continua sendo Ajustes.
+ */
+export interface GastoQueRepete { descricao: string; valor: string; data: string; contaId: string; categoriaId: string; urgencia?: Urgencia }
+export function contaRecorrenteDoGasto(g: GastoQueRepete): { nome: string; valor: string; dia: number; conta_id: string; categoria_id: string; urgencia: Urgencia } | { erro: string } {
+  const nome = g.descricao.trim().slice(0, 80);
+  if (!nome) return { erro: "Dê um nome para a conta que se repete, como Aluguel." };
+  const dia = Number(g.data.slice(8, 10));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(g.data) || !(dia >= 1 && dia <= 31)) return { erro: "Escolha a data do gasto." };
+  return { nome, valor: g.valor.trim(), dia, conta_id: g.contaId, categoria_id: g.categoriaId, urgencia: g.urgencia ?? "important" };
+}
