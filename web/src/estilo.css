@@ -50,7 +50,7 @@ h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em}
 .achado{margin-top:12px;background:var(--fora-f);color:var(--fora-t);border-radius:6px;padding:12px 14px;display:flex;gap:10px;font-size:15px}
 .achado .ms{color:var(--fora)}
 section{margin-top:24px}
-h2{font-size:18px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px;text-wrap:balance}
+h2{font-size:18px;font-weight:700;display:flex;flex-wrap:wrap;column-gap:12px;justify-content:space-between;align-items:baseline;margin:0 0 8px;text-wrap:balance}
 h2 .lado{font-size:14px;color:var(--t2);font-weight:500}
 h2 a,h2 button.link{font-size:14px;color:var(--azul);font-weight:600;text-decoration:none}
 .lista{background:var(--sup);border-radius:6px;padding:0 14px}
@@ -175,7 +175,7 @@ html,body{overflow-x:clip}
 .campo input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0}
 .folha{overflow-x:hidden}
 @media (max-width:899px){
-  .chips,.abas{margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px));scroll-padding-inline:16px;scrollbar-width:none}
+  .chips,.abas{margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px));scroll-padding-inline:16px;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 32px),transparent)}
   .chips::-webkit-scrollbar,.abas::-webkit-scrollbar{display:none}
 }
 /* Na tela de início do iPhone (app instalado) a barra ficava alta demais sobre o indicador de início. */

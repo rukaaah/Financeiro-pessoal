@@ -22,17 +22,14 @@ Para continuar o replanejamento numa conversa nova. Fonte da verdade do plano:
      `@media (display-mode:standalone)` em `web/src/estilo.css` (60 px mais o indicador menos 14 px);
    - responsividade em qualquer aparelho: varrido de 320 a 430 px e 1440 px sem rolagem lateral.
      Detalhe menor visto a 320 px: o título "Já comprometido" quebra ao lado do valor no Cartão.
-2. **Categorias base**: o Pedro acha poucas. Hoje o demo tem 6 (`scripts/seed_demo.py`,
-   `CATEGORIAS`), e uma conta real nova começa sem nenhuma. Proposta, que ainda **precisa do
-   ok dele**:
-   - Essenciais: Mercado, Moradia, Contas da casa, Transporte, Saúde, Educação.
-   - Pessoal: Restaurantes, Lazer, Assinaturas, Vestuário, Cuidados pessoais, Presentes.
-   - Financeiro: Tarifas bancárias.
-   - Renda: Salário, Freelance.
-
-   Duas decisões ficam com ele: (a) só ampliar o demo, ou também criar esse conjunto na
-   primeira entrada de uma conta real sem categorias; (b) aceitar a lista. Ampliar o demo
-   mexe nos totais que `tests/integration/test_seed_demo.py` confere.
+2. **Categorias base** (aprovadas pelo Pedro em 2026-11-05): Essenciais (Mercado, Moradia,
+   Contas da casa, Transporte, Saúde, Educação), Pessoal (Restaurantes, Lazer, Assinaturas,
+   Vestuário, Cuidados pessoais, Presentes), Financeiro (Tarifas bancárias) e Renda (Salário,
+   Freelance). O demo usa esse conjunto (`scripts/seed_demo.py`), e uma conta real sem nenhuma
+   categoria ganha o mesmo no login (`/auth/callback`) e ao abrir o app (`/api/sessao`), pelo
+   `worker/src/categorias-base.ts`, como papel `app`. A lista em TypeScript fica em
+   `packages/dominio/src/categorias-base.ts`; `tests/unit/test_categorias_base.py` confere que
+   ela é igual à do Python. Falta o Pedro sair e entrar de novo no `dev` para ver.
 3. **Troca para produção (Fatia 11)**, com o Pedro acompanhando. Passo a passo:
    1. Snapshot ou branch de backup do `production` no Neon.
    2. Aplicar as migrations 005 a 012 em `production` com o papel `owner`
