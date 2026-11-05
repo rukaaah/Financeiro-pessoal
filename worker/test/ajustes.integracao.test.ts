@@ -16,6 +16,9 @@ beforeAll(async () => {
   owner = new pg.Client({ connectionString: URL_OWNER });
   await owner.connect();
   await owner.query("insert into app_users (email, display_name, is_admin) values ($1, 'Admin', true), ($2, 'Comum', false)", [email("admin"), email("comum")]);
+  // Quem é desativado cai no demo: o teste não pode depender de outro arquivo ter criado o usuário demo antes.
+  if ((await owner.query("select 1 from app_users where is_demo and active")).rowCount === 0)
+    await owner.query("insert into app_users (email, display_name, is_demo) values ($1, 'Visitante', true)", [email("demo")]);
 });
 
 afterAll(async () => {
