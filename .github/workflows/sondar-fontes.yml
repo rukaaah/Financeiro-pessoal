@@ -6,24 +6,20 @@ jobs:
   sondar:
     runs-on: ubuntu-latest
     steps:
-      - name: CVM dicionário
-        run: |
-          set -x
-          curl -sSL -o meta.zip https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/META/meta_inf_mensal_fii.zip
-          unzip -o meta.zip -d meta && ls -la meta
-          for f in meta/*; do echo "=== $f"; iconv -f latin1 -t utf-8 "$f" | grep -i -E "^ *(Campo|Nome)|Campo:|Dividend|Rentab|Patrimonial|Rendimento|ISIN|Codigo|Cotas|Data_Referencia|CNPJ" | head -80; done
-      - name: CVM dados 2026
+      - name: CVM linhas do MXRF11
         run: |
           curl -sSL -o d.zip https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/inf_mensal_fii_2026.zip
-          unzip -o d.zip -d d && ls -la d
-          for f in d/*.csv; do echo "=== $f"; head -1 "$f" | iconv -f latin1 -t utf-8; grep -i "MAXI RENDA" "$f" | tail -2 | iconv -f latin1 -t utf-8 | cut -c1-900; done
-      - name: brapi sem token
+          unzip -q -o d.zip -d d
+          echo "=== complemento"; grep -a "97.521.225/0001-25\|97521225000125" d/inf_mensal_fii_complemento_2026.csv | iconv -f latin1 -t utf-8 | tail -4
+          echo "=== geral"; grep -a "97.521.225/0001-25\|97521225000125" d/inf_mensal_fii_geral_2026.csv | iconv -f latin1 -t utf-8 | tail -2 | cut -c1-400
+          echo "=== linhas por mês"; cut -d';' -f2 d/inf_mensal_fii_complemento_2026.csv | sort | uniq -c
+          echo "=== versões repetidas?"; cut -d';' -f1,2 d/inf_mensal_fii_complemento_2026.csv | sort | uniq -d | head -3
+          file d/*.csv
+      - name: B3 layout e linhas
         run: |
-          for t in MXRF11 KNCR11 HGLG11; do echo "=== $t"; curl -sS "https://brapi.dev/api/quote/$t" | head -c 1500; echo; done
-          echo "=== range"; curl -sS "https://brapi.dev/api/quote/MXRF11?range=5d&interval=1d" | head -c 800; echo
-          echo "=== fii indicators"; curl -sS "https://brapi.dev/api/v2/fii/indicators?symbols=MXRF11" | head -c 1500; echo
-          echo "=== fii dividends"; curl -sS "https://brapi.dev/api/v2/fii/dividends?symbols=MXRF11" | head -c 1500; echo
-      - name: B3 COTAHIST diário
-        run: |
-          d=$(TZ=America/Sao_Paulo date -d "yesterday" +%d%m%Y)
-          for u in "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D$d.ZIP" "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D04112026.ZIP"; do echo "=== $u"; curl -sS -L -o c.zip -w "%{http_code} %{size_download}\n" "$u"; unzip -l c.zip 2>&1 | head; done
+          sudo apt-get install -y -qq poppler-utils >/dev/null 2>&1 || true
+          curl -sSL -A "Mozilla/5.0" -o l.pdf "https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf" -w "%{http_code}\n"
+          pdftotext -layout l.pdf - | head -150 || true
+          curl -sSL -o c.zip https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D04112026.ZIP && unzip -q -o c.zip
+          head -1 COTAHIST_D04112026.TXT; grep -a "MXRF11 \|HGLG11 \|KNCR11 " COTAHIST_D04112026.TXT; tail -1 COTAHIST_D04112026.TXT
+          echo "=== codbdi 12 amostra"; awk 'substr($0,11,2)=="12"' COTAHIST_D04112026.TXT | wc -l
