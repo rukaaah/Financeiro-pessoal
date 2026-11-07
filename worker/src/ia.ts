@@ -164,18 +164,16 @@ export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: R
     const b = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
     const texto = String(b.texto ?? "").slice(0, 120_000), hoje = hojeEmSaoPaulo();
     if (!texto.trim()) return c.json({ erro: "Envie o texto do extrato." }, 400);
-    const [{ sessao, linhas: [cats = [], pessoas = [], hojeL = []] }] = await Promise.all([rodar(c, [
+    const [{ sessao, linhas: [cats = [], hojeL = []] }] = await Promise.all([rodar(c, [
       consulta("select id, name as nome, kind as tipo from categories where active order by name"),
-      consulta("select name as nome from counterparties"),
       consulta("select count(*)::int as n from ai_calls where use_case = 'extrato' and created_at >= now() - interval '1 day'"),
     ])]);
     if (sessao.modo === "demo") return c.json({ demo: true, motivo: "No modo demonstração a IA não é chamada." });
     const ia = modelo(c.env);
     if (!ia) return c.json({ erro: "IA desligada neste ambiente." }, 503);
     if (Number(hojeL[0]?.n ?? 0) >= COTA_EXTRATO) return c.json({ erro: "Limite de leituras de extrato de hoje atingido. Volta amanhã." }, 429);
-    const nomes = [...pessoas.map((p) => String(p.nome)), sessao.usuario.nome];
     const categorias = cats.map((k) => ({ id: String(k.id), nome: String(k.nome), tipo: String(k.tipo) }));
-    const { caracteres, ...leitura } = await lerExtratoComIA(ia, MODELO, texto, nomes, categorias, hoje);
+    const { caracteres, ...leitura } = await lerExtratoComIA(ia, MODELO, texto, categorias, hoje);
     await rodar(c, [consulta("insert into ai_calls (user_id, use_case, input_chars, accepted) values (current_app_user(), 'extrato', $1, $2)", caracteres, leitura.linhas.length > 0)]);
     return c.json(leitura);
   });

@@ -9,10 +9,9 @@ O texto de sistema está em `worker/src/extrato-ia.ts` (`PAPEL_EXTRATO`). O que 
 - **Entrada**: linhas numeradas do texto do PDF, em blocos de 40, com até 6 linhas de
   contexto antes de cada bloco (para achar a data de cabeçalho); a lista de categorias
   ativas (id, nome, tipo); a data de hoje.
-- **Antes de enviar** (`mascararExtrato`): nomes de pessoas cadastradas, o nome do titular e
-  o nome depois de "Pix/TED/DOC/transferência para/de" viram "pessoa A", "pessoa B"; CPF,
-  CNPJ, e-mail e sequências de 4 ou mais dígitos (fora ano) viram "•••". Os nomes voltam
-  na descrição depois da resposta; os dígitos não.
+- **Antes de enviar** (`limparExtrato`): CPF, CNPJ, e-mail e sequências de 4 ou mais
+  dígitos (fora ano) viram "•••". Nomes de pessoas, estabelecimentos e cofrinhos vão como
+  estão: o Pedro decidiu em 2026-11-07 que a IA precisa deles para interpretar o extrato.
 - **Saída**: `{"itens":[{linha, trecho_valor, trecho_data, data, descricao, tipo, cofrinho,
   categoria_id}]}`, com `tipo` em gasto, entrada, guardar ou resgatar.
 - **Conferência** (`conferirLeituraDaIA`, em `packages/dominio`): o trecho do valor tem que
