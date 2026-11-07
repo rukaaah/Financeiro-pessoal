@@ -1,5 +1,5 @@
 import { conferirLeituraDaIA, type LinhaLidaPelaIA, linhasComValorDeFora, paraNumeric } from "@financeiro/dominio";
-import type { ModeloDeIA } from "./ia.ts";
+import { limpar, type ModeloDeIA } from "./ia.ts";
 
 /**
  * Leitura de extrato pela IA (pedido do Pedro, 2026-11-07). O texto do PDF é lido no
@@ -12,11 +12,7 @@ import type { ModeloDeIA } from "./ia.ts";
 const MAX_LINHAS = 600, POR_BLOCO = 40, CONTEXTO = 6;
 
 export function limparExtrato(texto: string): string[] {
-  return texto.split(/\r?\n/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, MAX_LINHAS).map((bruta) => bruta.slice(0, 220)
-    .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "•••")
-    .replace(/[\d*•]{3}\.[\d*•]{3}\.[\d*•]{3}-[\d*•]{2}/g, "•••")
-    .replace(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g, "•••")
-    .replace(/(?<![\d.,/])(?!(?:19|20)\d{2}(?!\d))\d{4,}(?![\d.,/])/g, "•••"));
+  return texto.split(/\r?\n/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, MAX_LINHAS).map((l) => limpar(l.slice(0, 220)));
 }
 
 export const PAPEL_EXTRATO = `Você lê extratos de conta corrente de bancos brasileiros, de qualquer banco e em qualquer formato. Recebe linhas numeradas do texto de um PDF, sem CPF e sem número de conta, e devolve as movimentações de dinheiro da conta.

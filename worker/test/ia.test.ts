@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { mascarar, numerosConferem } from "../src/ia.ts";
+import { limpar, numerosConferem } from "../src/ia.ts";
 
 describe("IA: o que sai e o que volta", () => {
-  it("nome de pessoa vira pessoa A; números de conta somem; valor e data ficam", () => {
-    expect(mascarar("Pix para Ana Souza conta 123456789 R$ 42,50 em 03/11", ["Ana Souza"])).toBe("Pix para pessoa A conta ••• R$ 42,50 em 03/11");
+  it("nome de pessoa fica; conta, CPF e e-mail somem; valor, data e ano ficam", () => {
+    expect(limpar("Pix para Ana Souza conta 123456789 CPF 123.456.789-00 ana@x.com R$ 42,50 em 03/11 de 2026")).toBe("Pix para Ana Souza conta ••• CPF ••• ••• R$ 42,50 em 03/11 de 2026");
   });
   it("número citado que não está nos resultados reprova a resposta", () => {
     const resultados = [{ linhas: [{ gasto: "312.00" }, { quantidade: 9 }] }];

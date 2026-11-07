@@ -97,7 +97,7 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
   return (
     <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}><div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-imp">
       <div class="topo"><h3 id="t-imp">Importar extrato</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
-      <p class="sub">O PDF é lido aqui no celular. A IA recebe só o texto, sem CPF, número de conta e com nomes de pessoas trocados por "pessoa A". Nada é gravado antes do botão Importar.</p>
+      <p class="sub">O PDF é lido aqui no celular. A IA recebe só o texto, sem CPF, e-mail e números de conta. Nada é gravado antes do botão Importar.</p>
       <div class="campo"><label for="i-conta">Conta</label><select id="i-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{contas.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
       <div class="campo"><label for="i-arq">Extrato (PDF ou texto)</label><input id="i-arq" type="file" accept=".pdf,.txt,.csv,application/pdf,text/plain" onChange={(e) => { const f = e.currentTarget.files?.[0]; if (f) arquivo(f); }} /></div>
       {carregando && <p class="nota">{carregando}</p>}

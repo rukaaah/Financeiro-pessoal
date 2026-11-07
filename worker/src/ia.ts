@@ -28,11 +28,17 @@ export const RESPOSTAS_DEMO: Record<string, { pergunta: string; resposta: string
   investimentos: [{ pergunta: "O que mudou na carteira?", resposta: "Exemplo: EXEMP11 foi o que mais subiu no mês e TESTE11 o que mais caiu. Não faço recomendação de compra ou venda." }],
 };
 
-/** Troca nomes de pessoas cadastradas por "pessoa A" e apaga sequências de 4+ dígitos que não sejam valor ou data. */
-export function mascarar(texto: string, pessoas: readonly string[]): string {
-  let t = texto;
-  pessoas.forEach((p, i) => { if (p.trim().length > 1) t = t.replace(new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), `pessoa ${String.fromCharCode(65 + i)}`); });
-  return t.replace(/(?<![\d.,/])\d{4,}(?![\d.,/])/g, "•••");
+/**
+ * Apaga CPF, CNPJ, e-mail e sequências de 4+ dígitos que não sejam valor, data ou ano.
+ * Nomes de pessoas e estabelecimentos ficam: a IA precisa deles para entender onde, como
+ * e por que se gasta (decisão do Pedro, 2026-11-07).
+ */
+export function limpar(texto: string): string {
+  return texto
+    .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "•••")
+    .replace(/[\d*•]{3}\.[\d*•]{3}\.[\d*•]{3}-[\d*•]{2}/g, "•••")
+    .replace(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g, "•••")
+    .replace(/(?<![\d.,/])(?!(?:19|20)\d{2}(?!\d))\d{4,}(?![\d.,/])/g, "•••");
 }
 
 /** Os números que a resposta cita precisam estar nos resultados (normalizados para 2 casas). */
@@ -52,11 +58,10 @@ function jsonDe(saida: unknown): Record<string, unknown> | null {
 }
 
 /** Catálogo fechado de funções. Cada uma é uma consulta já pronta, executada sob RLS. */
-function funcao(nome: string, args: Record<string, unknown>, pessoas: string[]): { consulta: Consulta; mascarar?: boolean } | null {
+function funcao(nome: string, args: Record<string, unknown>): { consulta: Consulta; limpar?: boolean } | null {
   const de = MES.test(String(args.de)) ? String(args.de) : null, ate = MES.test(String(args.ate)) ? String(args.ate) : null;
   const mes = MES.test(String(args.mes)) ? String(args.mes) : null;
   const cats = Array.isArray(args.categorias) ? args.categorias.filter((x) => UUID.test(String(x))).map(String).slice(0, 20) : [];
-  void pessoas;
   switch (nome) {
     case "gasto_por_categoria":
       if (!de || !ate) return null;
@@ -74,7 +79,7 @@ function funcao(nome: string, args: Record<string, unknown>, pessoas: string[]):
       return { consulta: consulta(`select t.occurred_on::text as data, t.description as descricao, k.name as categoria, t.amount::text as valor
           from transactions t join categories k on k.id = t.category_id where t.kind in ('income','expense')
            and mes_do_orcamento(t.occurred_on, t.invoice_month) between ($1 || '-01')::date and ($2 || '-01')::date
-           and (cardinality($3::uuid[]) = 0 or k.id = any($3::uuid[])) order by abs(t.amount) desc limit 40`, de, ate, cats), mascarar: true };
+           and (cardinality($3::uuid[]) = 0 or k.id = any($3::uuid[])) order by abs(t.amount) desc limit 40`, de, ate, cats), limpar: true };
     case "previsto":
       if (!mes) return null;
       return { consulta: consulta(`select k.name as categoria, p.previsto::text from previsto_do_mes(($1 || '-01')::date) p join categories k on k.id = p.category_id
@@ -105,9 +110,8 @@ export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: R
     const contexto = ["mes", "categoria", "investimentos"].includes(String(b.contexto)) ? String(b.contexto) : "mes";
     const pergunta = String(b.pergunta ?? "").trim().slice(0, 300);
     const hoje = hojeEmSaoPaulo(), mes = MES.test(String(b.mes)) ? String(b.mes) : hoje.slice(0, 7);
-    const [{ sessao, linhas: [cats = [], pessoas = [], hojeL = []] }] = await Promise.all([rodar(c, [
+    const [{ sessao, linhas: [cats = [], hojeL = []] }] = await Promise.all([rodar(c, [
       consulta("select k.id, k.name as nome, g.name as grupo from categories k join category_groups g on g.id = k.group_id where k.active"),
-      consulta("select name as nome from counterparties"),
       consulta("select count(*)::int as n from ai_calls where created_at >= now() - interval '1 day'"),
     ])]);
     if (sessao.modo === "demo") {
@@ -118,15 +122,14 @@ export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: R
     if (!ia) return c.json({ erro: "IA desligada neste ambiente." }, 503);
     if (Number(hojeL[0]?.n ?? 0) >= COTA_DIARIA) return c.json({ erro: "Limite de perguntas de hoje atingido. Volta amanhã." }, 429);
     if (!pergunta) return c.json({ erro: "Escreva a pergunta." }, 400);
-    const nomesDePessoas = pessoas.map((p) => String(p.nome));
     const contextoTexto = { hoje, mes, contexto, categoria_id: UUID.test(String(b.categoria_id)) ? b.categoria_id : null, categorias: cats.map((k) => ({ id: k.id, nome: k.nome, grupo: k.grupo })) };
     const plano = jsonDe(await ia.run(MODELO, { messages: [{ role: "system", content: PAPEL_PLANO }, { role: "user", content: JSON.stringify({ ...contextoTexto, pergunta }) }], max_tokens: 400 }));
     const chamadas = (Array.isArray(plano?.chamadas) ? plano!.chamadas : []).slice(0, 4) as { funcao?: string; args?: Record<string, unknown> }[];
-    const execs = chamadas.map((ch) => ({ ch, f: funcao(String(ch.funcao), ch.args ?? {}, nomesDePessoas) })).filter((x) => x.f);
+    const execs = chamadas.map((ch) => ({ ch, f: funcao(String(ch.funcao), ch.args ?? {}) })).filter((x) => x.f);
     let resultados: { funcao: string; linhas: Linha[] }[] = [];
     if (execs.length) {
       const { linhas } = await rodar(c, execs.map((x) => x.f!.consulta));
-      resultados = execs.map((x, i) => ({ funcao: String(x.ch.funcao), linhas: (linhas[i] ?? []).map((l) => (x.f!.mascarar ? { ...l, descricao: mascarar(String(l.descricao ?? ""), nomesDePessoas) } : l)) }));
+      resultados = execs.map((x, i) => ({ funcao: String(x.ch.funcao), linhas: (linhas[i] ?? []).map((l) => (x.f!.limpar ? { ...l, descricao: limpar(String(l.descricao ?? "")) } : l)) }));
     }
     const entrada = JSON.stringify({ pergunta, contexto, resultados, faltou: plano?.faltou ?? null });
     const resp = execs.length ? jsonDe(await ia.run(MODELO, { messages: [{ role: "system", content: PAPEL_RESPOSTA }, { role: "user", content: entrada }], max_tokens: 500 })) : null;
@@ -143,11 +146,11 @@ export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: R
     const texto = String(b.texto ?? "").slice(0, 500), hoje = hojeEmSaoPaulo();
     const pelaRegra = lerNotificacao(texto, hoje);
     if (pelaRegra) return c.json({ regra: true });
-    const [{ sessao, linhas: [pessoas = []] }] = await Promise.all([rodar(c, [consulta("select name as nome from counterparties")])]);
+    const [{ sessao }] = await Promise.all([rodar(c, [])]);
     if (sessao.modo === "demo") return c.json({ reconheceu: false, motivo: "No modo demonstração a IA não é chamada." });
     const ia = modelo(c.env);
     if (!ia) return c.json({ erro: "IA desligada neste ambiente." }, 503);
-    const mascarado = mascarar(texto, pessoas.map((p) => String(p.nome)));
+    const mascarado = limpar(texto);
     const r = jsonDe(await ia.run(MODELO, { messages: [{ role: "system", content: 'Extraia de uma notificação de banco brasileiro uma movimentação. Responda SOMENTE JSON: {"reconheceu":true,"trecho_do_valor":"R$ 42,50","trecho_da_data":"03/11","estabelecimento":"NOME","sentido":"saida"|"entrada"}. trecho_do_valor e trecho_da_data são cópias literais do texto. Sem valor: {"reconheceu":false,"motivo":"..."}' }, { role: "user", content: JSON.stringify({ hoje, texto: mascarado }) }], max_tokens: 200 }));
     const ok = !!r?.reconheceu && typeof r.trecho_do_valor === "string" && mascarado.includes(r.trecho_do_valor);
     await rodar(c, [consulta("insert into ai_calls (user_id, use_case, input_chars, accepted) values (current_app_user(), 'notificacao', $1, $2)", mascarado.length, ok)]);

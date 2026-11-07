@@ -79,9 +79,9 @@ consultado, e sugira um período maior em `perguntas_seguintes`.
 
 ## Nunca vai ao provedor
 
-Nome de pessoa (vira "pessoa A"), nome de conta e de banco, número de conta,
-cartão e CPF, e-mail, nome da corretora. Descrições de lançamento vão, mascaradas,
-desde a aprovação de 2026-11-04; com o interruptor desligado em Ajustes → IA, não vão.
+Nome de conta e de banco, número de conta, cartão e CPF, e-mail, nome da corretora.
+Descrições de lançamento vão desde a aprovação de 2026-11-04, com os nomes de pessoas e
+estabelecimentos como estão desde 2026-11-07; com o interruptor desligado em Ajustes → IA, não vão.
 
 ## No modo demonstração
 
