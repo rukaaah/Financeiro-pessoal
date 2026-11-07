@@ -39,7 +39,7 @@ Para continuar o replanejamento numa conversa nova. Fonte da verdade do plano:
    1. Snapshot ou branch de backup do `production` no Neon.
    2. Aplicar as migrations 005 a 012 em `production` com o papel `owner`
       (`yoyo apply`, a URL vem do secret `DATABASE_URL_OWNER`; rodar pelo workflow
-      `migrar-banco.yml`, adaptado para `production`, ou localmente pelo Pedro). Hoje vão até a 013.
+      `migrar-banco.yml`, adaptado para `production`, ou localmente pelo Pedro). Hoje vão até a 014.
    3. Conferir que `app` e `jobs` continuam sem `BYPASSRLS` e rodar o seed do demo em produção.
    4. Criar o secret `DATABASE_URL` de produção (papel `app`) e publicar o Worker de produção.
       Atualizar o redirect do cliente OAuth do Google para o domínio novo.

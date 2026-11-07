@@ -231,3 +231,6 @@ h2 .ia-tit svg{color:var(--ia)}
 .com-icone svg{color:var(--t2);flex:none}
 .chip{display:inline-flex;align-items:center;gap:6px}
 .heroi .pe .btn-ia{white-space:nowrap;flex:none}
+.controles-linha{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.controles-linha>select,.controles-linha>input{flex:1 1 150px;min-width:0;font-size:16px;min-height:40px}
+.controles-linha>input{border:1px solid var(--t2);border-radius:4px;padding:0 10px;background:var(--sup);color:var(--tinta);font:inherit;font-size:16px}

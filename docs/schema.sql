@@ -776,7 +776,7 @@ CREATE TABLE public.ai_calls (
     input_chars integer NOT NULL,
     accepted boolean NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT ai_calls_uso CHECK ((use_case = ANY (ARRAY['chat'::text, 'notificacao'::text, 'categoria'::text])))
+    CONSTRAINT ai_calls_uso CHECK ((use_case = ANY (ARRAY['chat'::text, 'notificacao'::text, 'categoria'::text, 'extrato'::text])))
 );
 
 

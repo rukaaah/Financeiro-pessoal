@@ -2,6 +2,7 @@ import { lerNotificacao, type Sessao } from "@financeiro/dominio";
 import type { Context, Hono } from "hono";
 import { type Consulta, consulta, type Linha } from "./banco.ts";
 import { hojeEmSaoPaulo } from "./contexto.ts";
+import { lerExtratoComIA } from "./extrato-ia.ts";
 
 /**
  * IA (ADR-018, docs/v3/04-ia.md, prompts/ia/chat.md). A IA não lê o banco: ela escolhe
@@ -14,7 +15,7 @@ export interface ModeloDeIA { run(modelo: string, entrada: object): Promise<unkn
 export type RodarComSessao<E extends object> = (c: Context<{ Bindings: E }>, consultas: readonly Consulta[]) => Promise<{ sessao: Sessao; linhas: Linha[][] }>;
 
 const MODELO = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const COTA_DIARIA = 40;
+const COTA_DIARIA = 40, COTA_EXTRATO = 15;
 const MES = /^\d{4}-\d{2}$/, UUID = /^[0-9a-f-]{36}$/i;
 
 /** Respostas fixas do modo demonstração (requisito 3 do pedido). */
@@ -153,5 +154,29 @@ export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: R
     if (!ok) return c.json({ reconheceu: false, motivo: "Não reconheci este formato." });
     const relido = lerNotificacao(`${r!.trecho_do_valor} ${r!.trecho_da_data ?? ""} em ${String(r!.estabelecimento ?? "")}`, hoje);
     return c.json({ reconheceu: !!relido, valor: relido ? String(relido.valor) : null, data: relido?.data ?? null, estabelecimento: relido?.estabelecimento ?? null, sentido: r!.sentido === "entrada" ? "entrada" : "saida" });
+  });
+
+  /**
+   * Extrato lido pela IA: qualquer formato de banco, inclusive guardar e resgatar de
+   * cofrinho. Nada é gravado aqui; as linhas seguem para a prévia e o usuário confirma.
+   */
+  app.post("/api/ia/extrato", async (c) => {
+    const b = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
+    const texto = String(b.texto ?? "").slice(0, 120_000), hoje = hojeEmSaoPaulo();
+    if (!texto.trim()) return c.json({ erro: "Envie o texto do extrato." }, 400);
+    const [{ sessao, linhas: [cats = [], pessoas = [], hojeL = []] }] = await Promise.all([rodar(c, [
+      consulta("select id, name as nome, kind as tipo from categories where active order by name"),
+      consulta("select name as nome from counterparties"),
+      consulta("select count(*)::int as n from ai_calls where use_case = 'extrato' and created_at >= now() - interval '1 day'"),
+    ])]);
+    if (sessao.modo === "demo") return c.json({ demo: true, motivo: "No modo demonstração a IA não é chamada." });
+    const ia = modelo(c.env);
+    if (!ia) return c.json({ erro: "IA desligada neste ambiente." }, 503);
+    if (Number(hojeL[0]?.n ?? 0) >= COTA_EXTRATO) return c.json({ erro: "Limite de leituras de extrato de hoje atingido. Volta amanhã." }, 429);
+    const nomes = [...pessoas.map((p) => String(p.nome)), sessao.usuario.nome];
+    const categorias = cats.map((k) => ({ id: String(k.id), nome: String(k.nome), tipo: String(k.tipo) }));
+    const { caracteres, ...leitura } = await lerExtratoComIA(ia, MODELO, texto, nomes, categorias, hoje);
+    await rodar(c, [consulta("insert into ai_calls (user_id, use_case, input_chars, accepted) values (current_app_user(), 'extrato', $1, $2)", caracteres, leitura.linhas.length > 0)]);
+    return c.json(leitura);
   });
 }

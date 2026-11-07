@@ -9,3 +9,4 @@ export * from "./patrimonio.ts";
 export * from "./investimentos.ts";
 export * from "./entrada.ts";
 export * from "./categorias-base.ts";
+export * from "./leitura-de-extrato.ts";

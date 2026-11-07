@@ -1,6 +1,6 @@
 import { conferirSaldos, lerExtrato, lerNotificacao, paraNumeric } from "@financeiro/dominio";
 import { useState } from "preact/hooks";
-import { apiEntrada, apiIA, brl, hoje, type LinhaImportada, type Opcoes } from "../api.ts";
+import { apiEntrada, apiIA, brl, hoje, type LinhaImportada, type Opcoes, type TipoDaLinha } from "../api.ts";
 import { Icone } from "../icone.tsx";
 import type { Inicial } from "./lancar.tsx";
 
@@ -45,54 +45,96 @@ async function textoDoPdf(arquivo: File): Promise<string> {
   return linhas.join("\n");
 }
 
-export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opcoes | null; aoFechar(): void; aoImportado(n: number): void }) {
+const TIPOS: Record<TipoDaLinha, string> = { gasto: "Gasto", entrada: "Entrada", guardar: "Guardar no cofrinho", resgatar: "Resgate do cofrinho" };
+const FINALIDADES: [string, string][] = [["withdrawal", "Retirada definitiva"], ["use", "Usado no objetivo"], ["loan", "Empréstimo (a devolver)"]];
+type Revisada = LinhaImportada & { incluir: boolean };
+
+export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opcoes | null; aoFechar(): void; aoImportado(n: number, cofrinhos: number): void }) {
   const contas = opcoes?.contas.filter((c) => c.tipo === "checking" || c.tipo === "cash") ?? [];
   const [conta, setConta] = useState(contas[0]?.id ?? "");
-  const [linhas, setLinhas] = useState<(LinhaImportada & { incluir: boolean })[] | null>(null);
+  const [linhas, setLinhas] = useState<Revisada[] | null>(null);
   const [aviso, setAviso] = useState("");
-  const [carregando, setCarregando] = useState(false);
+  const [pelaIA, setPelaIA] = useState(false);
+  const [carregando, setCarregando] = useState("");
+  const contaId = conta || contas[0]?.id || "";
+
+  /** A IA lê qualquer formato e acha os cofrinhos; a regra fica de reserva (demo, IA desligada ou sem resposta). */
   async function ler(texto: string) {
-    const lido = lerExtrato(texto);
-    if (!lido.linhas.length) return setAviso("Não encontrei movimentações nesse texto. O formato do extrato do PicPay ainda precisa ser conferido com um exemplo.");
-    const div = lido.saldos.length ? conferirSaldos(lido, lido.saldos[0]!.saldo - lido.linhas.filter((l) => l.data <= lido.saldos[0]!.data).reduce((t, l) => t + l.valor, 0n)) : [];
-    setAviso(div.length ? `O saldo impresso não fecha em ${div.length} dia(s), a partir de ${div[0]!.data.slice(8)}/${div[0]!.data.slice(5, 7)}. Confira antes de importar.` : lido.saldos.length ? "Conferido pelo saldo diário impresso." : "");
-    const previa = await apiEntrada.previa(conta || contas[0]?.id || "", lido.linhas.map((l) => ({ data: l.data, descricao: l.descricao, valor: paraNumeric(l.valor) })));
+    setCarregando("A IA está lendo o extrato…");
+    const ia = await apiIA.extrato(texto).catch(() => null);
+    let entrada: LinhaImportada[] = [];
+    if (ia?.linhas?.length) {
+      entrada = ia.linhas;
+      setPelaIA(true);
+      const partes = [`A IA leu ${ia.linhas.length} movimentações. Valor e data foram conferidos com o texto do extrato.`];
+      if (ia.de_fora) partes.push(`${ia.de_fora} linha(s) com valor ficaram de fora; confira no extrato.`);
+      setAviso(partes.join(" "));
+    } else {
+      setPelaIA(false);
+      const lido = lerExtrato(texto);
+      if (!lido.linhas.length) return setAviso(ia?.demo ? "No modo demonstração a IA não lê extratos, e a regra não reconheceu este formato." : "Nem a IA nem a regra encontraram movimentações nesse texto.");
+      const div = lido.saldos.length ? conferirSaldos(lido, lido.saldos[0]!.saldo - lido.linhas.filter((l) => l.data <= lido.saldos[0]!.data).reduce((t, l) => t + l.valor, 0n)) : [];
+      setAviso(div.length ? `O saldo impresso não fecha em ${div.length} dia(s), a partir de ${div[0]!.data.slice(8)}/${div[0]!.data.slice(5, 7)}. Confira antes de importar.` : lido.saldos.length ? "Conferido pelo saldo diário impresso." : "");
+      entrada = lido.linhas.map((l) => ({ data: l.data, descricao: l.descricao, valor: paraNumeric(l.valor) }));
+    }
+    setCarregando("Conferindo com o que já está lançado…");
+    const previa = await apiEntrada.previa(contaId, entrada);
     setLinhas(previa.linhas.map((l) => ({ ...l, incluir: !l.duplicada })));
   }
   async function arquivo(f: File) {
-    setCarregando(true);
+    setCarregando("Lendo o arquivo…");
     try { await ler(f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf") ? await textoDoPdf(f) : await f.text()); }
     catch (e) { setAviso(e instanceof Error ? e.message : "Não deu para ler o arquivo."); }
-    finally { setCarregando(false); }
+    finally { setCarregando(""); }
   }
+  const mudar = (i: number, m: Partial<Revisada>) => setLinhas((ls) => ls && ls.map((x, j) => (j === i ? { ...x, ...m } : x)));
   const cats = opcoes?.categorias ?? [];
   const prontas = linhas?.filter((l) => l.incluir) ?? [];
-  const faltaCategoria = prontas.some((l) => !l.categoria_id);
+  const deCofrinho = (l: LinhaImportada) => l.tipo === "guardar" || l.tipo === "resgatar";
+  const faltaCategoria = prontas.some((l) => !deCofrinho(l) && !l.categoria_id);
+  const faltaCofrinho = prontas.some((l) => deCofrinho(l) && !l.cofrinho?.trim());
+  const novos = [...new Set(prontas.filter((l) => deCofrinho(l) && !l.cofrinho_id && l.cofrinho?.trim()).map((l) => l.cofrinho!.trim()))];
   return (
     <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}><div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-imp">
       <div class="topo"><h3 id="t-imp">Importar extrato</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
-      <p class="sub">O arquivo é lido aqui no celular; só as linhas que você confirmar vão para o app. Nada é gravado antes do botão Importar.</p>
+      <p class="sub">O PDF é lido aqui no celular. A IA recebe só o texto, sem CPF, número de conta e com nomes de pessoas trocados por "pessoa A". Nada é gravado antes do botão Importar.</p>
       <div class="campo"><label for="i-conta">Conta</label><select id="i-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{contas.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
       <div class="campo"><label for="i-arq">Extrato (PDF ou texto)</label><input id="i-arq" type="file" accept=".pdf,.txt,.csv,application/pdf,text/plain" onChange={(e) => { const f = e.currentTarget.files?.[0]; if (f) arquivo(f); }} /></div>
-      {carregando && <p class="nota">Lendo o extrato…</p>}
-      {aviso && <p class="nota">{aviso}</p>}
+      {carregando && <p class="nota">{carregando}</p>}
+      {aviso && <p class="nota">{pelaIA && <span class="selo-ia" style="margin-right:6px"><Icone nome="ia" tamanho={14} />IA</span>}{aviso}</p>}
       {linhas && (
         <>
           <section><h2>Revisar <span class="lado">{prontas.length} de {linhas.length}</span></h2>
-            <div class="lista">{linhas.map((l, i) => (
-              <div class="item">
-                <label class="nome" style="display:flex;gap:8px;align-items:center"><input type="checkbox" checked={l.incluir} onChange={(e) => setLinhas(linhas.map((x, j) => (j === i ? { ...x, incluir: e.currentTarget.checked } : x)))} />{l.descricao}</label>
-                <span class="valor">{brl(l.valor, !l.valor.startsWith("-"))}</span>
-                <span class="sub">{l.data.slice(8)}/{l.data.slice(5, 7)}{l.duplicada ? " · já lançado" : ""}</span>
-                <select aria-label={`Categoria de ${l.descricao}`} value={l.categoria_id ?? ""} onChange={(e) => setLinhas(linhas.map((x, j) => (j === i ? { ...x, categoria_id: e.currentTarget.value } : x)))} style="font-size:14px;max-width:150px">
-                  <option value="">Categoria…</option>
-                  {cats.filter((c) => c.tipo === (l.valor.startsWith("-") ? "expense" : "income")).map((c) => <option value={c.id}>{c.nome}</option>)}
-                </select>
-              </div>
-            ))}</div>
+            <div class="lista">{linhas.map((l, i) => {
+              const sai = l.valor.startsWith("-");
+              return (
+                <div class="item">
+                  <label class="nome" style="display:flex;gap:8px;align-items:center;min-width:0"><input type="checkbox" checked={l.incluir} onChange={(e) => mudar(i, { incluir: e.currentTarget.checked })} /><span style="min-width:0;overflow-wrap:break-word">{l.descricao}</span></label>
+                  <span class="valor">{brl(l.valor, !sai)}</span>
+                  <span class="sub">{l.data.slice(8)}/{l.data.slice(5, 7)}{l.duplicada ? " · já lançado" : ""}{deCofrinho(l) && l.cofrinho?.trim() ? (l.cofrinho_id ? " · cofrinho existente" : " · cofrinho novo") : ""}</span>
+                  <div class="controles-linha">
+                    <select aria-label={`Tipo de ${l.descricao}`} value={l.tipo ?? (sai ? "gasto" : "entrada")}
+                      onChange={(e) => { const t = e.currentTarget.value as TipoDaLinha; mudar(i, { tipo: t, finalidade: t === "resgatar" ? (l.finalidade ?? "withdrawal") : null }); }}>
+                      {(sai ? ["gasto", "guardar"] as const : ["entrada", "resgatar"] as const).map((t) => <option value={t}>{TIPOS[t]}</option>)}
+                    </select>
+                    {deCofrinho(l)
+                      ? <>
+                          <input aria-label={`Cofrinho de ${l.descricao}`} placeholder="Nome do cofrinho" value={l.cofrinho ?? ""} onInput={(e) => mudar(i, { cofrinho: e.currentTarget.value, cofrinho_id: null })} />
+                          {l.tipo === "resgatar" && <select aria-label={`Finalidade do resgate de ${l.descricao}`} value={l.finalidade ?? "withdrawal"} onChange={(e) => mudar(i, { finalidade: e.currentTarget.value })}>{FINALIDADES.map(([v, n]) => <option value={v}>{n}</option>)}</select>}
+                        </>
+                      : <select aria-label={`Categoria de ${l.descricao}`} value={l.categoria_id ?? ""} onChange={(e) => mudar(i, { categoria_id: e.currentTarget.value })}>
+                          <option value="">Categoria…</option>
+                          {cats.filter((c) => c.tipo === (sai ? "expense" : "income")).map((c) => <option value={c.id}>{c.nome}</option>)}
+                        </select>}
+                  </div>
+                </div>
+              );
+            })}</div>
           </section>
-          {faltaCategoria && <p class="erro-campo">Escolha a categoria de todas as linhas marcadas.</p>}
-          <div style="margin-top:12px"><button class="btn-tinta" disabled={!prontas.length || faltaCategoria} onClick={() => apiEntrada.importar(conta || contas[0]?.id || "", prontas).then((r) => aoImportado(r.importadas)).catch((e: Error) => setAviso(e.message))}>Importar {prontas.length}</button></div>
+          {novos.length > 0 && <p class="nota">Vou criar {novos.length === 1 ? "o cofrinho" : "os cofrinhos"} {novos.join(", ")}.</p>}
+          {faltaCategoria && <p class="erro-campo">Escolha a categoria de todos os gastos e entradas marcados.</p>}
+          {faltaCofrinho && <p class="erro-campo">Dê o nome do cofrinho nas linhas de cofrinho.</p>}
+          <div style="margin-top:12px"><button class="btn-tinta" disabled={!prontas.length || faltaCategoria || faltaCofrinho} onClick={() => apiEntrada.importar(contaId, prontas).then((r) => aoImportado(r.importadas, r.cofrinhos_criados ?? 0)).catch((e: Error) => setAviso(e.message))}>Importar {prontas.length}</button></div>
         </>
       )}
     </div></div>
