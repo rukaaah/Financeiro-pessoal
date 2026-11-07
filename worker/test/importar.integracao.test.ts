@@ -74,7 +74,7 @@ describe("extrato lido pela IA, com cofrinhos", () => {
     const r = await app.request("/api/importar", { method: "POST", headers: json, body: JSON.stringify({ conta_id: ids.picpay, linhas: previa.linhas }) });
     expect(r.status).toBe(201);
     expect(await r.json()).toEqual({ importadas: 3, cofrinhos_criados: 1 });
-    const viagem = (await owner.query("select a.id, coalesce(sum(t.amount), 0)::text as saldo from accounts a left join transactions t on t.account_id = a.id where a.name = 'Viagem' and a.kind = 'goal' group by a.id")).rows;
+    const viagem = (await owner.query("select a.id, coalesce(sum(t.amount), 0)::text as saldo from accounts a left join transactions t on t.account_id = a.id join app_users u on u.id = a.user_id where u.email = $1 and a.name = 'Viagem' and a.kind = 'goal' group by a.id", [email("a")])).rows;
     expect(viagem).toEqual([{ id: expect.any(String), saldo: "200.00" }]);
     const resgate = (await owner.query("select amount::text as valor, goal_movement as fin from transactions where account_id = $1", [ids.reserva])).rows;
     expect(resgate).toEqual([{ valor: "-50.00", fin: "withdrawal" }]);
@@ -85,7 +85,7 @@ describe("extrato lido pela IA, com cofrinhos", () => {
   it("B não cria cofrinho nem mexe na conta de A", async () => {
     const b = await como("b").request("/api/importar", { method: "POST", headers: json, body: JSON.stringify({ conta_id: ids.picpay, linhas: [{ data: "2026-11-05", descricao: "Cofrinho X", valor: "-10.00", tipo: "guardar", cofrinho: "X" }] }) });
     expect(b.status).toBe(400);
-    const n = (await owner.query("select count(*)::int as n from accounts where name = 'X'")).rows[0].n;
+    const n = (await owner.query("select count(*)::int as n from accounts a join app_users u on u.id = a.user_id where u.email like $1 and a.name = 'X'", [`%-${sufixo}@teste.dev`])).rows[0].n;
     expect(n).toBe(0);
   });
 });
