@@ -32,7 +32,11 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
         <div class="grande">{d ? brl(d.total) : <span class="esqueleto" />}</div>
         <p class="conta">{d ? `${brl(d.variacao_mes, true)} no mês pela cotação · custo ${brl(d.custo)}` : " "}</p>
         {d && <div class="tres"><div><div class="r">Proventos 12m</div><div class="v">{brl(proventos12.toFixed(2)).replace("R$ ", "")}</div></div><div><div class="r">Média/mês</div><div class="v">{brl((proventos12 / 12).toFixed(2)).replace("R$ ", "")}</div></div><div><div class="r">Rendeu</div><div class="v">{brl((num(d.total) - num(d.custo)).toFixed(2)).replace("R$ ", "")}</div></div></div>}
-        <div class="acao-heroi"><button class="btn-cheio" onClick={() => setFolha("aportar")}>Onde aportar</button><button class="btn-claro" onClick={() => setFolha("comprar")}>Comprei</button><button class="btn-claro" onClick={aoPerguntar}>Perguntar</button></div>
+        <div class="acao-heroi">
+          <button class="btn-cheio" onClick={() => setFolha("aportar")}><Icone nome="aportar" tamanho={16} />Onde aportar</button>
+          <button class="btn-claro" onClick={() => setFolha("comprar")}><Icone nome="comprar" tamanho={16} />Comprei</button>
+          <button class="btn-ia" onClick={aoPerguntar}><Icone nome="ia" tamanho={18} />Perguntar à IA sobre a carteira</button>
+        </div>
       </div>
       <div class="seg" role="group" aria-label="Investimentos">{(["Resumo", "Carteira", "Proventos"] as const).map((f) => <button aria-pressed={f === face} onClick={() => setFace(f)}>{f}</button>)}</div>
       {d && face === "Resumo" && (

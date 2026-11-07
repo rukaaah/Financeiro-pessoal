@@ -4,18 +4,21 @@
   --papel:#fbfbf9; --sup:#f1f2ee; --sup2:#e6e8e2; --tinta:#181b1a; --t2:#585f5c; --regua:#cdd0ca;
   --azul:#2b55d0; --heroi:#18264f; --heroi-t:#ffffff; --heroi-t2:#c9d3f3; --heroi-linha:#33437a; --azul-claro:#a9b9ef;
   --fora:#b3261e; --fora-f:#f9e2e0; --fora-t:#6d1712; --perto:#8a5a00; --perto-f:#f7ead1; --dentro:#1f6f54; --dentro-f:#e2efe9;
-  --tarja:#322d1f; --tarja-t:#f6e7c4; --sombra:0 8px 32px rgb(24 27 26 / 18%);
+  --tarja:#322d1f; --tarja-t:#f6e7c4;
+  --ia:#6a4fe0; --ia-f:#f0ecfd; --ia-t:#3b2a8f; --ia-a:#6a4fe0; --ia-b:#2f5fe0; --sombra:0 8px 32px rgb(24 27 26 / 18%);
   --fonte:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --papel:#111413; --sup:#1a1e1c; --sup2:#262b28; --tinta:#e7e9e6; --t2:#a6ada8; --regua:#2f3532;
   --azul:#7d9bff; --heroi:#1b2a5c; --heroi-linha:#34477f; --azul-claro:#6f86d6;
   --fora:#ff8a80; --fora-f:#3a1d1b; --fora-t:#ffd7d3; --perto:#e8b45a; --perto-f:#352a14; --dentro:#6fcfa5; --dentro-f:#15302a;
+  --ia:#b2a2ff; --ia-f:#211c38; --ia-t:#ddd5ff;
   --sombra:0 8px 32px rgb(0 0 0 / 50%); color-scheme:dark}}
 :root[data-theme="dark"]{
   --papel:#111413; --sup:#1a1e1c; --sup2:#262b28; --tinta:#e7e9e6; --t2:#a6ada8; --regua:#2f3532;
   --azul:#7d9bff; --heroi:#1b2a5c; --heroi-linha:#34477f; --azul-claro:#6f86d6;
   --fora:#ff8a80; --fora-f:#3a1d1b; --fora-t:#ffd7d3; --perto:#e8b45a; --perto-f:#352a14; --dentro:#6fcfa5; --dentro-f:#15302a;
+  --ia:#b2a2ff; --ia-f:#211c38; --ia-t:#ddd5ff;
   --sombra:0 8px 32px rgb(0 0 0 / 50%); color-scheme:dark}
 *{box-sizing:border-box}
 html{scroll-padding-bottom:96px;-webkit-tap-highlight-color:transparent}
@@ -46,7 +49,7 @@ h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em}
 .tres .v{font-size:17px;font-weight:600}
 .dot{width:8px;height:8px;border-radius:2px;display:inline-block}
 .heroi .pe{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:var(--heroi-t2)}
-.btn-claro{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--heroi-linha);border-radius:4px;padding:8px 12px;min-height:40px;color:var(--heroi-t);font-weight:600;font-size:14px}
+.btn-claro{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--heroi-linha);border-radius:4px;padding:8px 12px;min-height:40px;color:var(--heroi-t);font-weight:600;font-size:14px}
 .achado{margin-top:12px;background:var(--fora-f);color:var(--fora-t);border-radius:6px;padding:12px 14px;display:flex;gap:10px;font-size:15px}
 .achado .ms{color:var(--fora)}
 section{margin-top:24px}
@@ -107,8 +110,11 @@ nav.barra .lancar .ms{font-size:30px}
 .lote .btn{justify-content:center}
 .dia{font-size:13px;font-weight:700;color:var(--t2);padding:14px 0 6px}
 .entrada{color:var(--dentro)}
-.heroi .acao-heroi{display:flex;gap:8px;margin-top:14px}
-.heroi .acao-heroi>button{flex:1 1 0;min-width:0;padding-left:6px;padding-right:6px;font-size:clamp(13px,4vw,15px)}
+/* Ações do bloco azul: mesma altura, texto e ícone centrados. A ação de IA ocupa a linha inteira. */
+.heroi .acao-heroi{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.heroi .acao-heroi>button{flex:1 1 0;min-width:0;min-height:44px;padding:10px 8px;font-size:clamp(14px,3.9vw,15px);font-weight:700;white-space:nowrap;gap:6px}
+@media (max-width:359px){.heroi .acao-heroi>button:not(.btn-ia) svg{display:none}}
+.heroi .acao-heroi>.btn-ia{flex-basis:100%}
 .btn-cheio{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--heroi-t);color:var(--heroi);border-radius:4px;padding:10px 16px;min-height:44px;font-weight:700;font-size:15px}
 .btn-tinta{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--tinta);color:var(--papel);border-radius:4px;padding:12px 16px;min-height:48px;font-weight:700;font-size:16px;width:100%}
 .colfat{display:flex;align-items:flex-end;gap:10px;height:90px;margin-top:8px}
@@ -208,3 +214,20 @@ html,body{overflow-x:clip}
   .folha{max-width:560px;border-radius:8px;max-height:84vh;padding:20px 24px 24px}
   .item:hover{background:var(--sup)}
 }
+
+/* IA: tudo que passa pela IA leva o brilho e o degradê violeta-azul, para não se confundir com os botões comuns. */
+.btn-ia{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:4px;padding:10px 14px;min-height:44px;font-weight:700;font-size:15px;color:#fff;background:linear-gradient(100deg,var(--ia-a),var(--ia-b));box-shadow:inset 0 0 0 1px rgb(255 255 255 / 16%)}
+.btn-ia.mini{min-height:40px;padding:8px 12px;font-size:14px}
+.btn-ia svg{flex:none}
+.selo-ia{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--ia);background:var(--ia-f);border-radius:999px;padding:2px 8px}
+.folha .topo h3{display:flex;align-items:center;gap:8px;min-width:0}
+.folha .topo .btn-ia{margin-left:auto;margin-right:4px}
+.msg.ia{background:var(--ia-f);color:var(--tinta);border-left:3px solid var(--ia)}
+.msg.ia .quem{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--ia);margin-bottom:2px}
+.chat-chips .chip{border-color:var(--ia);color:var(--ia-t)}
+h2 .ia-tit{display:inline-flex;align-items:center;gap:6px}
+h2 .ia-tit svg{color:var(--ia)}
+.com-icone{display:inline-flex;align-items:center;gap:8px}
+.com-icone svg{color:var(--t2);flex:none}
+.chip{display:inline-flex;align-items:center;gap:6px}
+.heroi .pe .btn-ia{white-space:nowrap;flex:none}

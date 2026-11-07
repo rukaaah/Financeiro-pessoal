@@ -3,6 +3,7 @@ import { type Ajustes as Dados, apiAjustes, brl, hoje } from "../api.ts";
 import { Icone } from "../icone.tsx";
 
 type Area = "Contas" | "Cartões" | "Categorias e previsto" | "Recorrentes" | "Investimentos" | "Regras" | "Acesso";
+const ICONE_AREA: Partial<Record<Area, string>> = { Contas: "contas", "Cartões": "cartao", Investimentos: "investimentos", "Categorias e previsto": "mes", Recorrentes: "lancamentos", Regras: "ajustes", Acesso: "receber" };
 const TIPOS: Record<string, string> = { checking: "corrente", credit_card: "cartão", goal: "cofrinho", investment: "investimento", cash: "dinheiro" };
 const CLASSES: [string, string][] = [["paper", "Papel"], ["brick", "Tijolo"], ["logistics", "Logística"], ["infra", "FI-Infra"], ["treasury", "Tesouro"], ["other", "Outros"]];
 
@@ -19,8 +20,8 @@ export function Ajustes({ demo, nome, aoAvisar, aoVoltar }: { demo: boolean; nom
       <header><div><h1>{area ?? "Ajustes"}</h1><div class="sub">{nome} · {demo ? "modo demonstração" : "modo real"}</div></div><button class="icone" aria-label="Voltar" onClick={() => (area ? setArea(null) : aoVoltar())}><Icone nome="fechar" /></button></header>
       {!area && d && (
         <>
-          <div class="lista">{areas.map(([a, sub]) => <button class="item" onClick={() => setArea(a)}><span class="nome">{a}</span><span class="sub">›</span><span class="sub">{sub}</span><span /></button>)}</div>
-          <section><h2>IA <span class="lado">Cloudflare Workers AI</span></h2><div class="lista">
+          <div class="lista">{areas.map(([a, sub]) => <button class="item" onClick={() => setArea(a)}><span class="nome com-icone">{ICONE_AREA[a] && <Icone nome={ICONE_AREA[a]} tamanho={18} />}{a}</span><span class="sub">›</span><span class="sub">{sub}</span><span /></button>)}</div>
+          <section><h2><span class="ia-tit"><Icone nome="ia" tamanho={20} />IA</span> <span class="lado">Cloudflare Workers AI</span></h2><div class="lista">
             <div class="item"><span class="nome">Chat por contexto</span><span class="sub">ligado</span><span class="sub">Envia: lançamentos do período, com nomes de pessoas trocados e números de conta apagados</span><span /></div>
             <div class="item"><span class="nome">Colar notificação (reserva)</span><span class="sub">ligado</span><span class="sub">Envia: o texto colado, sem números de conta</span><span /></div>
           </div><p class="sub">Nunca é enviado: nome de banco, número de conta ou cartão, CPF, e-mail. No modo demonstração a IA não é chamada.</p></section>
