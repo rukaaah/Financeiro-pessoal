@@ -1,7 +1,7 @@
 # Worker da v3 (ADR-015): serve a PWA de web/dist e a API em /api.
 # Segredos (DATABASE_URL, GOOGLE_CLIENT_SECRET, SESSION_SECRET) não ficam aqui:
 # chegam pelo `secrets:` do cloudflare/wrangler-action no deploy (ADR-018).
-name = "financeiro-pessoal"
+name = "financeiro-pessoal-dev"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
@@ -27,7 +27,7 @@ binding = "AI"
 # Publicado só pelo gatilho manual do deploy-v3.yml (`ambiente: production`).
 # Bindings não são herdados entre ambientes do wrangler, então repetem aqui.
 [env.production]
-name = "financeiro-pessoal-producao"
+name = "financeiro-pessoal"
 
 [env.production.placement]
 mode = "smart"

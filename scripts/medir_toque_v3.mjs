@@ -1,7 +1,7 @@
 // Mede trocar de tela, abrir o Lançar e salvar um lançamento na v3 publicada, no 4G lento
 // emulado. Grava no usuário demo do branch dev e desfaz no fim.
 // Uso: Chrome com --headless=new --remote-debugging-port=9334, depois `node scripts/medir_toque_v3.mjs 9334 <pasta-das-fotos>`.
-const URL_APP = "https://financeiro-pessoal.pedrolucas-cremonini.workers.dev/";
+const URL_APP = "https://financeiro-pessoal-dev.pedrolucas-cremonini.workers.dev/";
 const porta = process.argv[2], saida = process.argv[3];
 const alvos = await (await fetch(`http://127.0.0.1:${porta}/json/list`)).json();
 const ws = new WebSocket(alvos.find(t => t.type === "page").webSocketDebuggerUrl);

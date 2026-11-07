@@ -2,8 +2,8 @@ name: Deploy da v3 (Cloudflare Worker)
 
 # ADR-015 e ADR-018: o deploy sai daqui, e os secrets do GitHub chegam ao Worker
 # pelo `secrets:` do wrangler-action. O push publica o Worker do dev
-# (`financeiro-pessoal`, banco no branch `dev`). O de produção
-# (`financeiro-pessoal-producao`, `[env.production]` do wrangler.toml) só sai por
+# (`financeiro-pessoal-dev`, banco no branch `dev`). O de produção
+# (`financeiro-pessoal`, `[env.production]` do wrangler.toml) só sai por
 # gatilho manual, com o secret DATABASE_URL_APP_PRODUCTION (papel `app`, nunca `owner`).
 on:
   push:
