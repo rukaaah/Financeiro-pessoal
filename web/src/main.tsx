@@ -177,7 +177,7 @@ function App() {
       }} />}
       {folha?.tipo === "chat" && <Chat contexto={folha.contexto} titulo={folha.titulo} mes={mes} {...(folha.categoriaId ? { categoriaId: folha.categoriaId } : {})} aoFechar={() => setFolha(null)} />}
       {folha?.tipo === "colar" && <ColarNotificacao opcoes={opcoes} aoFechar={() => setFolha(null)} aoAbrir={(inicial, intencao) => setFolha({ tipo: "lancar", inicial, intencao })} />}
-      {folha?.tipo === "importar" && <ImportarExtrato opcoes={opcoes} aoFechar={() => setFolha(null)} aoImportado={(n) => { setFolha(null); recarregar(); avisar({ texto: `${n} lançamentos importados.` }); }} />}
+      {folha?.tipo === "importar" && <ImportarExtrato opcoes={opcoes} aoFechar={() => setFolha(null)} aoImportado={(n, cofrinhos) => { setFolha(null); recarregar(); avisar({ texto: `${n} lançamentos importados${cofrinhos ? ` e ${cofrinhos} cofrinho${cofrinhos > 1 ? "s" : ""} criado${cofrinhos > 1 ? "s" : ""}` : ""}.` }); }} />}
       {aviso && <div class="toast" role="status"><span>{aviso.texto}</span>{aviso.desfazer && <button onClick={() => { const d = aviso.desfazer!; setAviso(null); d(); }}>Desfazer</button>}</div>}
     </>
   );

@@ -98,16 +98,18 @@ export const apiInvest = {
   comprar: (corpo: object) => pedir<{ valor: string }>("/api/comprar-ativo", { method: "POST", body: JSON.stringify(corpo) }),
 };
 
-export interface LinhaImportada { data: string; descricao: string; valor: string; duplicada?: boolean; categoria_id?: string | null }
+export type TipoDaLinha = "gasto" | "entrada" | "guardar" | "resgatar";
+export interface LinhaImportada { data: string; descricao: string; valor: string; duplicada?: boolean; categoria_id?: string | null; tipo?: TipoDaLinha; cofrinho?: string | null; cofrinho_id?: string | null; finalidade?: string | null }
 export const apiEntrada = {
   sugerir: (descricao: string, tipo: "income" | "expense") => pedir<{ categoria_id: string | null }>(`/api/sugerir-categoria?descricao=${encodeURIComponent(descricao)}&tipo=${tipo}`),
   previa: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ linhas: LinhaImportada[] }>("/api/importar/previa", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
-  importar: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ importadas: number }>("/api/importar", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
+  importar: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ importadas: number; cofrinhos_criados: number }>("/api/importar", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
 };
 
 export interface RespostaChat { resposta: string; perguntas_seguintes?: string[]; demo?: boolean; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
 export const apiIA = {
   chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
+  extrato: (texto: string) => pedir<{ demo?: boolean; motivo?: string; linhas?: LinhaImportada[]; descartadas?: number; de_fora?: number }>("/api/ia/extrato", { method: "POST", body: JSON.stringify({ texto }) }),
   notificacao: (texto: string) => pedir<{ regra?: boolean; reconheceu?: boolean; valor?: string | null; data?: string | null; estabelecimento?: string | null; sentido?: string; motivo?: string }>("/api/ia/notificacao", { method: "POST", body: JSON.stringify({ texto }) }),
 };
 
