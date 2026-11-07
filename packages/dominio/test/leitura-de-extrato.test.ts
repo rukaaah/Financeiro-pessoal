@@ -93,13 +93,17 @@ describe("CSV de extrato pelo cabeçalho", () => {
   it("acha data, descrição e valor em qualquer ordem e separador", () => {
     const csv = "Extrato da conta\nData;Descrição;Tipo;Valor;Saldo\n03/11/2026;MERCADO BOM;Compra;-87,40;912,60\n04/11/2026;\"Pix, recebido\";Pix;150,00;1062,60\n";
     expect(lerCsvDeExtrato(csv)).toEqual({ ignoradas: 0, linhas: [
-      { data: "2026-11-03", descricao: "MERCADO BOM · Compra", valor: -8740n },
-      { data: "2026-11-04", descricao: "Pix, recebido · Pix", valor: 15000n },
+      { data: "2026-11-03", descricao: "MERCADO BOM · Compra", valor: -8740n, original: "03/11/2026 · MERCADO BOM · Compra · -87,40 · 912,60" },
+      { data: "2026-11-04", descricao: "Pix, recebido · Pix", valor: 15000n, original: "04/11/2026 · Pix, recebido · Pix · 150,00 · 1062,60" },
     ] });
   });
   it("entrada e saída em colunas separadas, data ISO e ponto decimal", () => {
     const csv = "date,description,credit,debit\n2026-11-03,UBER,,18.90\n2026-11-05,SALARIO,4200.00,\n";
     expect(lerCsvDeExtrato(csv.replace("credit", "crédito").replace("debit", "débito"))?.linhas.map((l) => l.valor)).toEqual([-1890n, 420000n]);
+  });
+  it("nome de quem recebeu, em coluna própria, entra na descrição", () => {
+    const csv = "Data;Descrição;Destinatário;Valor\n03/11/2026;Pix enviado;Maria Souza;-50,00\n";
+    expect(lerCsvDeExtrato(csv)?.linhas[0]?.descricao).toBe("Pix enviado · Maria Souza");
   });
   it("texto que não é CSV de extrato devolve null", () => {
     expect(lerCsvDeExtrato("03/11/2026 Compra R$ 10,00")).toBeNull();

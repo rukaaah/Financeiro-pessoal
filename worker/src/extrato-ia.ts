@@ -16,7 +16,7 @@ export function limparExtrato(texto: string): string[] {
 }
 
 export const PAPEL_EXTRATO = `Você lê extratos de conta corrente de bancos brasileiros, de qualquer banco e em qualquer formato. Recebe linhas numeradas do texto de um PDF ou de um CSV, sem CPF e sem número de conta, e devolve as movimentações de dinheiro da conta.
-Para cada movimentação, um item: {"linha": número da linha onde está o valor, "trecho_valor": cópia literal do valor como está na linha (com sinal, R$, C ou D se houver), "trecho_data": cópia literal da data como está no texto (na mesma linha ou no cabeçalho do dia acima, inclusive nas linhas de contexto), "data": "AAAA-MM-DD", "descricao": a descrição como está no extrato, curta, "tipo": "gasto" | "entrada" | "guardar" | "resgatar", "cofrinho": nome do cofrinho ou null, "categoria_id": id de uma categoria da lista com o mesmo tipo (expense para gasto, income para entrada) ou null}.
+Para cada movimentação, um item: {"linha": número da linha onde está o valor, "trecho_valor": cópia literal do valor como está na linha (com sinal, R$, C ou D se houver), "trecho_data": cópia literal da data como está no texto (na mesma linha ou no cabeçalho do dia acima, inclusive nas linhas de contexto), "data": "AAAA-MM-DD", "descricao": a descrição como está no extrato, sem resumir e sempre com o nome da pessoa ou do estabelecimento que recebeu ou pagou, se aparecer, "tipo": "gasto" | "entrada" | "guardar" | "resgatar", "cofrinho": nome do cofrinho ou null, "categoria_id": id de uma categoria da lista com o mesmo tipo (expense para gasto, income para entrada) ou null}.
 "guardar" é dinheiro que sai da conta para um cofrinho (também chamado caixinha, porquinho, reserva ou objetivo); "resgatar" é dinheiro que volta de um cofrinho para a conta. Nos dois, "cofrinho" é o nome exato do cofrinho como aparece no texto, sem a palavra cofrinho.
 Compra, Pix enviado, boleto, tarifa e transferência enviada são "gasto"; salário, Pix recebido, estorno e transferência recebida são "entrada". Saldo, total, limite e cabeçalho não são movimentação. Escolha a categoria pelo significado da descrição, mesmo que nunca a tenha visto; Pix ou transferência para pessoa física costuma ser gasto sem categoria clara: deixe categoria_id null se não souber. Não invente: na dúvida, deixe de fora. As linhas de contexto servem só para achar a data e o cabeçalho das colunas. Num CSV, a data e o valor estão nas colunas da própria linha.
 Responda SOMENTE JSON: {"itens":[...]}`;
@@ -51,6 +51,7 @@ export async function lerExtratoComIA(ia: ModeloDeIA, modelo: string, texto: str
     linhas: conferida.linhas.map((l) => ({
       ...l,
       valor: paraNumeric(l.valor),
+      original: linhas[l.linha] ?? "",
       categoria_id: l.categoria_id && idsValidos.get(l.categoria_id) === (l.tipo === "entrada" ? "income" : "expense") ? l.categoria_id : null,
     })),
     descartadas: conferida.descartadas,

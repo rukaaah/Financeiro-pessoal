@@ -4,7 +4,7 @@ import type { Rodar } from "./app.ts";
 import { consulta } from "./banco.ts";
 
 const UUID = /^[0-9a-f-]{36}$/i, DATA = /^\d{4}-\d{2}-\d{2}$/;
-type Linha = { data: string; descricao: string; valor: string; categoria_id?: string | null; tipo?: TipoDaLinha; cofrinho?: string | null; cofrinho_id?: string | null; finalidade?: string | null };
+type Linha = { data: string; descricao: string; valor: string; categoria_id?: string | null; tipo?: TipoDaLinha; cofrinho?: string | null; cofrinho_id?: string | null; finalidade?: string | null; original?: string | null };
 const FINALIDADES = ["use", "loan", "withdrawal"];
 /** Insert que precisa gravar: se não gravar nada (conta ou categoria que não combina), o lote inteiro desfaz. */
 const exigir = (insert: string) => `with i as (${insert}) select 1 / (select count(*)::int from i) as ok`;
@@ -72,15 +72,16 @@ export function rotasDeImportacao<E extends object>(app: Hono<{ Bindings: E }>, 
       linhas: linhas.map((l) => {
         const valor = deNumeric(l.valor);
         const { tipo, cofrinho } = tipoDaLinha(l, valor);
+        const original = typeof l.original === "string" && l.original.trim() ? l.original.slice(0, 300) : null;
         const duplicada = ja.has(chaveDeDuplicidade({ data: l.data, valor, descricao: l.descricao }));
         if (tipo === "guardar" || tipo === "resgatar") {
           const achado = cofrinhoPorChave.get(chaveDoCofrinho(cofrinho!));
-          return { data: l.data, descricao: l.descricao, valor: l.valor, duplicada, tipo, cofrinho: achado?.nome ?? cofrinho, cofrinho_id: achado?.id ?? null, categoria_id: null, finalidade: tipo === "resgatar" ? "withdrawal" : null };
+          return { data: l.data, descricao: l.descricao, original, valor: l.valor, duplicada, tipo, cofrinho: achado?.nome ?? cofrinho, cofrinho_id: achado?.id ?? null, categoria_id: null, finalidade: tipo === "resgatar" ? "withdrawal" : null };
         }
         const kind = tipo === "entrada" ? "income" : "expense";
         const veio = l.categoria_id && tipoDaCategoria.get(l.categoria_id) === kind ? l.categoria_id : null;
         // Regra e histórico do usuário primeiro; a categoria proposta pela IA cobre o que nunca foi visto.
-        return { data: l.data, descricao: l.descricao, valor: l.valor, duplicada, tipo, cofrinho: null, cofrinho_id: null, categoria_id: sugerir(l.descricao, kind) ?? veio };
+        return { data: l.data, descricao: l.descricao, original, valor: l.valor, duplicada, tipo, cofrinho: null, cofrinho_id: null, categoria_id: sugerir(l.descricao, kind) ?? veio };
       }),
     });
   });
