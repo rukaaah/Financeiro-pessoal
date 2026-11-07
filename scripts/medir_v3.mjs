@@ -1,6 +1,6 @@
 // Mede a v3 publicada num Chrome com rede de celular emulada (CDP).
 // Uso: Chrome com --headless=new --remote-debugging-port=9333, depois `node scripts/medir_v3.mjs 9333`.
-const URL_APP = "https://financeiro-pessoal.pedrolucas-cremonini.workers.dev/";
+const URL_APP = "https://financeiro-pessoal-dev.pedrolucas-cremonini.workers.dev/";
 const porta = process.argv[2];
 const alvos = await (await fetch(`http://127.0.0.1:${porta}/json/list`)).json();
 const ws = new WebSocket(alvos.find(t => t.type === "page").webSocketDebuggerUrl);

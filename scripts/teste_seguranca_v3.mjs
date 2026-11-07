@@ -2,7 +2,7 @@
 // Confere o que um visitante qualquer consegue: cair no demo, não ver dado real, não
 // chamar a IA, não administrar acessos, não forjar sessão.
 // Uso: `node scripts/teste_seguranca_v3.mjs [url]` (padrão: o Worker publicado).
-const BASE = (process.argv[2] ?? "https://financeiro-pessoal.pedrolucas-cremonini.workers.dev").replace(/\/$/, "");
+const BASE = (process.argv[2] ?? "https://financeiro-pessoal-dev.pedrolucas-cremonini.workers.dev").replace(/\/$/, "");
 const DONO = "pedrolucas.cremonini@gmail.com";
 const json = { accept: "application/json", "content-type": "application/json" };
 let falhas = 0;
