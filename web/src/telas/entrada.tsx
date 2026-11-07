@@ -1,4 +1,4 @@
-import { conferirSaldos, lerExtrato, lerNotificacao, paraNumeric } from "@financeiro/dominio";
+import { conferirSaldos, lerCsvDeExtrato, lerExtrato, lerNotificacao, paraNumeric } from "@financeiro/dominio";
 import { useState } from "preact/hooks";
 import { apiEntrada, apiIA, brl, hoje, type LinhaImportada, type Opcoes, type TipoDaLinha } from "../api.ts";
 import { Icone } from "../icone.tsx";
@@ -61,7 +61,11 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
   /** A IA lê qualquer formato e acha os cofrinhos; a regra fica de reserva (demo, IA desligada ou sem resposta). */
   async function ler(texto: string) {
     setCarregando("A IA está lendo o extrato…");
-    const ia = await apiIA.extrato(texto).catch(() => null);
+    let motivoIA = "";
+    const ia = await apiIA.extrato(texto).catch((e: Error) => { motivoIA = e.message; return null; });
+    if (ia?.demo) motivoIA = ia.motivo ?? "";
+    else if (ia && !ia.linhas?.length) motivoIA = "A IA não achou movimentações que conferissem com o texto.";
+    const prefixo = motivoIA ? `${motivoIA} ` : "";
     let entrada: LinhaImportada[] = [];
     if (ia?.linhas?.length) {
       entrada = ia.linhas;
@@ -71,6 +75,12 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
       setAviso(partes.join(" "));
     } else {
       setPelaIA(false);
+      const csv = lerCsvDeExtrato(texto);
+      if (csv) {
+        setAviso(`${prefixo}Li ${csv.linhas.length} movimentações pelas colunas do arquivo${csv.ignoradas ? `; ${csv.ignoradas} linha(s) sem data ou valor ficaram de fora` : ""}.`);
+        const previa = await apiEntrada.previa(contaId, csv.linhas.map((l) => ({ data: l.data, descricao: l.descricao, valor: paraNumeric(l.valor) })));
+        return setLinhas(previa.linhas.map((l) => ({ ...l, incluir: !l.duplicada })));
+      }
       const lido = lerExtrato(texto);
       if (!lido.linhas.length) return setAviso(ia?.demo ? "No modo demonstração a IA não lê extratos, e a regra não reconheceu este formato." : "Nem a IA nem a regra encontraram movimentações nesse texto.");
       const div = lido.saldos.length ? conferirSaldos(lido, lido.saldos[0]!.saldo - lido.linhas.filter((l) => l.data <= lido.saldos[0]!.data).reduce((t, l) => t + l.valor, 0n)) : [];

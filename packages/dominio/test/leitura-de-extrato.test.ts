@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chaveDoCofrinho, cofrinhoNaDescricao, conferirLeituraDaIA, lerTrechoDeData, linhasComValorDeFora } from "../src/leitura-de-extrato.ts";
+import { chaveDoCofrinho, cofrinhoNaDescricao, conferirLeituraDaIA, lerCsvDeExtrato, lerTrechoDeData, lerValorDeExtrato, linhasComValorDeFora } from "../src/leitura-de-extrato.ts";
 
 // Texto sintético num formato que a regra não conhece: data como cabeçalho do dia.
 const TEXTO = [
@@ -61,6 +61,7 @@ describe("trechos de data", () => {
     expect(lerTrechoDeData("03/11/2026")).toEqual({ dia: 3, mes: 11, ano: 2026 });
     expect(lerTrechoDeData("3 de novembro")).toEqual({ dia: 3, mes: 11, ano: null });
     expect(lerTrechoDeData("Seg, 03 de mar. de 2026")).toEqual({ dia: 3, mes: 3, ano: 2026 });
+    expect(lerTrechoDeData("2026-11-03")).toEqual({ dia: 3, mes: 11, ano: 2026 });
     expect(lerTrechoDeData("ontem")).toBeNull();
   });
 });
@@ -74,5 +75,33 @@ describe("cofrinho e omissões", () => {
   });
   it("avisa as linhas com valor que ficaram de fora, sem contar saldo", () => {
     expect(linhasComValorDeFora(TEXTO, [2, 3, 4, 6])).toEqual([8]);
+  });
+});
+
+describe("valor nas duas grafias", () => {
+  it("lê vírgula ou ponto decimal, com sinal antes, depois ou D/C", () => {
+    expect(["1.234,56", "-87,40", "R$ -87,40", "-87.40", "1,234.56", "87,40 D", "150,00 C", "12", "03/11"].map(lerValorDeExtrato))
+      .toEqual([123456n, -8740n, -8740n, -8740n, 123456n, -8740n, 15000n, null, null]);
+  });
+  it("a IA pode citar valor com ponto decimal de um CSV", () => {
+    const r = conferirLeituraDaIA(["2026-11-03;MERCADO;-87.40"], [{ linha: 0, trecho_valor: "-87.40", trecho_data: "2026-11-03", tipo: "gasto" }], HOJE);
+    expect(r.linhas.map((l) => [l.data, l.valor])).toEqual([["2026-11-03", -8740n]]);
+  });
+});
+
+describe("CSV de extrato pelo cabeçalho", () => {
+  it("acha data, descrição e valor em qualquer ordem e separador", () => {
+    const csv = "Extrato da conta\nData;Descrição;Tipo;Valor;Saldo\n03/11/2026;MERCADO BOM;Compra;-87,40;912,60\n04/11/2026;\"Pix, recebido\";Pix;150,00;1062,60\n";
+    expect(lerCsvDeExtrato(csv)).toEqual({ ignoradas: 0, linhas: [
+      { data: "2026-11-03", descricao: "MERCADO BOM · Compra", valor: -8740n },
+      { data: "2026-11-04", descricao: "Pix, recebido · Pix", valor: 15000n },
+    ] });
+  });
+  it("entrada e saída em colunas separadas, data ISO e ponto decimal", () => {
+    const csv = "date,description,credit,debit\n2026-11-03,UBER,,18.90\n2026-11-05,SALARIO,4200.00,\n";
+    expect(lerCsvDeExtrato(csv.replace("credit", "crédito").replace("debit", "débito"))?.linhas.map((l) => l.valor)).toEqual([-1890n, 420000n]);
+  });
+  it("texto que não é CSV de extrato devolve null", () => {
+    expect(lerCsvDeExtrato("03/11/2026 Compra R$ 10,00")).toBeNull();
   });
 });

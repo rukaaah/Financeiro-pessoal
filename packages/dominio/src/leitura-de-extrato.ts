@@ -1,4 +1,4 @@
-import { type Centavos, deDigitado } from "./dinheiro.ts";
+import type { Centavos } from "./dinheiro.ts";
 
 /**
  * Leitura de extrato pela IA (pedido do Pedro, 2026-11-07): o extrato precisa ser
@@ -24,9 +24,8 @@ export interface LinhaLidaPelaIA {
 }
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-const VALOR_NO_TRECHO = /^\s*([-+−])?\s*(?:R\$)?\s*([-+−])?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*([-+−]|[CD])?\s*$/i;
 /** Valor em reais escrito num texto ("R$ 42,50", "-42,50", "1.234,56"). */
-export const TEM_VALOR = /(?:R\$\s?)?-?\s?\b\d{1,3}(?:\.\d{3})*,\d{2}\b/;
+export const TEM_VALOR = /(?<![\d/-])-?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}(?![\d/-])/;
 
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
 const iso = (a: number, m: number, d: number) => `${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -43,6 +42,8 @@ function dataValida(a: number, m: number, d: number): boolean {
  */
 export function lerTrechoDeData(trecho: string): { dia: number; mes: number; ano: number | null } | null {
   const t = semAcento(trecho).toLowerCase().replace(/\s+/g, " ").trim();
+  const i = /^(\d{4})-(\d{2})-(\d{2})(?:[t ][\d:.z+-]*)?$/.exec(t);
+  if (i) return { dia: Number(i[3]), mes: Number(i[2]), ano: Number(i[1]) };
   const n = /^(?:[a-z]+,? )?(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2}|\d{4}))?$/.exec(t);
   if (n) {
     const ano = n[3] ? Number(n[3].length === 2 ? `20${n[3]}` : n[3]) : null;
@@ -54,14 +55,6 @@ export function lerTrechoDeData(trecho: string): { dia: number; mes: number; ano
     if (mes > 0) return { dia: Number(e[1]), mes, ano: e[3] ? Number(e[3]) : null };
   }
   return null;
-}
-
-/** Sinal explícito no trecho do valor: -1, +1 ou 0 (sem sinal). */
-function sinalDoTrecho(m: RegExpExecArray): -1 | 0 | 1 {
-  const s = (m[1] ?? m[2] ?? "").toUpperCase(), depois = (m[4] ?? "").toUpperCase();
-  if (s === "-" || s === "−" || depois === "-" || depois === "−" || depois === "D") return -1;
-  if (s === "+" || depois === "+" || depois === "C") return 1;
-  return 0;
 }
 
 const SAI: Record<TipoDaLinha, boolean> = { gasto: true, guardar: true, entrada: false, resgatar: false };
@@ -97,11 +90,11 @@ function conferirItem(linhas: readonly string[], it: Record<string, unknown>, ho
   // Valor: o trecho é cópia literal da linha e é relido aqui.
   const trechoValor = typeof it.trecho_valor === "string" ? it.trecho_valor.trim() : "";
   if (!trechoValor || !texto.includes(trechoValor)) return null;
-  const mv = VALOR_NO_TRECHO.exec(trechoValor);
-  if (!mv) return null;
-  const abs = deDigitado(mv[3]!);
-  if (abs <= 0n) return null;
-  const sinal = sinalDoTrecho(mv);
+  const lido = lerValorDeExtrato(trechoValor);
+  if (lido === null || lido === 0n) return null;
+  const abs = lido < 0n ? -lido : lido;
+  // Sinal escrito só conta quando o trecho traz um: "87,40" sozinho não diz nada.
+  const sinal = /^\s*[-−]|[-−]\s*$|D\s*$/i.test(trechoValor) ? -1 : /^\s*\+|\+\s*$|C\s*$/i.test(trechoValor) ? 1 : 0;
   if (sinal !== 0 && (sinal < 0) !== SAI[tipo]) return null;
   const valor = SAI[tipo] ? -abs : abs;
 
@@ -162,3 +155,86 @@ export function cofrinhoNaDescricao(descricao: string): string | null {
 
 /** Nome de cofrinho comparável: sem acento, sem caixa, sem espaço sobrando. */
 export const chaveDoCofrinho = (nome: string) => semAcento(nome).toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * Número de extrato em qualquer das duas grafias: "1.234,56", "-87,40", "R$ -87,40",
+ * "-87.40", "1234.56", "1,234.56". Precisa ter exatamente 2 casas decimais. Null se não for.
+ */
+export function lerValorDeExtrato(trecho: string): Centavos | null {
+  const t = trecho.replace(/R\$/gi, "").replace(/\s/g, "").replace(/−/g, "-");
+  const m = /^([-+])?(?:(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})|(\d{1,3}(?:,\d{3})*|\d+)\.(\d{2}))([-+CD])?$/i.exec(t);
+  if (!m) return null;
+  const inteiro = (m[2] ?? m[4]!).replace(/[.,]/g, ""), dec = m[3] ?? m[5]!;
+  const v = BigInt(inteiro) * 100n + BigInt(dec);
+  const neg = m[1] === "-" || m[6] === "-" || m[6]?.toUpperCase() === "D";
+  return neg ? -v : v;
+}
+
+const COLUNAS = {
+  data: /^(data|date|dia)(\b|[ _]|$)/,
+  descricao: /(descri|hist[oó]rico|lan[cç]amento|estabelecimento|detalhe|t[ií]tulo|movimenta)/,
+  valor: /^(valor|value|montante|quantia)/,
+  entrada: /(entrada|cr[eé]dito)/,
+  saida: /(sa[ií]da|d[eé]bito)/,
+  tipo: /^(tipo|natureza|opera[cç][aã]o)/,
+};
+
+/** Divide uma linha de CSV respeitando aspas. */
+function celulas(linha: string, sep: string): string[] {
+  const out: string[] = [];
+  let atual = "", aspas = false;
+  for (let i = 0; i < linha.length; i++) {
+    const ch = linha[i]!;
+    if (ch === '"') { if (aspas && linha[i + 1] === '"') { atual += '"'; i++; } else aspas = !aspas; }
+    else if (ch === sep && !aspas) { out.push(atual.trim()); atual = ""; }
+    else atual += ch;
+  }
+  out.push(atual.trim());
+  return out;
+}
+
+function dataDeCelula(c: string): string | null {
+  let m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(c);
+  if (m) return dataValida(+m[3]!, +m[2]!, +m[1]!) ? iso(+m[3]!, +m[2]!, +m[1]!) : null;
+  m = /^(\d{4})-(\d{2})-(\d{2})/.exec(c);
+  if (m) return dataValida(+m[1]!, +m[2]!, +m[3]!) ? iso(+m[1]!, +m[2]!, +m[3]!) : null;
+  return null;
+}
+
+/**
+ * CSV de extrato de qualquer banco, pelo cabeçalho: acha as colunas de data, descrição
+ * e valor (ou entrada e saída separadas). Null se o texto não parecer um CSV assim.
+ */
+export function lerCsvDeExtrato(texto: string): { linhas: { data: string; descricao: string; valor: Centavos }[]; ignoradas: number } | null {
+  const brutas = texto.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim());
+  for (let h = 0; h < Math.min(brutas.length, 15); h++) {
+    const sep = [";", ",", "\t"].map((s) => [s, celulas(brutas[h]!, s).length] as const).sort((a, b) => b[1] - a[1])[0]!;
+    if (sep[1] < 2) continue;
+    const cab = celulas(brutas[h]!, sep[0]).map((c) => semAcento(c).toLowerCase().replace(/^"|"$/g, "").trim());
+    const achar = (re: RegExp, menos: number[] = []) => cab.findIndex((c, i) => re.test(c) && !menos.includes(i));
+    const iData = achar(COLUNAS.data);
+    if (iData < 0) continue;
+    const iValor = achar(COLUNAS.valor, [iData]);
+    const iEntrada = iValor < 0 ? achar(COLUNAS.entrada, [iData]) : -1, iSaida = iValor < 0 ? achar(COLUNAS.saida, [iData]) : -1;
+    if (iValor < 0 && (iEntrada < 0 || iSaida < 0)) continue;
+    const usadas = [iData, iValor, iEntrada, iSaida];
+    const iDesc = achar(COLUNAS.descricao, usadas), iTipo = achar(COLUNAS.tipo, usadas);
+    const linhas: { data: string; descricao: string; valor: Centavos }[] = [];
+    let ignoradas = 0;
+    for (const bruta of brutas.slice(h + 1)) {
+      const c = celulas(bruta, sep[0]);
+      const data = dataDeCelula(c[iData] ?? "");
+      let valor: Centavos | null = null;
+      if (iValor >= 0) valor = lerValorDeExtrato(c[iValor] ?? "");
+      else {
+        const e = lerValorDeExtrato(c[iEntrada] ?? ""), s = lerValorDeExtrato(c[iSaida] ?? "");
+        valor = e && e !== 0n ? (e < 0n ? -e : e) : s && s !== 0n ? (s > 0n ? -s : s) : null;
+      }
+      if (!data || valor === null || valor === 0n) { ignoradas++; continue; }
+      const partes = [iDesc >= 0 ? c[iDesc] : "", iTipo >= 0 ? c[iTipo] : ""].filter((x): x is string => !!x && !!x.trim());
+      linhas.push({ data, descricao: partes.join(" · ").replace(/\s+/g, " ").trim().slice(0, 200) || "Sem descrição", valor });
+    }
+    if (linhas.length) return { linhas, ignoradas };
+  }
+  return null;
+}
