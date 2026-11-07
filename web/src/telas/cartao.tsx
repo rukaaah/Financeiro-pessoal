@@ -20,7 +20,7 @@ export function Cartao({ dados, aoPagar }: { dados: { cartoes: CartaoDados[]; co
   return (
     <>
       <header><div><h1>Cartão</h1><div class="sub">{cartao ? `${cartao.nome} · fecha dia ${cartao.fechamento ?? "—"}, vence dia ${cartao.vencimento ?? "—"}` : <span class="esqueleto" />}</div></div></header>
-      {dados && dados.cartoes.length > 1 && <div class="chips">{dados.cartoes.map((c) => <button class="chip" aria-pressed={c.id === cartao?.id} onClick={() => { setCartaoId(c.id); setMesEscolhido(null); }}>{c.nome}</button>)}</div>}
+      {dados && dados.cartoes.length > 1 && <div class="chips">{dados.cartoes.map((c) => <button class="chip" aria-pressed={c.id === cartao?.id} onClick={() => { setCartaoId(c.id); setMesEscolhido(null); }}><Icone nome="cartao" tamanho={16} />{c.nome}</button>)}</div>}
       <div class="chips" role="group" aria-label="Fatura">
         {(cartao?.faturas ?? []).map((f) => <button class="chip" aria-pressed={f.mes === fatura?.mes} onClick={() => setMesEscolhido(f.mes)}>{rotulo(f.mes)} · {f.situacao}</button>)}
       </div>

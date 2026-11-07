@@ -24,14 +24,14 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
           <div class="col">{d && (
             <section><h2>As partes</h2>
               <div class="lista">
-                <div class="item"><span class="nome">Contas</span><span class="valor">{brl(d.partes.contas)}</span><span class="sub">{d.contas.filter((k) => k.tipo !== "investment").map((k) => k.nome).join(", ") || "—"}</span><span /></div>
-                <div class="item"><span class="nome">Cofrinhos</span><span class="valor">{brl(d.partes.cofrinhos)}</span><span class="sub">{d.cofrinhos.length} cofrinhos, com os CDBs</span><span /></div>
-                <div class="item"><span class="nome">Investimentos</span><span class="valor">{brl(d.partes.investimentos)}</span><span class="sub">carteira detalhada na fatia 7</span><span /></div>
-                <div class="item"><span class="nome">Cartão</span><span class="valor">{brl(`-${d.partes.cartao}`.replace("--", ""))}</span><span class="sub">fatura aberta e parcelas futuras</span><span /></div>
+                <div class="item"><span class="nome com-icone"><Icone nome="contas" tamanho={18} />Contas</span><span class="valor">{brl(d.partes.contas)}</span><span class="sub">{d.contas.filter((k) => k.tipo !== "investment").map((k) => k.nome).join(", ") || "—"}</span><span /></div>
+                <div class="item"><span class="nome com-icone"><Icone nome="cofrinho" tamanho={18} />Cofrinhos</span><span class="valor">{brl(d.partes.cofrinhos)}</span><span class="sub">{d.cofrinhos.length} cofrinhos, com os CDBs</span><span /></div>
+                <div class="item"><span class="nome com-icone"><Icone nome="investimentos" tamanho={18} />Investimentos</span><span class="valor">{brl(d.partes.investimentos)}</span><span class="sub">carteira detalhada na fatia 7</span><span /></div>
+                <div class="item"><span class="nome com-icone"><Icone nome="cartao" tamanho={18} />Cartão</span><span class="valor">{brl(`-${d.partes.cartao}`.replace("--", ""))}</span><span class="sub">fatura aberta e parcelas futuras</span><span /></div>
               </div>
               <div class="linha-total"><span>Patrimônio líquido</span><span>{brl(d.patrimonio)}</span></div>
               <div class="lista">
-                <div class="item"><span class="nome">A receber de pessoas</span><span class="valor">{brl(d.a_receber)}</span><span class="sub">fora do patrimônio</span><span /></div>
+                <div class="item"><span class="nome com-icone"><Icone nome="receber" tamanho={18} />A receber de pessoas</span><span class="valor">{brl(d.a_receber)}</span><span class="sub">fora do patrimônio</span><span /></div>
                 <div class="item"><span class="nome">O PayPal ficou com</span><span class="valor">{brl(d.paypal.total)}</span><span class="sub">em {hoje().slice(0, 4)}, contra a PTAX, em {d.paypal.recebimentos} recebimentos</span><span /></div>
               </div>
               <div class="rodape"><button class="btn" onClick={() => aoMover({ tipo: "conciliar" })}><Icone nome="ajustes" tamanho={18} />Conciliar saldo</button></div>

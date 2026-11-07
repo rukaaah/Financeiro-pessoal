@@ -33,7 +33,7 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
           <div><div class="r"><span class="dot" style="background:var(--heroi-t)" />Gasto</div><div class="v">{d ? semRS(d.gasto) : "—"}</div></div>
           <div><div class="r"><span class="dot" style="background:var(--azul-claro)" />A pagar</div><div class="v">{d ? semRS(d.a_pagar) : "—"}</div></div>
         </div>
-        {d && <div class="pe"><span>{pct(d.gasto, d.previsto)}% gasto · dia {d.dia_do_mes} de {d.dias_no_mes}</span><button class="btn-claro" onClick={aoPerguntar}>Perguntar</button></div>}
+        {d && <div class="pe"><span>{pct(d.gasto, d.previsto)}% gasto · dia {d.dia_do_mes} de {d.dias_no_mes}</span><button class="btn-ia mini" onClick={aoPerguntar}><Icone nome="ia" tamanho={16} />Perguntar à IA</button></div>}
       </div>
 
       {d?.descoberta && <div class="achado" role="note"><span aria-hidden="true">!</span><div>{d.descoberta}</div></div>}
@@ -101,7 +101,7 @@ export function DetalheDaCategoria({ c, mes, aoFechar, aoSalvar, aoPerguntar }: 
   return (
     <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}>
       <div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-cat">
-        <div class="topo"><h3 id="t-cat">{c.nome}</h3><button class="btn" onClick={aoPerguntar}>Perguntar</button><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
+        <div class="topo"><h3 id="t-cat">{c.nome}</h3><button class="btn-ia mini" onClick={aoPerguntar}><Icone nome="ia" tamanho={16} />Perguntar</button><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
         <div style="font-size:30px;font-weight:700;letter-spacing:-.02em">{brl(c.gasto)}</div>
         <div class="sub">{c.estado !== "dentro" && <span class={`selo ${c.estado}`}>{c.estado}</span>}de {brl(c.previsto)} previstos · média de 3 meses {brl(c.media3m)}</div>
         <div class="colunas" role="img" aria-label="Gasto nos últimos 12 meses">
