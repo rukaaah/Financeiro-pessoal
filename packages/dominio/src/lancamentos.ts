@@ -48,6 +48,36 @@ export function linhasDe(l: NovoLancamento): LinhaParaGravar[] {
   return parcelar(l.valor, l.parcelas).map((v, i) => ({ tipo, valor: sinal * v, parcela: i + 1, totalDeParcelas: l.parcelas }));
 }
 
+/** Tipos de conta onde um gasto ou uma receita podem estar (os mesmos do Lançar). */
+export const CONTAS_DE_LANCAMENTO = ["checking", "credit_card", "cash"] as const;
+
+export interface Edicao {
+  readonly tipo: Tipo;
+  readonly valor: Centavos; // total da compra, positivo
+  readonly data: string; // AAAA-MM-DD; numa compra parcelada, a data da compra
+  readonly parcelas: number;
+  readonly tipoDaConta: string;
+}
+
+/**
+ * Edição de gasto ou receita, inclusive compra parcelada (que se edita inteira).
+ * Devolve as linhas que o lançamento passa a ter, com as mesmas regras do Lançar:
+ * parcela só no cartão, receita fora do cartão.
+ */
+export function linhasDaEdicao(e: Edicao): LinhaParaGravar[] {
+  if (!(CONTAS_DE_LANCAMENTO as readonly string[]).includes(e.tipoDaConta)) throw new LancamentoInvalido("Escolha uma conta, cartão ou dinheiro.");
+  if (e.tipo === "income" && e.tipoDaConta === "credit_card") throw new LancamentoInvalido("Receita não entra no cartão.");
+  if (e.parcelas > 1 && e.tipoDaConta !== "credit_card") throw new LancamentoInvalido("Parcelas só no cartão.");
+  return linhasDe({ intencao: e.tipo === "expense" ? "gastei" : "recebi", valor: e.valor, contaId: "", categoriaId: "", data: e.data, descricao: "", parcelas: e.parcelas });
+}
+
+/** Edição de transferência: as duas pernas mudam juntas e continuam somando zero. */
+export function conferirTransferencia(t: { valor: Centavos; data: string; origem: string; destino: string }): void {
+  if (t.valor <= 0n) throw new LancamentoInvalido("O valor precisa ser maior que zero.");
+  if (!DATA.test(t.data) || Number.isNaN(Date.parse(t.data))) throw new LancamentoInvalido("Data inválida.");
+  if (t.origem === t.destino) throw new LancamentoInvalido("Origem e destino precisam ser contas diferentes.");
+}
+
 /** CSV para planilha brasileira: ponto e vírgula, vírgula decimal, BOM para o Excel abrir em UTF-8. */
 export function csv(linhas: readonly (readonly string[])[]): string {
   const campo = (v: string) => (/[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);

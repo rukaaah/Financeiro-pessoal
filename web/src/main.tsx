@@ -157,7 +157,7 @@ function App() {
         setFolha(null);
         apiAtencao.receber(e.id, { recebido, data: new Date().toISOString().slice(0, 10) }).then((r) => { recarregar(); avisar({ texto: r.desconto ? `Recebido. O PayPal ficou com R$ ${r.desconto.replace(".", ",")} contra a PTAX.` : "Recebido." }); }).catch((x: Error) => avisar({ texto: x.message }));
       }} /> : null; })()}
-      {folha?.tipo === "editar" && <Editar l={folha.l} aoFechar={() => setFolha(null)} aoSalvar={(c) => salvarEdicao(folha.l, c)} aoExcluir={() => excluir(folha.l)} />}
+      {folha?.tipo === "editar" && <Editar l={folha.l} opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(c) => salvarEdicao(folha.l, c)} aoExcluir={() => excluir(folha.l)} />}
       {folha?.tipo === "categoria" && <DetalheDaCategoria c={folha.c} mes={mes} aoPerguntar={() => setFolha({ tipo: "chat", contexto: "categoria", titulo: `${folha.c.nome} · ${mes}`, categoriaId: folha.c.id })} aoFechar={() => setFolha(null)} aoSalvar={(valor, padrao) => {
         setFolha(null);
         apiMes.previsto({ categoria_id: folha.c.id, mes, valor, padrao }).then(() => recarregarMes()).then(() => avisar({ texto: "Previsto salvo." })).catch((e: Error) => avisar({ texto: e.message }));

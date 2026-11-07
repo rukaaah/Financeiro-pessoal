@@ -1,7 +1,7 @@
 // Cliente da API do Worker. Dinheiro chega como texto de numeric ("-42.50") e só vira
 // número na hora de desenhar, como manda o ADR-012.
-export interface Opcoes { investimentos?: { id: string; nome: string }[]; contas: { id: string; nome: string; tipo: string }[]; categorias: { id: string; nome: string; tipo: "expense" | "income"; grupo: string }[] }
-export interface Lancamento { id: string; tipo: "expense" | "income" | "transfer"; valor: string; data: string; descricao: string; mes_da_fatura: string | null; parcela: number | null; parcelas: number | null; categoria: string | null; conta: string; tipo_conta: string; conta_destino: string | null }
+export interface Opcoes { investimentos?: { id: string; nome: string }[]; todas_as_contas?: { id: string; nome: string; tipo: string }[]; contas: { id: string; nome: string; tipo: string }[]; categorias: { id: string; nome: string; tipo: "expense" | "income"; grupo: string }[] }
+export interface Lancamento { id: string; tipo: "expense" | "income" | "transfer"; valor: string; data: string; descricao: string; mes_da_fatura: string | null; parcela: number | null; parcelas: number | null; categoria: string | null; conta: string; tipo_conta: string; conta_destino: string | null; categoria_id: string | null; conta_id: string; conta_destino_id: string | null; tipo_conta_destino: string | null; valor_total: string | null }
 export interface ListaDoMes { mes: string; lancamentos: Lancamento[]; entrou: string; saiu: string }
 
 // O index.html já dispara /api/mes e /api/sessao antes do JavaScript chegar (no 4G isso é meio segundo).
