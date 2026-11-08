@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 // Ícones desenhados em SVG com traço, no lugar da fonte Material Symbols: a fonte
 // inteira pesa centenas de kB e atrasaria a primeira tela no 4G (meta de 1,5 s).
 const P: Record<string, string> = {
@@ -20,7 +21,18 @@ const P: Record<string, string> = {
   aportar: "M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zM12 12h.01",
   comprar: "M5 8h14l-1 12H6zM9 8V7a3 3 0 0 1 6 0v1M12 11v6M9 14h6",
   importar: "M14 3H6v18h12V7zM14 3v4h4M12 17v-6M9 14l3 3 3-3",
+  ok: "M5 12.5l4.5 4.5L19 7.5",
+  pagar: "M3 7h18v10H3zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 10v4M18 10v4",
+  excluir: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
+  sair: "M10 4H5v16h5M14 8l4 4-4 4M18 12H9",
+  recalcular: "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7",
+  abrir: "M5 12h14M13 6l6 6-6 6",
+  aviso: "M12 4l9 16H3zM12 10v4M12 17h.01",
 };
+/** Faixa de aviso. Regra da design sheet: um aviso por assunto em cada página. */
+export function Aviso({ grave = false, children }: { grave?: boolean; children: ComponentChildren }) {
+  return <div class="achado" role={grave ? "alert" : "note"}><Icone nome="aviso" tamanho={20} /><div>{children}</div></div>;
+}
 export function Icone({ nome, tamanho = 22 }: { nome: keyof typeof P | string; tamanho?: number }) {
   return (
     <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -42,7 +42,7 @@ export function itensDeAtencao(e: {
   // só some quando o saldo é corrigido.
   const fixos: Item[] = (e.cofrinhosNegativos ?? []).filter((k) => k.saldo < 0n).map((k) => ({
     chave: `cofrinho-negativo:${k.id}`, gravidade: "critico", titulo: `Cofrinho ${k.nome} está negativo`,
-    detalhe: "Cofrinho não fica negativo: ele já tinha dinheiro antes do extrato. Corrija com o saldo real.",
+    detalhe: "Corrija com o saldo que está no banco hoje.",
     valor: k.saldo, data: null, acao: { tipo: "corrigir-cofrinho", id: k.id, nome: k.nome },
   }));
   for (const c of e.categorias) {

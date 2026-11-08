@@ -156,10 +156,10 @@ export function Editar({ l, opcoes, aoFechar, aoSalvar, aoExcluir }: { l: Lancam
             {(l.parcelas ?? 0) > 1 && <p class="nota">Vale para a compra inteira: as {l.parcelas} parcelas são refeitas a partir do valor total.</p>}
             {transferencia && <p class="nota">Muda os dois lados da transferência.</p>}
             {erro && <p class="erro-campo" role="alert">{erro}</p>}
-            <div style="margin-top:16px"><button type="submit" class="btn-tinta">Salvar</button></div>
+            <div style="margin-top:16px"><button type="submit" class="btn-tinta"><Icone nome="ok" tamanho={18} />Salvar</button></div>
           </form>
         )}
-        <div class="rodape"><button class="btn" style="color:var(--fora)" onClick={aoExcluir}>Excluir “{l.descricao || l.categoria || "lançamento"}”</button></div>
+        <div class="rodape"><button class="btn" style="color:var(--fora)" onClick={aoExcluir}><Icone nome="excluir" tamanho={18} />Excluir “{l.descricao || l.categoria || "lançamento"}”</button></div>
       </div>
     </div>
   );
