@@ -120,7 +120,7 @@ export function montarMes(mes: string, hoje: string, linhas: L[][], ptax: string
   return {
     mes, previsto: n(p.previsto), gasto: n(p.gasto), a_pagar: n(p.aPagar), livre: n(p.livre), por_dia: n(p.porDia),
     dia_do_mes: p.diaDoMes, dias_no_mes: p.diasNoMes, dias_restantes: p.diasRestantes,
-    renda: n(p.renda), renda_prevista: n(p.rendaPrevista), guardado: n(p.guardado), sobra: n(p.sobra), descoberta: p.descoberta,
+    renda: n(p.renda), renda_prevista: n(p.rendaPrevista), guardado: n(p.guardado), sobra: n(p.sobra), descoberta: p.descoberta, descoberta_categoria: p.descobertaCategoria,
     categorias: p.categorias.map((k) => ({ id: k.id, nome: k.nome, grupo: k.grupo, previsto: n(k.previsto), gasto: n(k.gasto), media3m: n(k.media3m), ajustado: k.ajustado, estado: k.estado })),
     contas: contas.map((k) => ({ ...k, valor: n(k.valor) })),
     entradas: entradas.map((x) => ({ ...x, estimativa: n(x.estimativa) })),

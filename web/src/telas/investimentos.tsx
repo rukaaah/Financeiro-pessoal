@@ -119,7 +119,7 @@ function OndeAportar({ d, aoFechar, aoRecalcular }: { d: Dados; aoFechar(): void
       <div class="topo"><h3 id="t-oa">Onde aportar</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
       <form onSubmit={(e) => { e.preventDefault(); aoRecalcular(valor); }}>
         <div class="campo"><label for="oa-v">Quanto vai aportar (R$)</label><input id="oa-v" class="grande-in" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
-        <div class="rodape" style="margin-top:8px"><button class="btn" type="submit">Recalcular</button></div>
+        <div class="rodape" style="margin-top:8px"><button class="btn" type="submit"><Icone nome="recalcular" tamanho={18} />Recalcular</button></div>
       </form>
       {o.avisos.length > 0 && <div class="lista" role="status">{o.avisos.map((t) => <div class="item"><span class="sub" style="grid-column:1/-1">{t}</span></div>)}</div>}
       <section><h2>Distribuição <span class="lado">{brl(o.aporte)}</span></h2><div class="lista">
@@ -146,7 +146,7 @@ function Comprar({ opcoes, aoFechar, aoSalvar }: { opcoes: Opcoes | null; aoFech
         <div class="campo"><label for="cp-o">Saiu de</label><select id="cp-o" value={f.conta_id} onChange={set("conta_id")}>{origens.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
         <div class="campo"><label for="cp-i">Entrou em</label>{opcoes?.investimentos?.length ? <select id="cp-i" value={f.investimento_id} onChange={set("investimento_id")}>{opcoes.investimentos.map((c) => <option value={c.id}>{c.nome}</option>)}</select> : <p class="nota">Cadastre uma conta de investimento em Ajustes (fatia 10).</p>}</div>
         <p class="nota">É transferência, não gasto: o dinheiro sai da conta e entra na carteira.</p>
-        <div style="margin-top:12px"><button type="submit" class="btn-tinta">Registrar compra</button></div>
+        <div style="margin-top:12px"><button type="submit" class="btn-tinta"><Icone nome="comprar" tamanho={18} />Registrar compra</button></div>
       </form>
     </div></div>
   );

@@ -31,6 +31,7 @@ describe("posição do mês", () => {
 
   it("descoberta: a categoria mais acima do previsto, com a média de 3 meses", () => {
     expect(p.descoberta).toBe("Restaurantes passou R$ 15,00 do previsto e está R$ 25,00 acima da média de 3 meses.");
+    expect(p.descobertaCategoria).toBe(p.categorias.find((c) => c.nome === "Restaurantes")?.id);
   });
 
   it("mês passado não tem dias pela frente; mês futuro tem o mês inteiro", () => {
