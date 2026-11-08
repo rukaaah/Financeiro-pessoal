@@ -82,6 +82,21 @@ describe("extrato lido pela IA, com cofrinhos", () => {
     expect(ia).toBe(1);
   });
 
+  it("a ação que a IA cola no nome sai: guardar e resgatar do mesmo cofrinho viram um cofrinho só", async () => {
+    const t = "06/11/2026\nJogos · Dinheiro guardado R$ 675,64\nJogos · Dinheiro resgatado R$ 520,00";
+    const app = comIA([
+      { linha: 1, trecho_valor: "R$ 675,64", trecho_data: "06/11/2026", descricao: "Jogos · Dinheiro guardado", tipo: "guardar", cofrinho: "Jogos · Dinheiro guardado" },
+      { linha: 2, trecho_valor: "R$ 520,00", trecho_data: "06/11/2026", descricao: "Jogos · Dinheiro resgatado", tipo: "resgatar", cofrinho: "Jogos · Dinheiro resgatado" },
+    ]);
+    const lido = (await (await app.request("/api/ia/extrato", { method: "POST", headers: json, body: JSON.stringify({ texto: t }) })).json()) as { linhas: object[] };
+    const previa = (await (await app.request("/api/importar/previa", { method: "POST", headers: json, body: JSON.stringify({ conta_id: ids.picpay, linhas: lido.linhas }) })).json()) as { linhas: Record<string, unknown>[] };
+    expect(previa.linhas.map((l) => [l.tipo, l.cofrinho])).toEqual([["guardar", "Jogos"], ["resgatar", "Jogos"]]);
+    const r = await app.request("/api/importar", { method: "POST", headers: json, body: JSON.stringify({ conta_id: ids.picpay, linhas: previa.linhas }) });
+    expect(await r.json()).toEqual({ importadas: 2, cofrinhos_criados: 1 });
+    const jogos = (await owner.query("select a.name as nome, coalesce(sum(t.amount), 0)::text as saldo from accounts a left join transactions t on t.account_id = a.id join app_users u on u.id = a.user_id where u.email = $1 and a.kind = 'goal' and a.name ilike '%jogos%' group by a.name", [email("a")])).rows;
+    expect(jogos).toEqual([{ nome: "Jogos", saldo: "155.64" }]);
+  });
+
   it("B não cria cofrinho nem mexe na conta de A", async () => {
     const b = await como("b").request("/api/importar", { method: "POST", headers: json, body: JSON.stringify({ conta_id: ids.picpay, linhas: [{ data: "2026-11-05", descricao: "Cofrinho X", valor: "-10.00", tipo: "guardar", cofrinho: "X" }] }) });
     expect(b.status).toBe(400);
