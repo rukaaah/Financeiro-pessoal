@@ -1,4 +1,4 @@
-import { chaveDeDuplicidade, chaveDoCofrinho, cofrinhoNaDescricao, deNumeric, normalizarEstabelecimento, paraNumeric, TIPOS_DA_LINHA, type TipoDaLinha } from "@financeiro/dominio";
+import { chaveDeDuplicidade, chaveDoCofrinho, cofrinhoNaDescricao, nomeDoCofrinho, deNumeric, normalizarEstabelecimento, paraNumeric, TIPOS_DA_LINHA, type TipoDaLinha } from "@financeiro/dominio";
 import type { Hono } from "hono";
 import type { Rodar } from "./app.ts";
 import { consulta } from "./banco.ts";
@@ -18,7 +18,7 @@ function tipoDaLinha(l: Linha, valor: bigint): { tipo: TipoDaLinha; cofrinho: st
   const sai = valor < 0n;
   const veio = TIPOS_DA_LINHA.includes(l.tipo as TipoDaLinha) ? (l.tipo as TipoDaLinha) : null;
   if (veio && (veio === "gasto" || veio === "guardar") === sai) {
-    const cofrinho = veio === "guardar" || veio === "resgatar" ? (l.cofrinho?.trim() || cofrinhoNaDescricao(l.descricao)) : null;
+    const cofrinho = veio === "guardar" || veio === "resgatar" ? ((l.cofrinho ? nomeDoCofrinho(l.cofrinho) : null) || cofrinhoNaDescricao(l.descricao)) : null;
     if (veio === "gasto" || veio === "entrada" || cofrinho) return { tipo: veio, cofrinho };
   }
   const cofrinho = cofrinhoNaDescricao(l.descricao);

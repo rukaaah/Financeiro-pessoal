@@ -109,9 +109,12 @@ function conferirItem(linhas: readonly string[], it: Record<string, unknown>, ho
   // Cofrinho: o nome precisa estar no texto perto da linha, para não vir da imaginação da IA.
   let cofrinho: string | null = null;
   if (tipo === "guardar" || tipo === "resgatar") {
-    cofrinho = typeof it.cofrinho === "string" ? it.cofrinho.replace(/\s+/g, " ").trim().slice(0, 60) : "";
+    const bruto = typeof it.cofrinho === "string" ? it.cofrinho.replace(/\s+/g, " ").trim() : "";
     const perto = linhas.slice(Math.max(0, n - 2), n + 3).join(" ").toLowerCase();
-    if (!cofrinho || !perto.includes(cofrinho.toLowerCase())) return null;
+    if (!bruto || !perto.includes(bruto.toLowerCase())) return null;
+    // A IA às vezes devolve a ação junto ("Jogos · Dinheiro resgatado"): fica só o nome.
+    cofrinho = nomeDoCofrinho(bruto);
+    if (!cofrinho) return null;
   }
 
   const descricao = (typeof it.descricao === "string" && it.descricao.trim() ? it.descricao : texto.replace(trechoValor, ""))
@@ -143,18 +146,45 @@ export function linhasComValorDeFora(linhas: readonly string[], usadas: readonly
   return linhas.flatMap((l, i) => (!u.has(i) && TEM_VALOR.test(l) && !/\bsaldo\b/i.test(l) ? [i] : []));
 }
 
+// Ação de cofrinho no começo ou no fim do texto: "Dinheiro guardado", "Guardado no", "Resgate".
+const ACAO_NO_INICIO = /^(?:dinheiro\s+)?(?:guardad[oa]s?|guardar|resgatad[oa]s?|resgatar|resgate|aplica[cç][aã]o|aplicad[oa]|dep[oó]sito)\b\s*[:\-–]?\s*(?:(?:n[oa]s?|d[oa]s?|em|para|pr[oa])\s+)?/i;
+const ACAO_NO_FIM = /\s*[:\-–]?\s*(?:dinheiro\s+)?(?:guardad[oa]s?|resgatad[oa]s?|resgate|aplica[cç][aã]o|dep[oó]sito)$/i;
+const PALAVRA_COFRINHO = /^(?:cofrinho|caixinha|porquinho)\b\s*[:\-–]?\s*(?:(?:d[aeo]s?|n[ao]s?)\s+)?/i;
+const SO_ACAO = /^(?:dinheiro\s+)?(?:guardad[oa]s?|resgatad[oa]s?|resgate|aplica[cç][aã]o|dep[oó]sito|cofrinho|caixinha|porquinho)$/i;
+
 /**
- * Cofrinho numa descrição já lida pela regra ("Guardado no Cofrinho Viagem",
- * "Resgate cofrinho: Reserva"). Devolve o nome ou null.
+ * Só o nome do cofrinho, sem a ação. O extrato do PicPay traz "Dinheiro guardado" e
+ * "Dinheiro resgatado" ao lado do nome; guardar ou resgatar é a direção do movimento,
+ * não parte do nome, senão cada sentido vira um cofrinho diferente. Partes separadas
+ * por "·" ou "|" que sejam só ação saem; hífen fica, porque faz parte de nomes como
+ * "Investimento - Novembro". Null se não sobrar nome.
  */
-export function cofrinhoNaDescricao(descricao: string): string | null {
-  const m = /\bcofrinho\b\s*[:\-–]?\s*(?:(?:d[aeo]s?|n[ao]s?)\s+)?(.+)$/i.exec(descricao.replace(/\s+/g, " ").trim());
-  const nome = m?.[1]?.replace(/^["'“]|["'”]$/g, "").trim();
-  return nome ? nome.slice(0, 60) : null;
+export function nomeDoCofrinho(texto: string): string | null {
+  const partes = texto.replace(/\s+/g, " ").split(/\s*[·|•]\s*/).map((p) => {
+    let t = p.trim(), antes = "";
+    while (t !== antes) {
+      antes = t;
+      t = t.replace(ACAO_NO_INICIO, "").replace(PALAVRA_COFRINHO, "").replace(ACAO_NO_FIM, "").replace(/^["'“]|["'”]$/g, "").trim();
+    }
+    return SO_ACAO.test(t) ? "" : t;
+  }).filter(Boolean);
+  const nome = partes.join(" ").slice(0, 60).trim();
+  return nome || null;
 }
 
-/** Nome de cofrinho comparável: sem acento, sem caixa, sem espaço sobrando. */
-export const chaveDoCofrinho = (nome: string) => semAcento(nome).toLowerCase().replace(/\s+/g, " ").trim();
+/**
+ * Cofrinho numa descrição já lida pela regra ("Guardado no Cofrinho Viagem",
+ * "Resgate cofrinho: Reserva", "Jogos · Dinheiro resgatado"). Devolve o nome ou null.
+ */
+export function cofrinhoNaDescricao(descricao: string): string | null {
+  const d = descricao.replace(/\s+/g, " ").trim();
+  const m = /\b(?:cofrinho|caixinha)\b\s*[:\-–]?\s*(?:(?:d[aeo]s?|n[ao]s?)\s+)?(.+)$/i.exec(d);
+  if (m?.[1]) return nomeDoCofrinho(m[1]);
+  return /\bdinheiro\s+(?:guardado|resgatado)\b/i.test(d) ? nomeDoCofrinho(d) : null;
+}
+
+/** Nome de cofrinho comparável: sem a ação, sem acento, sem caixa, sem espaço sobrando. */
+export const chaveDoCofrinho = (nome: string) => semAcento(nomeDoCofrinho(nome) ?? nome).toLowerCase().replace(/\s+/g, " ").trim();
 
 /**
  * Número de extrato em qualquer das duas grafias: "1.234,56", "-87,40", "R$ -87,40",

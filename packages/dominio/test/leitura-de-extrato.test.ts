@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chaveDoCofrinho, cofrinhoNaDescricao, conferirLeituraDaIA, lerCsvDeExtrato, lerTrechoDeData, lerValorDeExtrato, linhasComValorDeFora } from "../src/leitura-de-extrato.ts";
+import { chaveDoCofrinho, cofrinhoNaDescricao, nomeDoCofrinho, conferirLeituraDaIA, lerCsvDeExtrato, lerTrechoDeData, lerValorDeExtrato, linhasComValorDeFora } from "../src/leitura-de-extrato.ts";
 
 // Texto sintético num formato que a regra não conhece: data como cabeçalho do dia.
 const TEXTO = [
@@ -72,6 +72,24 @@ describe("cofrinho e omissões", () => {
     expect(cofrinhoNaDescricao("Resgate cofrinho: Reserva de emergência")).toBe("Reserva de emergência");
     expect(cofrinhoNaDescricao("Pix enviado")).toBeNull();
     expect(chaveDoCofrinho("  Viagem  JAPÃO ")).toBe("viagem japao");
+  });
+  it("separa o nome do cofrinho da ação de guardar ou resgatar", () => {
+    expect(nomeDoCofrinho("Jogos · Dinheiro resgatado")).toBe("Jogos");
+    expect(nomeDoCofrinho("Investimento · Dinheiro guardado")).toBe("Investimento");
+    expect(nomeDoCofrinho("Dinheiro guardado | Investimento")).toBe("Investimento");
+    expect(nomeDoCofrinho("Investimento - Novembro · Dinheiro guardado")).toBe("Investimento - Novembro");
+    expect(nomeDoCofrinho("Guardado no Cofrinho Viagem")).toBe("Viagem");
+    expect(nomeDoCofrinho("Dinheiro guardado")).toBeNull();
+    expect(cofrinhoNaDescricao("Jogos · Dinheiro resgatado")).toBe("Jogos");
+    expect(chaveDoCofrinho("Jogos · Dinheiro guardado")).toBe(chaveDoCofrinho("jogos"));
+  });
+  it("a IA que junta a ação ao nome tem o nome limpo; os dois sentidos dão o mesmo cofrinho", () => {
+    const linhas = ["05/11/2026", "Jogos · Dinheiro guardado R$ 675,64", "Jogos · Dinheiro resgatado R$ 520,00"];
+    const r = conferirLeituraDaIA(linhas, [
+      { linha: 1, trecho_valor: "R$ 675,64", trecho_data: "05/11/2026", tipo: "guardar", cofrinho: "Jogos · Dinheiro guardado" },
+      { linha: 2, trecho_valor: "R$ 520,00", trecho_data: "05/11/2026", tipo: "resgatar", cofrinho: "Jogos · Dinheiro resgatado" },
+    ], "2026-11-08");
+    expect(r.linhas.map((l) => [l.tipo, l.cofrinho, l.valor])).toEqual([["guardar", "Jogos", -67564n], ["resgatar", "Jogos", 52000n]]);
   });
   it("avisa as linhas com valor que ficaram de fora, sem contar saldo", () => {
     expect(linhasComValorDeFora(TEXTO, [2, 3, 4, 6])).toEqual([8]);
