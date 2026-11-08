@@ -172,7 +172,7 @@ export function lerValorDeExtrato(trecho: string): Centavos | null {
 
 const COLUNAS = {
   data: /^(data|date|dia)(\b|[ _]|$)/,
-  descricao: /(descri|hist[oó]rico|lan[cç]amento|estabelecimento|detalhe|t[ií]tulo|movimenta)/,
+  descricao: /(descri|hist[oó]rico|lan[cç]amento|estabelecimento|detalhe|t[ií]tulo|movimenta|nome|favorecido|destin|origem|benefici|pagador|recebedor|contraparte|para$|^de$)/,
   valor: /^(valor|value|montante|quantia)/,
   entrada: /(entrada|cr[eé]dito)/,
   saida: /(sa[ií]da|d[eé]bito)/,
@@ -205,7 +205,7 @@ function dataDeCelula(c: string): string | null {
  * CSV de extrato de qualquer banco, pelo cabeçalho: acha as colunas de data, descrição
  * e valor (ou entrada e saída separadas). Null se o texto não parecer um CSV assim.
  */
-export function lerCsvDeExtrato(texto: string): { linhas: { data: string; descricao: string; valor: Centavos }[]; ignoradas: number } | null {
+export function lerCsvDeExtrato(texto: string): { linhas: { data: string; descricao: string; valor: Centavos; original: string }[]; ignoradas: number } | null {
   const brutas = texto.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim());
   for (let h = 0; h < Math.min(brutas.length, 15); h++) {
     const sep = [";", ",", "\t"].map((s) => [s, celulas(brutas[h]!, s).length] as const).sort((a, b) => b[1] - a[1])[0]!;
@@ -218,8 +218,10 @@ export function lerCsvDeExtrato(texto: string): { linhas: { data: string; descri
     const iEntrada = iValor < 0 ? achar(COLUNAS.entrada, [iData]) : -1, iSaida = iValor < 0 ? achar(COLUNAS.saida, [iData]) : -1;
     if (iValor < 0 && (iEntrada < 0 || iSaida < 0)) continue;
     const usadas = [iData, iValor, iEntrada, iSaida];
-    const iDesc = achar(COLUNAS.descricao, usadas), iTipo = achar(COLUNAS.tipo, usadas);
-    const linhas: { data: string; descricao: string; valor: Centavos }[] = [];
+    const iTipo = achar(COLUNAS.tipo, usadas);
+    // Toda coluna de texto que descreve a movimentação entra: descrição, nome de quem recebeu ou pagou.
+    const iDescs = cab.flatMap((c, i) => (COLUNAS.descricao.test(c) && !usadas.includes(i) && i !== iTipo ? [i] : []));
+    const linhas: { data: string; descricao: string; valor: Centavos; original: string }[] = [];
     let ignoradas = 0;
     for (const bruta of brutas.slice(h + 1)) {
       const c = celulas(bruta, sep[0]);
@@ -231,8 +233,9 @@ export function lerCsvDeExtrato(texto: string): { linhas: { data: string; descri
         valor = e && e !== 0n ? (e < 0n ? -e : e) : s && s !== 0n ? (s > 0n ? -s : s) : null;
       }
       if (!data || valor === null || valor === 0n) { ignoradas++; continue; }
-      const partes = [iDesc >= 0 ? c[iDesc] : "", iTipo >= 0 ? c[iTipo] : ""].filter((x): x is string => !!x && !!x.trim());
-      linhas.push({ data, descricao: partes.join(" · ").replace(/\s+/g, " ").trim().slice(0, 200) || "Sem descrição", valor });
+      const partes = [...iDescs.map((i) => c[i]), iTipo >= 0 ? c[iTipo] : ""].filter((x): x is string => !!x && !!x.trim());
+      const original = c.filter((x) => x.trim()).join(" · ").slice(0, 300);
+      linhas.push({ data, descricao: [...new Set(partes)].join(" · ").replace(/\s+/g, " ").trim().slice(0, 200) || "Sem descrição", valor, original });
     }
     if (linhas.length) return { linhas, ignoradas };
   }

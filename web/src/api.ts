@@ -99,7 +99,7 @@ export const apiInvest = {
 };
 
 export type TipoDaLinha = "gasto" | "entrada" | "guardar" | "resgatar";
-export interface LinhaImportada { data: string; descricao: string; valor: string; duplicada?: boolean; categoria_id?: string | null; tipo?: TipoDaLinha; cofrinho?: string | null; cofrinho_id?: string | null; finalidade?: string | null }
+export interface LinhaImportada { data: string; descricao: string; valor: string; duplicada?: boolean; categoria_id?: string | null; tipo?: TipoDaLinha; cofrinho?: string | null; cofrinho_id?: string | null; finalidade?: string | null; original?: string | null }
 export const apiEntrada = {
   sugerir: (descricao: string, tipo: "income" | "expense") => pedir<{ categoria_id: string | null }>(`/api/sugerir-categoria?descricao=${encodeURIComponent(descricao)}&tipo=${tipo}`),
   previa: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ linhas: LinhaImportada[] }>("/api/importar/previa", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),

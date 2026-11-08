@@ -45,6 +45,9 @@ async function textoDoPdf(arquivo: File): Promise<string> {
   return linhas.join("\n");
 }
 
+const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+/** "qua, 05/11/2026": o dia da semana ajuda a lembrar onde foi o gasto. */
+const diaCompleto = (d: string) => `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]}, ${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 const TIPOS: Record<TipoDaLinha, string> = { gasto: "Gasto", entrada: "Entrada", guardar: "Guardar no cofrinho", resgatar: "Resgate do cofrinho" };
 const FINALIDADES: [string, string][] = [["withdrawal", "Retirada definitiva"], ["use", "Usado no objetivo"], ["loan", "Empréstimo (a devolver)"]];
 type Revisada = LinhaImportada & { incluir: boolean };
@@ -78,7 +81,7 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
       const csv = lerCsvDeExtrato(texto);
       if (csv) {
         setAviso(`${prefixo}Li ${csv.linhas.length} movimentações pelas colunas do arquivo${csv.ignoradas ? `; ${csv.ignoradas} linha(s) sem data ou valor ficaram de fora` : ""}.`);
-        const previa = await apiEntrada.previa(contaId, csv.linhas.map((l) => ({ data: l.data, descricao: l.descricao, valor: paraNumeric(l.valor) })));
+        const previa = await apiEntrada.previa(contaId, csv.linhas.map((l) => ({ data: l.data, descricao: l.descricao, original: l.original, valor: paraNumeric(l.valor) })));
         return setLinhas(previa.linhas.map((l) => ({ ...l, incluir: !l.duplicada })));
       }
       const lido = lerExtrato(texto);
@@ -121,7 +124,8 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
                 <div class="item">
                   <label class="nome" style="display:flex;gap:8px;align-items:center;min-width:0"><input type="checkbox" checked={l.incluir} onChange={(e) => mudar(i, { incluir: e.currentTarget.checked })} /><span style="min-width:0;overflow-wrap:break-word">{l.descricao}</span></label>
                   <span class="valor">{brl(l.valor, !sai)}</span>
-                  <span class="sub">{l.data.slice(8)}/{l.data.slice(5, 7)}{l.duplicada ? " · já lançado" : ""}{deCofrinho(l) && l.cofrinho?.trim() ? (l.cofrinho_id ? " · cofrinho existente" : " · cofrinho novo") : ""}</span>
+                  <span class="sub" style="grid-column:1/-1">{diaCompleto(l.data)}{l.duplicada ? " · já lançado" : ""}{deCofrinho(l) && l.cofrinho?.trim() ? (l.cofrinho_id ? " · cofrinho existente" : " · cofrinho novo") : ""}</span>
+                  {l.original && l.original !== l.descricao && <span class="sub original-extrato">No extrato: {l.original}</span>}
                   <div class="controles-linha">
                     <select aria-label={`Tipo de ${l.descricao}`} value={l.tipo ?? (sai ? "gasto" : "entrada")}
                       onChange={(e) => { const t = e.currentTarget.value as TipoDaLinha; mudar(i, { tipo: t, finalidade: t === "resgatar" ? (l.finalidade ?? "withdrawal") : null }); }}>
