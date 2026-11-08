@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { apiMes, brl, type CategoriaDoMes, type DetalheCategoria, type Mes as MesDados, num } from "../api.ts";
+import { apiMes, brl, diaMes, type CategoriaDoMes, type DetalheCategoria, type Mes as MesDados, num } from "../api.ts";
 import { Icone } from "../icone.tsx";
 import { ListaDeAtencao, SaldoProjetado } from "./atencao.tsx";
 import type { ItemAtencao } from "../api.ts";
@@ -22,7 +22,7 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
 
       <div class="grade-desk"><div class="col">
       <div class="heroi" aria-busy={!d}>
-        <div class="rot">Livre para gastar até {d ? `${d.dias_no_mes}/${mes.slice(5, 7)}` : "o fim do mês"}</div>
+        <div class="rot">Livre para gastar até {d ? diaMes(`${mes}-${String(d.dias_no_mes).padStart(2, "0")}`) : "o fim do mês"}</div>
         <div class="grande">{d ? brl(d.livre) : <span class="esqueleto" />}</div>
         <p class="conta">{d ? (d.dias_restantes > 0 && num(d.livre) > 0 ? `${brl(d.por_dia)} por dia nos ${d.dias_restantes} dias · ` : "") + "previsto − gasto − a pagar" : " "}</p>
         <div class="trilho" role="img" aria-label={d ? `Gasto ${pct(d.gasto, d.previsto)}% do previsto` : "Carregando"}>
@@ -123,7 +123,7 @@ export function DetalheDaCategoria({ c, mes, aoFechar, aoSalvar, aoPerguntar }: 
         </form>
         {det && det.lancamentos.length > 0 && (
           <section><h2>Lançamentos do mês</h2><div class="lista">{det.lancamentos.map((l) => (
-            <div class="item"><span class="nome">{l.descricao || c.nome}</span><span class="valor">{brl(l.valor)}</span><span class="sub">{l.data.slice(8, 10)}/{l.data.slice(5, 7)} · {l.conta}</span><span /></div>
+            <div class="item"><span class="nome">{l.descricao || c.nome}</span><span class="valor">{brl(l.valor)}</span><span class="sub">{diaMes(l.data)} · {l.conta}</span><span /></div>
           ))}</div></section>
         )}
       </div>

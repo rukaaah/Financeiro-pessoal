@@ -20,7 +20,7 @@ const mesAtual = () => hoje().slice(0, 7);
 
 function App() {
   const TELAS: Tela[] = ["mes", "lancamentos", "cartao", "patrimonio", "ajustes"];
-  const daHash = (): Tela => { const h = location.hash.slice(1) as Tela; return TELAS.includes(h) ? h : "mes"; };
+  const daHash = (): Tela => { const h = location.hash.slice(1).split("/")[0] as Tela; return TELAS.includes(h) ? h : "mes"; };
   const [tela, setTelaEstado] = useState<Tela>(daHash());
   const setTela = (t: Tela) => { if (t !== tela) history.pushState(null, "", t === "mes" ? location.pathname + location.search : `#${t}`); setTelaEstado(t); window.scrollTo(0, 0); };
   useEffect(() => { const volta = () => setTelaEstado(daHash()); addEventListener("popstate", volta); return () => removeEventListener("popstate", volta); }, []);

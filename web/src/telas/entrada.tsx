@@ -1,6 +1,6 @@
 import { conferirSaldos, lerCsvDeExtrato, lerExtrato, lerNotificacao, paraNumeric } from "@financeiro/dominio";
 import { useEffect, useState } from "preact/hooks";
-import { apiEntrada, apiIA, brl, hoje, type LinhaImportada, type Opcoes, type TipoDaLinha } from "../api.ts";
+import { apiEntrada, apiIA, brl, diaCompleto, diaMes, hoje, type LinhaImportada, type Opcoes, type TipoDaLinha } from "../api.ts";
 import { Icone } from "../icone.tsx";
 import type { Inicial } from "./lancar.tsx";
 
@@ -45,9 +45,6 @@ async function textoDoPdf(arquivo: File): Promise<string> {
   return linhas.join("\n");
 }
 
-const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-/** "qua, 05/11/2026": o dia da semana ajuda a lembrar onde foi o gasto. */
-const diaCompleto = (d: string) => `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]}, ${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 const TIPOS: Record<TipoDaLinha, string> = { gasto: "Gasto", entrada: "Entrada", guardar: "Guardar no cofrinho", resgatar: "Resgate do cofrinho", transferir: "Troca entre minhas contas" };
 
 /** Enquanto a IA lê: o selo pulsa e o tempo corre, para não parecer travado. */
@@ -102,7 +99,7 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
       const lido = lerExtrato(texto);
       if (!lido.linhas.length) return setAviso(ia?.demo ? "No modo demonstração a IA não lê extratos, e a regra não reconheceu este formato." : "Nem a IA nem a regra encontraram movimentações nesse texto.");
       const div = lido.saldos.length ? conferirSaldos(lido, lido.saldos[0]!.saldo - lido.linhas.filter((l) => l.data <= lido.saldos[0]!.data).reduce((t, l) => t + l.valor, 0n)) : [];
-      setAviso(div.length ? `O saldo impresso não fecha em ${div.length} dia(s), a partir de ${div[0]!.data.slice(8)}/${div[0]!.data.slice(5, 7)}. Confira antes de importar.` : lido.saldos.length ? "Conferido pelo saldo diário impresso." : "");
+      setAviso(div.length ? `O saldo impresso não fecha em ${div.length} dia(s), a partir de ${diaMes(div[0]!.data)}. Confira antes de importar.` : lido.saldos.length ? "Conferido pelo saldo diário impresso." : "");
       entrada = lido.linhas.map((l) => ({ data: l.data, descricao: l.descricao, valor: paraNumeric(l.valor) }));
     }
     setCarregando("Conferindo com o que já está lançado…");
@@ -162,7 +159,7 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
                         </select>
                       : deCofrinho(l)
                       ? <>
-                          <input class={semCofrinho(l) ? "falta" : undefined} aria-label={`Cofrinho de ${l.descricao}`} placeholder="Nome do cofrinho" value={l.cofrinho ?? ""} onInput={(e) => mudar(i, { cofrinho: e.currentTarget.value, cofrinho_id: null })} />
+                          <input class={semCofrinho(l) ? "falta" : undefined} aria-label={`Cofrinho de ${l.descricao}`} placeholder="Nome do cofrinho, como Viagem…" value={l.cofrinho ?? ""} onInput={(e) => mudar(i, { cofrinho: e.currentTarget.value, cofrinho_id: null })} />
                           {l.tipo === "resgatar" && <select aria-label={`Finalidade do resgate de ${l.descricao}`} value={l.finalidade ?? "withdrawal"} onChange={(e) => mudar(i, { finalidade: e.currentTarget.value })}>{FINALIDADES.map(([v, n]) => <option value={v}>{n}</option>)}</select>}
                         </>
                       : <select class={semCategoria(l) ? "falta" : undefined} aria-label={`Categoria de ${l.descricao}`} value={l.categoria_id ?? ""} onChange={(e) => mudar(i, { categoria_id: e.currentTarget.value })}>
