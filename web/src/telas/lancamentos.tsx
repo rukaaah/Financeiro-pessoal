@@ -45,7 +45,7 @@ export function Lancamentos({ lista, ocultos, aoEditar, aoAbrirLancar, aoColar, 
               <button class="item" onClick={() => aoEditar(l)}>
                 <span class="nome">{l.tipo === "transfer" && <Icone nome="transferencia" tamanho={16} />} {l.descricao || l.categoria || "Sem descrição"}</span>
                 <span class={`valor ${l.tipo === "income" ? "entrada" : ""}`}>{l.tipo === "transfer" ? brl(l.valor.replace("-", "")) : brl(l.valor, l.tipo === "income")}</span>
-                <span class="sub">{[l.categoria, l.conta_destino ? `${l.conta} → ${l.conta_destino}` : l.conta, l.mes_da_fatura && `fatura ${l.mes_da_fatura.slice(5, 7)}/${l.mes_da_fatura.slice(0, 4)}`, l.parcela && `parcela ${l.parcela}/${l.parcelas}`].filter(Boolean).join(" · ")}</span>
+                <span class="sub">{[l.tipo === "transfer" ? "Transferência" : l.categoria, l.conta_destino ? `${l.conta} → ${l.conta_destino}` : l.conta, l.mes_da_fatura && `fatura ${l.mes_da_fatura.slice(5, 7)}/${l.mes_da_fatura.slice(0, 4)}`, l.parcela && `parcela ${l.parcela}/${l.parcelas}`].filter(Boolean).join(" · ")}</span>
                 <span />
               </button>
             ))}</div>

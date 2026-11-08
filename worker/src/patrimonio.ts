@@ -6,6 +6,8 @@ import { hojeEmSaoPaulo } from "./contexto.ts";
 
 const UUID = /^[0-9a-f-]{36}$/i, DATA = /^\d{4}-\d{2}-\d{2}$/;
 type Corpo = Record<string, unknown>;
+/** Contas entre as quais o dinheiro troca de lugar sem ser gasto: corrente, dinheiro e investimento. */
+const CONTAS_PROPRIAS = ["checking", "cash", "investment"];
 const erroDeDado = (e: unknown) => /^(22|23)/.test((e as { code?: string })?.code ?? "");
 
 const SQL_CONTAS = `
@@ -83,6 +85,18 @@ export function rotasDoPatrimonio<E extends object>(app: Hono<{ Bindings: E }>, 
     return mover(c, String(b.receber_id), String(b.conta_id), b.valor, b.data, "Recebimento", null, null, ["receivable"], ["checking", "cash"]);
   });
 
+  /**
+   * Troca de conta: dinheiro que sai de uma conta minha e entra em outra minha (ex.: Pix do
+   * PicPay para o Inter investir). Não é gasto nem receita; para investimento, conta como guardado.
+   */
+  app.post("/api/transferir", async (c) => {
+    const b = await c.req.json<Corpo>().catch(() => ({}) as Corpo);
+    const origem = String(b.origem_id ?? ""), destino = String(b.destino_id ?? "");
+    if (origem && origem === destino) return c.json({ erro: "Escolha contas diferentes." }, 400);
+    const descricao = String(b.descricao ?? "").trim().slice(0, 200) || "Transferência entre contas";
+    return mover(c, origem, destino, b.valor, b.data, descricao, null, null, CONTAS_PROPRIAS, CONTAS_PROPRIAS);
+  });
+
   async function mover(c: Parameters<Rodar<E>>[0], origem: string, destino: string, valorBruto: unknown, dataBruta: unknown, descricao: string, movOrigem: string | null, movDestino: string | null, tiposOrigem: string[], tiposDestino: string[]) {
     if (!UUID.test(origem) || !UUID.test(destino)) return c.json({ erro: "Escolha as contas." }, 400);
     let valor: string;
@@ -91,7 +105,7 @@ export function rotasDoPatrimonio<E extends object>(app: Hono<{ Bindings: E }>, 
     try {
       const [a = [], b = []] = await rodar(c, transferencia(origem, destino, valor, data, descricao, movOrigem, movDestino, tiposOrigem, tiposDestino));
       if (!a.length || !b.length) return c.json({ erro: "Conta não encontrada." }, 400);
-      return c.json({ ok: true }, 201);
+      return c.json({ ok: true, id: a[0]!.id }, 201);
     } catch (e) {
       // Uma perna sem a outra é recusada pelo trigger de soma zero no commit.
       if (erroDeDado(e)) return c.json({ erro: "Conta não encontrada." }, 400);

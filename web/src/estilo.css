@@ -235,3 +235,31 @@ h2 .ia-tit svg{color:var(--ia)}
 .controles-linha>select,.controles-linha>input{flex:1 1 150px;min-width:0;font-size:16px;min-height:40px}
 .controles-linha>input{border:1px solid var(--t2);border-radius:4px;padding:0 10px;background:var(--sup);color:var(--tinta);font:inherit;font-size:16px}
 .original-extrato{grid-column:1/-1;overflow-wrap:anywhere;font-size:13px}
+/* Campo obrigatório ainda vazio: realce azul desde o início; vermelho depois de tentar salvar. */
+.campo label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.marca-falta{font-size:12px;font-weight:700;color:var(--azul);background:color-mix(in srgb,var(--azul) 12%,transparent);border-radius:999px;padding:1px 8px}
+.campo.falta>input,.campo.falta>select,.controles-linha>.falta{border-color:var(--azul);box-shadow:0 0 0 2px color-mix(in srgb,var(--azul) 25%,transparent)}
+.campo.tentou>input,.campo.tentou>select{border-color:var(--fora);box-shadow:0 0 0 2px color-mix(in srgb,var(--fora) 25%,transparent)}
+.campo.tentou .marca-falta{color:var(--fora);background:var(--fora-f)}
+.item-falta{box-shadow:inset 3px 0 0 var(--azul)}
+.aviso-falta{color:var(--azul);font-weight:600}
+/* Criar categoria ou conta dentro do Lançar. */
+.alinhar-inicio{align-self:flex-start;display:inline-flex;align-items:center;gap:4px}
+.mini-form{display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px dashed var(--regua);border-radius:6px;background:var(--sup)}
+.mini-form>input,.mini-form>select{flex:1 1 140px;min-width:0;font:inherit;font-size:16px;min-height:40px;padding:0 10px;border:1px solid var(--t2);border-radius:4px;background:var(--papel);color:var(--tinta)}
+.mini-acoes{flex-basis:100%;display:flex;align-items:center;gap:12px}
+/* Lendo o extrato: selo que pulsa, tempo correndo e uma barra que anda. */
+.lendo{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;margin-top:12px;padding:12px;border-radius:8px;background:var(--sup)}
+.lendo-ia{background:var(--ia-f);color:var(--ia-t)}
+.lendo-texto{display:flex;flex-direction:column;min-width:0}
+.lendo-bolinha{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;background:var(--azul)}
+.lendo-ia .lendo-bolinha{background:linear-gradient(135deg,var(--ia-a),var(--ia-b))}
+.lendo-barra{grid-column:1/-1;height:4px;border-radius:2px;overflow:hidden;background:color-mix(in srgb,currentColor 12%,transparent)}
+.lendo-barra i{display:block;height:100%;width:35%;border-radius:2px;background:var(--azul)}
+.lendo-ia .lendo-barra i{background:linear-gradient(90deg,var(--ia-a),var(--ia-b))}
+@media (prefers-reduced-motion:no-preference){
+  .lendo-bolinha{animation:pulsa 1.4s ease-in-out infinite}
+  .lendo-barra i{animation:anda 1.6s ease-in-out infinite}
+  @keyframes pulsa{50%{transform:scale(.88);opacity:.75}}
+  @keyframes anda{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
+}
