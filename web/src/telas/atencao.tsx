@@ -3,7 +3,7 @@ import { apiAtencao, brl, hoje, type ItemAtencao, type Mes, num, type Opcoes } f
 import { Icone } from "../icone.tsx";
 
 const SELO = { critico: ["fora", "crítico"], atencao: ["perto", "atenção"], informativo: ["", "informativo"] } as const;
-const ACAO: Record<string, string> = { "ver-categoria": "Ver", "pagar-conta": "Pagar", "pagar-fatura": "Pagar", receber: "Receber", nenhuma: "" };
+const ACAO: Record<string, string> = { "ver-categoria": "Ver", "pagar-conta": "Pagar", "pagar-fatura": "Pagar", receber: "Receber", "corrigir-cofrinho": "Corrigir", nenhuma: "" };
 const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 export const amanha = () => new Date(Date.parse(`${hoje()}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
@@ -17,7 +17,7 @@ export function ListaDeAtencao({ itens, limite, aoAgir, aoAdiar }: { itens: Item
         <span class="valor">{num(i.valor) !== 0 ? brl(i.valor) : ""}</span>
         <span class="sub">{i.detalhe}</span>
         {ACAO[i.acao.tipo] ? <button class="acao" onClick={() => aoAgir(i)}>{ACAO[i.acao.tipo]}</button> : <span />}
-        {aoAdiar && <span class="sub" style="grid-column:1/-1;display:flex;gap:16px;margin-top:4px">
+        {aoAdiar && i.acao.tipo !== "corrigir-cofrinho" && <span class="sub" style="grid-column:1/-1;display:flex;gap:16px;margin-top:4px">
           <button class="link-sub" onClick={() => aoAdiar(i, amanha())}>Lembrar amanhã</button>
           <button class="link-sub" onClick={() => aoAdiar(i, null)}>Resolvido</button>
         </span>}

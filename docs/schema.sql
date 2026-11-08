@@ -760,6 +760,7 @@ CREATE TABLE public.accounts (
     counterparty_id uuid,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    opening_balance numeric(14,2) DEFAULT 0 NOT NULL,
     CONSTRAINT accounts_contraparte_so_em_receivable CHECK (((kind = 'receivable'::public.account_kind) = (counterparty_id IS NOT NULL))),
     CONSTRAINT accounts_nome_nao_vazio CHECK ((length(btrim(name)) > 0))
 );

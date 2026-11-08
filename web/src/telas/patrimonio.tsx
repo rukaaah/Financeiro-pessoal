@@ -6,7 +6,7 @@ import type { Opcoes } from "../api.ts";
 
 type Aba = "Visão" | "Cofrinhos" | "Investimentos" | "A receber";
 const dm = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "—");
-export type Movimento = { tipo: "guardar" | "resgatar"; cofrinho: Cofrinho } | { tipo: "conciliar" } | { tipo: "receber-de"; id: string; nome: string; saldo: string };
+export type Movimento = { tipo: "guardar" | "resgatar"; cofrinho: Cofrinho } | { tipo: "conciliar" } | { tipo: "receber-de"; id: string; nome: string; saldo: string } | { tipo: "ajustar"; id: string; nome: string; saldo: string };
 
 export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { dados: Dados | null; opcoes: Opcoes | null; aoMover(m: Movimento): void; aoAvisar(t: string): void; aoPerguntar(): void }) {
   const [aba, setAba] = useState<Aba>("Visão");
@@ -18,6 +18,9 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
     <>
       <header><div><h1>Patrimônio</h1><div class="sub">hoje, {dm(hoje())}</div></div></header>
       <div class="abas" role="tablist">{(["Visão", "Cofrinhos", "Investimentos", "A receber"] as Aba[]).map((a) => <button role="tab" aria-selected={a === aba} onClick={() => setAba(a)}>{a}</button>)}</div>
+      {d?.cofrinhos.filter((k) => num(k.saldo) < 0).map((k) => (
+        <div class="achado" role="alert"><span aria-hidden="true">!</span><div><strong>Cofrinho {k.nome} está negativo ({brl(k.saldo)}).</strong> Cofrinho não fica negativo: ele já tinha dinheiro antes do extrato. <button class="link-sub" onClick={() => aoMover({ tipo: "ajustar", id: k.id, nome: k.nome, saldo: k.saldo })}>Corrigir saldo</button></div></div>
+      ))}
       {aba === "Visão" && (
         <div class="grade-desk">
           <div class="col">{heroi("Patrimônio líquido hoje", d?.patrimonio, "sem os valores a receber")}</div>
@@ -49,13 +52,14 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
               const atraso = k.deveria ? num(k.deveria) - num(k.saldo) : 0;
               return (
                 <div class="item">
-                  <span class="nome">{num(k.a_devolver) > 0 && <span class="selo perto">devolver {brl(k.a_devolver)}</span>}{k.nome}</span><span class="valor">{brl(k.saldo)}</span>
+                  <span class="nome">{num(k.saldo) < 0 && <span class="selo fora">negativo</span>}{num(k.a_devolver) > 0 && <span class="selo perto">devolver {brl(k.a_devolver)}</span>}{k.nome}</span><span class={num(k.saldo) < 0 ? "valor neg" : "valor"}>{brl(k.saldo)}</span>
                   <span class="sub">{k.meta ? `meta ${brl(k.meta)}${k.deveria ? ` · deveria ter ${brl(k.deveria)}${atraso > 0 ? ` · atrasado ${brl(atraso.toFixed(2))}` : " · em dia"}` : ""}` : k.cdi ? `rende ${k.cdi.replace(".00", "")}% do CDI` : "sem meta"}</span>
                   <span class="sub">{k.progresso != null ? `${Math.round(k.progresso)}%` : ""}</span>
                   {k.progresso != null && <span class="prog"><i style={`width:${Math.min(100, k.progresso)}%`} /></span>}
                   <span class="sub" style="grid-column:1/-1;display:flex;gap:16px;margin-top:4px">
                     <button class="link-sub" onClick={() => aoMover({ tipo: "guardar", cofrinho: k })}>Guardar</button>
                     <button class="link-sub" onClick={() => aoMover({ tipo: "resgatar", cofrinho: k })}>Resgatar</button>
+                    <button class="link-sub" onClick={() => aoMover({ tipo: "ajustar", id: k.id, nome: k.nome, saldo: k.saldo })}>{num(k.saldo) < 0 ? "Corrigir saldo" : "Ajustar saldo"}</button>
                   </span>
                 </div>
               );
@@ -80,18 +84,19 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
 }
 
 export function Mover({ m, contas, aoFechar, aoSalvar }: { m: Movimento; contas: { id: string; nome: string }[]; aoFechar(): void; aoSalvar(corpo: Record<string, unknown>): void }) {
-  const [valor, setValor] = useState(m.tipo === "receber-de" ? brl(m.saldo).replace("R$ ", "") : "");
+  const [valor, setValor] = useState(m.tipo === "receber-de" || (m.tipo === "ajustar" && num(m.saldo) > 0) ? brl(m.saldo).replace("R$ ", "") : "");
   const [conta, setConta] = useState(contas[0]?.id ?? "");
   const [devolucao, setDevolucao] = useState(m.tipo === "guardar" && num(m.cofrinho.a_devolver) > 0);
   const [finalidade, setFinalidade] = useState("use");
-  const titulo = m.tipo === "conciliar" ? "Conciliar saldo" : m.tipo === "receber-de" ? `${m.nome} pagou` : m.tipo === "guardar" ? `Guardar em ${m.cofrinho.nome}` : `Resgatar de ${m.cofrinho.nome}`;
+  const titulo = m.tipo === "conciliar" ? "Conciliar saldo" : m.tipo === "receber-de" ? `${m.nome} pagou` : m.tipo === "ajustar" ? `Saldo de ${m.nome}` : m.tipo === "guardar" ? `Guardar em ${m.cofrinho.nome}` : `Resgatar de ${m.cofrinho.nome}`;
   return (
     <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}>
       <div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-mov">
         <div class="topo"><h3 id="t-mov">{titulo}</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
         <form onSubmit={(e) => { e.preventDefault(); aoSalvar({ valor, conta_id: conta, devolucao, finalidade, data: hoje(), saldo_banco: valor }); }}>
-          <div class="campo"><label for="m-val">{m.tipo === "conciliar" ? "Quanto o banco mostra agora (R$)" : "Valor (R$)"}</label><input id="m-val" class="grande-in" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
-          <div class="campo"><label for="m-conta">{m.tipo === "guardar" ? "Sai de" : m.tipo === "conciliar" ? "Conta" : "Entra em"}</label><select id="m-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{contas.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
+          <div class="campo"><label for="m-val">{m.tipo === "conciliar" ? "Quanto o banco mostra agora (R$)" : m.tipo === "ajustar" ? "Quanto o cofrinho tem hoje no banco (R$)" : "Valor (R$)"}</label><input id="m-val" class="grande-in" inputMode="decimal" autoComplete="off" value={valor} onInput={(e) => setValor(e.currentTarget.value)} /></div>
+          {m.tipo === "ajustar" && <p class="nota">Hoje o app mostra {brl(m.saldo)}. A diferença vira saldo inicial do cofrinho: não conta como receita, gasto nem guardado em mês nenhum.</p>}
+          {m.tipo !== "ajustar" && <div class="campo"><label for="m-conta">{m.tipo === "guardar" ? "Sai de" : m.tipo === "conciliar" ? "Conta" : "Entra em"}</label><select id="m-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{contas.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>}
           {m.tipo === "guardar" && num(m.cofrinho.a_devolver) > 0 && (
             <>
               <div class="chips" role="group" aria-label="É devolução?"><button type="button" class="chip" aria-pressed={devolucao} onClick={() => setDevolucao(true)}>É devolução</button><button type="button" class="chip" aria-pressed={!devolucao} onClick={() => setDevolucao(false)}>Guardado novo</button></div>

@@ -61,22 +61,31 @@ const SQL_DESCONTO = `
     from expected_incomes where currency = 'USD' and received_brl is not null and reference_rate is not null`;
 
 const SQL_SALDO = `
-  select coalesce(sum(t.amount), 0)::numeric(14,2)::text as saldo
-    from transactions t join accounts a on a.id = t.account_id
-   where a.kind in ('checking', 'cash') and t.occurred_on <= $1::date`;
+  select (coalesce((select sum(t.amount) from transactions t join accounts a on a.id = t.account_id
+                     where a.kind in ('checking', 'cash') and t.occurred_on <= $1::date), 0)
+          + coalesce((select sum(a.opening_balance) from accounts a where a.kind in ('checking', 'cash')), 0))::numeric(14,2)::text as saldo`;
+
+/** Cofrinhos ativos com saldo (saldo inicial + lançamentos até hoje) abaixo de zero. */
+const SQL_COFRINHOS_NEGATIVOS = `
+  select id, nome, saldo::text from (
+    select a.id, a.name as nome,
+           (a.opening_balance + coalesce((select sum(t.amount) from transactions t where t.account_id = a.id and t.occurred_on <= $1::date), 0))::numeric(14,2) as saldo
+      from accounts a where a.kind = 'goal' and a.active) x
+   where saldo < 0 order by nome`;
 
 const SQL_ADIADOS = `select item_key as chave, until::text as ate from attention_snoozes`;
 
 export const consultasDoMes = (mes: string, hoje: string) => [
   consulta(SQL_CATEGORIAS, mes), consulta(SQL_GUARDADO, mes), consulta(SQL_CONTAS, mes), consulta(SQL_FATURAS),
   consulta(SQL_ENTRADAS), consulta(SQL_DESCONTO), consulta(SQL_SALDO, hoje), consulta(SQL_ADIADOS),
+  consulta(SQL_COFRINHOS_NEGATIVOS, hoje),
 ];
 
 type L = Record<string, unknown>;
 
 /** Monta a resposta do Mês: a posição, a Atenção e o saldo projetado, de um lote só. */
 export function montarMes(mes: string, hoje: string, linhas: L[][], ptax: string | null) {
-  const [cats = [], guard = [], contasL = [], fatL = [], entL = [], desc = [], saldoL = [], adiadosL = []] = linhas;
+  const [cats = [], guard = [], contasL = [], fatL = [], entL = [], desc = [], saldoL = [], adiadosL = [], negL = []] = linhas;
   const contas: ContaRecorrente[] = contasL.map((k) => ({
     id: String(k.id), nome: String(k.nome), valor: deNumeric(String(k.valor)), vencimento: String(k.vencimento),
     urgencia: k.urgencia as Urgencia, paga: Boolean(k.paga), noCartao: Boolean(k.no_cartao),
@@ -104,7 +113,8 @@ export function montarMes(mes: string, hoje: string, linhas: L[][], ptax: string
     : [];
   const menor = projecao.reduce<{ dia: string; saldo: bigint } | null>((m, x) => (!m || x.saldo < m.saldo ? x : m), null);
   const adiados = new Map(adiadosL.map((a) => [String(a.chave), a.ate == null ? null : String(a.ate)]));
-  const atencao = itensDeAtencao({ hoje, mes, categorias: p.categorias, contas, faturas, entradas, adiados, formatar, menorSaldo: menor ? { dia: menor.dia, valor: menor.saldo } : null });
+  const atencao = itensDeAtencao({ hoje, mes, categorias: p.categorias, contas, faturas, entradas, adiados, formatar, menorSaldo: menor ? { dia: menor.dia, valor: menor.saldo } : null,
+    cofrinhosNegativos: negL.map((k) => ({ id: String(k.id), nome: String(k.nome), saldo: deNumeric(String(k.saldo)) })) });
 
   const n = paraNumeric;
   return {

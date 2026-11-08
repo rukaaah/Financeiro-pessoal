@@ -25,6 +25,13 @@ describe("Atenção", () => {
   it("entrada prevista vencida pede para registrar o recebimento", () => {
     expect(itensDeAtencao({ ...base, hoje: "2026-11-25" }).find((x) => x.chave === "entrada:f")).toMatchObject({ gravidade: "atencao", titulo: "Freelance previsto para hoje" });
   });
+  it("cofrinho negativo vem primeiro, crítico, e não some com lembrar amanhã nem resolvido", () => {
+    const cofrinhosNegativos = [{ id: "fl", nome: "Freelancer", saldo: -10000n }, { id: "ok", nome: "Viagem", saldo: 0n }];
+    const adiados = new Map<string, string | null>([["cofrinho-negativo:fl", null]]);
+    const i = itensDeAtencao({ ...base, adiados, cofrinhosNegativos });
+    expect(i[0]).toMatchObject({ chave: "cofrinho-negativo:fl", gravidade: "critico", titulo: "Cofrinho Freelancer está negativo", valor: -10000n, acao: { tipo: "corrigir-cofrinho", id: "fl", nome: "Freelancer" } });
+    expect(i.filter((x) => x.chave.startsWith("cofrinho-negativo:"))).toHaveLength(1);
+  });
 });
 
 describe("saldo projetado", () => {

@@ -12,7 +12,7 @@ const erroDeDado = (e: unknown) => /^(22|23)/.test((e as { code?: string })?.cod
 
 const SQL_CONTAS = `
   select a.id, a.name as nome, a.kind as tipo, cp.name as pessoa,
-         coalesce((select sum(t.amount) from transactions t where t.account_id = a.id and t.occurred_on <= $1::date), 0)::numeric(14,2)::text as saldo,
+         (a.opening_balance + coalesce((select sum(t.amount) from transactions t where t.account_id = a.id and t.occurred_on <= $1::date), 0))::numeric(14,2)::text as saldo,
          (select max(t.occurred_on)::text from transactions t where t.account_id = a.id) as ultimo,
          (select r.reconciled_on::text from reconciliations r where r.account_id = a.id order by r.reconciled_on desc, r.created_at desc limit 1) as conciliado,
          gs.target::text as meta, gs.target_date::text as data_meta, gs.started_on::text as inicio, gs.cdi_percent::text as cdi,
@@ -113,6 +113,27 @@ export function rotasDoPatrimonio<E extends object>(app: Hono<{ Bindings: E }>, 
     }
   }
 
+  /**
+   * Corrige o saldo de um cofrinho para o valor real de hoje. Não cria lançamento:
+   * grava como saldo inicial a diferença entre o valor digitado e a soma dos
+   * lançamentos, então nenhum mês ganha receita, gasto ou guardado por isso.
+   */
+  app.post("/api/cofrinhos/saldo", async (c) => {
+    const b = await c.req.json<Corpo>().catch(() => ({}) as Corpo);
+    const cofrinho = String(b.cofrinho_id ?? "");
+    let real: bigint;
+    try { real = deDigitado(String(b.saldo ?? "")); } catch { return c.json({ erro: "Digite o saldo como 1.000,00." }, 400); }
+    if (real < 0n) return c.json({ erro: "Cofrinho não fica negativo. Digite quanto ele tem de verdade." }, 400);
+    if (!UUID.test(cofrinho)) return c.json({ erro: "Escolha o cofrinho." }, 400);
+    const [l = []] = await rodar(c, [consulta(
+      `update accounts a set opening_balance = $2::numeric - coalesce((select sum(t.amount) from transactions t where t.account_id = a.id and t.occurred_on <= $3::date), 0)
+        where a.id = $1 and a.kind = 'goal'
+        returning (a.opening_balance + coalesce((select sum(t.amount) from transactions t where t.account_id = a.id and t.occurred_on <= $3::date), 0))::numeric(14,2)::text as saldo`,
+      cofrinho, paraNumeric(real), hojeEmSaoPaulo())]);
+    if (!l[0]) return c.json({ erro: "Cofrinho não encontrado." }, 404);
+    return c.json({ saldo: String(l[0].saldo) });
+  });
+
   app.post("/api/conciliar", async (c) => {
     const b = await c.req.json<Corpo>().catch(() => ({}) as Corpo);
     const conta = String(b.conta_id ?? "");
@@ -123,7 +144,7 @@ export function rotasDoPatrimonio<E extends object>(app: Hono<{ Bindings: E }>, 
     const [l = []] = await rodar(c, [consulta(
       `insert into reconciliations (user_id, account_id, reconciled_on, bank_balance, app_balance)
        select current_app_user(), a.id, $2::date, $3::numeric,
-              coalesce((select sum(t.amount) from transactions t where t.account_id = a.id and t.occurred_on <= $2::date), 0)
+              a.opening_balance + coalesce((select sum(t.amount) from transactions t where t.account_id = a.id and t.occurred_on <= $2::date), 0)
          from accounts a where a.id = $1 returning app_balance::text as app`,
       conta, hoje, paraNumeric(banco))]);
     if (!l[0]) return c.json({ erro: "Conta não encontrada." }, 404);
