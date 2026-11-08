@@ -241,7 +241,21 @@ h2 .ia-tit svg{color:var(--ia)}
 .campo.falta>input,.campo.falta>select,.controles-linha>.falta{border-color:var(--azul);box-shadow:0 0 0 2px color-mix(in srgb,var(--azul) 25%,transparent)}
 .campo.tentou>input,.campo.tentou>select{border-color:var(--fora);box-shadow:0 0 0 2px color-mix(in srgb,var(--fora) 25%,transparent)}
 .campo.tentou .marca-falta{color:var(--fora);background:var(--fora-f)}
-.item-falta{box-shadow:inset 3px 0 0 var(--azul)}
+/* Revisão do extrato: caixa numa coluna própria; o texto todo alinha na segunda e respira entre as linhas. */
+.item-revisao{grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;padding:14px 0}
+.item-revisao>.marcar{grid-row:1/span 2;align-self:start;width:20px;height:20px;margin:2px 0 0}
+/* Nome em toda a largura; valor desce para a linha da data, para o nome não virar uma coluna estreita. */
+.item-revisao>.nome{grid-column:2/-1;line-height:1.3;overflow-wrap:anywhere}
+.item-revisao>.valor{grid-column:3;grid-row:2;white-space:nowrap;line-height:1.4}
+.item-revisao>.sub{grid-column:2;grid-row:2;line-height:1.4}
+.item-revisao>.original-extrato,.item-revisao>.controles-linha{grid-column:2/-1;line-height:1.4}
+.item-revisao>.original-extrato{grid-row:3}
+.item-revisao>.controles-linha{grid-row:4}
+.item-revisao>.controles-linha>select,.item-revisao>.controles-linha>input{flex-basis:120px}
+.item-revisao>.sub,.item-revisao>.valor{align-self:baseline}
+.item-revisao>.controles-linha{margin-top:8px}
+/* Faixa da linha pendente fora do texto: ocupa o recuo da lista em vez de cobrir as letras. */
+.item-falta{width:auto;margin:0 -14px;padding-left:11px;padding-right:14px;border-left:3px solid var(--azul)}
 .aviso-falta{color:var(--azul);font-weight:600}
 /* Criar categoria ou conta dentro do Lançar. */
 .alinhar-inicio{align-self:flex-start;display:inline-flex;align-items:center;gap:4px}
