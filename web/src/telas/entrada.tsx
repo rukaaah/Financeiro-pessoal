@@ -144,10 +144,11 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
               const sai = l.valor.startsWith("-");
               const pendente = semCategoria(l) || semCofrinho(l) || semOutraConta(l);
               return (
-                <div class={`item${pendente ? " item-falta" : ""}`}>
-                  <label class="nome" style="display:flex;gap:8px;align-items:center;min-width:0"><input type="checkbox" checked={l.incluir} onChange={(e) => mudar(i, { incluir: e.currentTarget.checked })} /><span style="min-width:0;overflow-wrap:break-word">{l.descricao}</span></label>
+                <div class={`item item-revisao${pendente ? " item-falta" : ""}`}>
+                  <input id={`r-${i}`} class="marcar" type="checkbox" checked={l.incluir} onChange={(e) => mudar(i, { incluir: e.currentTarget.checked })} />
+                  <label class="nome" for={`r-${i}`}>{l.descricao}</label>
                   <span class="valor">{brl(l.valor, !sai)}</span>
-                  <span class="sub" style="grid-column:1/-1">{diaCompleto(l.data)}{l.duplicada ? " · já lançado" : ""}{deCofrinho(l) && l.cofrinho?.trim() ? (l.cofrinho_id ? " · cofrinho existente" : " · cofrinho novo") : ""}{ehTroca(l) ? " · não conta como gasto" : ""}</span>
+                  <span class="sub">{diaCompleto(l.data)}{l.duplicada ? " · já lançado" : ""}{deCofrinho(l) && l.cofrinho?.trim() ? (l.cofrinho_id ? " · cofrinho existente" : " · cofrinho novo") : ""}{ehTroca(l) ? " · não conta como gasto" : ""}</span>
                   {l.original && l.original !== l.descricao && <span class="sub original-extrato">No extrato: {l.original}</span>}
                   <div class="controles-linha">
                     <select aria-label={`Tipo de ${l.descricao}`} value={l.tipo ?? (sai ? "gasto" : "entrada")}
