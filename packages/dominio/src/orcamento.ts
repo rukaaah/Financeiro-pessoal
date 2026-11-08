@@ -45,6 +45,8 @@ export interface PosicaoDoMes {
   readonly sobra: Centavos;
   readonly categorias: readonly Categoria[];
   readonly descoberta: string | null;
+  /** A categoria de que a descoberta fala, para a tela não repetir o mesmo aviso. */
+  readonly descobertaCategoria: string | null;
 }
 
 /** Perto do limite a partir de 80% do previsto (RF20, prazo padrão aprovado). */
@@ -84,12 +86,14 @@ export function posicaoDoMes(linhas: readonly LinhaDeCategoria[], opcoes: { mes:
   // A descoberta do dia: a categoria mais acima do previsto; senão, a mais acima da média.
   const fora = categorias.filter((c) => c.estado === "fora").sort((a, b) => Number((b.gasto - b.previsto) - (a.gasto - a.previsto)));
   let descoberta: string | null = null;
+  let descobertaCategoria: string | null = null;
   if (fora[0]) {
     const c = fora[0], acimaDaMedia = c.gasto - c.media3m;
+    descobertaCategoria = c.id;
     descoberta = `${c.nome} passou ${opcoes.formatar(c.gasto - c.previsto)} do previsto` + (c.media3m > 0n && acimaDaMedia > 0n ? ` e está ${opcoes.formatar(acimaDaMedia)} acima da média de 3 meses.` : ".");
   } else if (livre < 0n) {
     descoberta = `O previsto do mês já não cobre o gasto e as contas a pagar: faltam ${opcoes.formatar(-livre)}.`;
   }
 
-  return { previsto, gasto, aPagar: opcoes.aPagar, livre, porDia, diasRestantes, diaDoMes, diasNoMes, rendaPrevista, renda, guardado: opcoes.guardado, sobra: renda - gasto - opcoes.guardado, categorias, descoberta };
+  return { previsto, gasto, aPagar: opcoes.aPagar, livre, porDia, diasRestantes, diaDoMes, diasNoMes, rendaPrevista, renda, guardado: opcoes.guardado, sobra: renda - gasto - opcoes.guardado, categorias, descoberta, descobertaCategoria };
 }

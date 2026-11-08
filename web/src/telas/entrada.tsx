@@ -22,7 +22,7 @@ export function ColarNotificacao({ opcoes, aoFechar, aoAbrir }: { opcoes: Opcoes
       {texto.trim() && (lido
         ? <p class="nota">Li: <b>{brl(paraNumeric(lido.valor))} · {lido.estabelecimento ?? "sem estabelecimento"} · {lido.data ? `${lido.data.slice(8)}/${lido.data.slice(5, 7)}` : "hoje"} · {lido.sentido === "entrada" ? "entrada" : lido.noCartao ? "cartão" : "saída"}{lido.parcelas ? ` · ${lido.parcelas}x` : ""}</b></p>
         : <p class="erro-campo">Não reconheci este formato. <button class="link-sub" onClick={() => apiIA.notificacao(texto).then((r) => { if (r.reconheceu && r.valor) aoAbrir({ valor: (Number(r.valor) / 100).toFixed(2).replace(".", ","), descricao: r.estabelecimento ?? "" }, r.sentido === "entrada" ? "recebi" : "gastei"); }).catch(() => {})}>Tentar com a IA</button></p>)}
-      <div style="margin-top:12px"><button class="btn-tinta" disabled={!lido} onClick={abrir}>Abrir em {lido?.sentido === "entrada" ? "Recebi" : "Gastei"}</button></div>
+      <div style="margin-top:12px"><button class="btn-tinta" disabled={!lido} onClick={abrir}><Icone nome="abrir" tamanho={18} />Abrir em {lido?.sentido === "entrada" ? "Recebi" : "Gastei"}</button></div>
     </div></div>
   );
 }
@@ -176,7 +176,7 @@ export function ImportarExtrato({ opcoes, aoFechar, aoImportado }: { opcoes: Opc
           {faltaCofrinho && <p class="erro-campo">Dê o nome do cofrinho nas linhas de cofrinho.</p>}
           {faltaTroca && <p class="erro-campo">Escolha a outra conta nas trocas entre contas.</p>}
           {!proprias.some((c) => c.id !== contaId) && linhas.some(ehTroca) && <p class="nota">Cadastre a outra conta (como Inter, tipo investimento) no Lançar, em Entre contas, ou em Ajustes.</p>}
-          <div style="margin-top:12px"><button class="btn-tinta" disabled={!prontas.length || faltaCategoria || faltaCofrinho || faltaTroca} onClick={() => apiEntrada.importar(contaId, prontas).then((r) => aoImportado(r.importadas, r.cofrinhos_criados ?? 0)).catch((e: Error) => setAviso(e.message))}>Importar {prontas.length}</button></div>
+          <div style="margin-top:12px"><button class="btn-tinta" disabled={!prontas.length || faltaCategoria || faltaCofrinho || faltaTroca} onClick={() => apiEntrada.importar(contaId, prontas).then((r) => aoImportado(r.importadas, r.cofrinhos_criados ?? 0)).catch((e: Error) => setAviso(e.message))}><Icone nome="importar" tamanho={18} />Importar {prontas.length}</button></div>
         </>
       )}
     </div></div>

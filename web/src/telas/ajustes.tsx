@@ -25,7 +25,7 @@ export function Ajustes({ demo, nome, aoAvisar, aoVoltar }: { demo: boolean; nom
             <div class="item"><span class="nome">Chat por contexto</span><span class="sub">ligado</span><span class="sub">Envia: lançamentos do período, com nomes de pessoas trocados e números de conta apagados</span><span /></div>
             <div class="item"><span class="nome">Colar notificação (reserva)</span><span class="sub">ligado</span><span class="sub">Envia: o texto colado, sem números de conta</span><span /></div>
           </div><p class="sub">Nunca é enviado: nome de banco, número de conta ou cartão, CPF, e-mail. No modo demonstração a IA não é chamada.</p></section>
-          {!demo && <div class="rodape"><a class="btn" href="/auth/sair">Sair</a></div>}
+          {!demo && <div class="rodape"><a class="btn" href="/auth/sair"><Icone nome="sair" tamanho={18} />Sair</a></div>}
         </>
       )}
       {area === "Contas" && d && <Contas d={d} feito={feito} />}
@@ -52,7 +52,7 @@ function Contas({ d, feito }: P) {
     <form onSubmit={(e) => { e.preventDefault(); feito(apiAjustes.novaConta({ nome, tipo }), "Conta criada."); setNome(""); }}>
       <Campo id="a-cn" rot="Nova conta" value={nome} onInput={(e) => setNome(valor(e))} />
       <div class="chips">{Object.entries(TIPOS).map(([v, r]) => <button type="button" class="chip" aria-pressed={tipo === v} onClick={() => setTipo(v)}>{r}</button>)}</div>
-      <div style="margin-top:8px"><button class="btn-tinta" type="submit">Criar conta</button></div>
+      <div style="margin-top:8px"><button class="btn-tinta" type="submit"><Icone nome="mais" tamanho={18} />Criar conta</button></div>
     </form>
   </>);
 }
@@ -68,7 +68,7 @@ function Cartoes({ d, feito }: P) {
       <div class="kv"><Campo id="a-f" rot="Fecha no dia" type="number" value={f} onInput={(e) => setF(valor(e))} /><Campo id="a-v" rot="Vence no dia" type="number" value={v} onInput={(e) => setV(valor(e))} /></div>
       <Campo id="a-d" rot="Vale a partir de" type="date" value={desde} onInput={(e) => setDesde(valor(e))} />
       <p class="nota">Faturas anteriores a essa data continuam com os prazos antigos.</p>
-      <div style="margin-top:8px"><button class="btn-tinta" type="submit">Salvar prazos</button></div>
+      <div style="margin-top:8px"><button class="btn-tinta" type="submit"><Icone nome="ok" tamanho={18} />Salvar prazos</button></div>
     </form>}
   </>);
 }
@@ -87,7 +87,7 @@ function Categorias({ d, feito }: P) {
       <Campo id="a-kg" rot="Grupo (existente ou novo)" value={grupo} onInput={(e) => setGrupo(valor(e))} />
       <div class="chips"><button type="button" class="chip" aria-pressed={tipo === "expense"} onClick={() => setTipo("expense")}>Despesa</button><button type="button" class="chip" aria-pressed={tipo === "income"} onClick={() => setTipo("income")}>Receita</button></div>
       <Campo id="a-kp" rot="Previsto por mês (R$)" inputMode="decimal" autoComplete="off" value={prev} onInput={(e) => setPrev(valor(e))} />
-      <div style="margin-top:8px"><button class="btn-tinta" type="submit">Criar categoria</button></div>
+      <div style="margin-top:8px"><button class="btn-tinta" type="submit"><Icone nome="mais" tamanho={18} />Criar categoria</button></div>
     </form>
   </>);
 }
@@ -119,7 +119,7 @@ function Investimento({ d, feito }: P) {
       <div class="kv"><Campo id="r-p" rot="P/VP máximo" inputMode="decimal" autoComplete="off" value={r.max_pvp} onInput={(e) => setR({ ...r, max_pvp: valor(e) })} /><Campo id="r-w" rot="Peso máximo por ativo (%)" inputMode="decimal" autoComplete="off" value={r.max_peso} onInput={(e) => setR({ ...r, max_peso: valor(e) })} /></div>
       <Campo id="r-l" rot="Liquidez mínima (R$ por dia)" inputMode="decimal" autoComplete="off" value={r.min_liquidez} onInput={(e) => setR({ ...r, min_liquidez: valor(e) })} />
       {soma > 100 && <p class="erro-campo">As metas somam mais de 100%.</p>}
-      <div style="margin-top:12px"><button class="btn-tinta" type="submit" disabled={soma > 100}>Salvar regras</button></div>
+      <div style="margin-top:12px"><button class="btn-tinta" type="submit" disabled={soma > 100}><Icone nome="ok" tamanho={18} />Salvar regras</button></div>
     </form>
   );
 }
@@ -133,7 +133,7 @@ function Regras({ d, feito }: P) {
     <form onSubmit={(e) => { e.preventDefault(); feito(apiAjustes.novaRegra({ contem, categoria_id: cat || cats[0]?.id }), "Regra criada."); setContem(""); }}>
       <Campo id="g-t" rot="Se a descrição contém" value={contem} onInput={(e) => setContem(valor(e))} />
       <div class="campo"><label for="g-c">Categoria</label><select id="g-c" value={cat} onChange={(e) => setCat(valor(e))}>{cats.map((c) => <option value={c.id}>{c.grupo} · {c.nome}</option>)}</select></div>
-      <div style="margin-top:8px"><button class="btn-tinta" type="submit">Criar regra</button></div>
+      <div style="margin-top:8px"><button class="btn-tinta" type="submit"><Icone nome="mais" tamanho={18} />Criar regra</button></div>
     </form>
   </>);
 }
@@ -149,7 +149,7 @@ function Acesso({ aoAvisar }: { aoAvisar(t: string): void }) {
     <div class="lista">{a?.pessoas.filter((p) => !p.demo).map((p) => <div class="item"><span class="nome">{p.nome}</span><span class="sub">{p.ativa ? "ativa" : "desativada"}{p.admin ? " · admin" : ""}</span><span class="sub">{p.email}</span>{!p.admin && <button class="link-sub" onClick={() => feito(apiAjustes.ativar(p.id, !p.ativa), p.ativa ? "Desativada." : "Reativada.")}>{p.ativa ? "Desativar" : "Reativar"}</button>}</div>)}</div>
     <form onSubmit={(e) => { e.preventDefault(); feito(apiAjustes.adicionar({ email, nome }), "Pessoa adicionada."); setEmail(""); setNome(""); }}>
       <Campo id="x-e" rot="E-mail Google" value={email} onInput={(e) => setEmail(valor(e))} /><Campo id="x-n" rot="Nome" value={nome} onInput={(e) => setNome(valor(e))} />
-      <div style="margin-top:8px"><button class="btn-tinta" type="submit">Adicionar</button></div>
+      <div style="margin-top:8px"><button class="btn-tinta" type="submit"><Icone nome="mais" tamanho={18} />Adicionar</button></div>
     </form>
     {a && a.registro.length > 0 && <section><h2>Registro</h2><div class="lista">{a.registro.map((r) => <div class="item"><span class="nome">{r.quem} {r.acao} {r.alvo}</span><span /><span class="sub">{r.quando.slice(0, 16).replace("T", " ")}</span><span /></div>)}</div></section>}
   </>);

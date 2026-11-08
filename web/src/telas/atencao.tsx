@@ -84,7 +84,7 @@ export function NovaConta({ opcoes, aoFechar, aoSalvar }: { opcoes: Opcoes | nul
           <div class="campo"><label for="nc-conta">Paga com</label><select id="nc-conta" value={conta} onChange={(e) => setConta(e.currentTarget.value)}>{contas.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
           <div class="chips" role="group" aria-label="Urgência">{[["essential", "Essencial"], ["important", "Importante"], ["deferrable", "Adiável"]].map(([v, r]) => <button type="button" class="chip" aria-pressed={urg === v} onClick={() => setUrg(v!)}>{r}</button>)}</div>
           <p class="nota">Já reduz o livre deste mês. Quando você lançar o pagamento pela Atenção, ela sai de "a pagar" e entra no gasto.</p>
-          <div style="margin-top:12px"><button type="submit" class="btn-tinta">Salvar</button></div>
+          <div style="margin-top:12px"><button type="submit" class="btn-tinta"><Icone nome="ok" tamanho={18} />Salvar</button></div>
         </form>
       </div>
     </div>
@@ -100,7 +100,7 @@ export function Receber({ entrada, ptax, descontoPb, aoFechar, aoSalvar }: { ent
         <form onSubmit={(e) => { e.preventDefault(); aoSalvar(recebido); }}>
           <div class="campo"><label for="r-val">Chegou em reais (como o PayPal mostra)</label><input id="r-val" class="grande-in" inputMode="decimal" autoComplete="off" value={recebido} onInput={(e) => setRecebido(e.currentTarget.value)} /></div>
           <p class="nota">{ptax ? `PTAX de hoje ${ptax.replace(".", ",")}. A estimativa já descontava ${(descontoPb / 100).toFixed(1).replace(".", ",")}%, a média medida até agora.` : "Sem PTAX agora: o desconto do PayPal fica sem medir neste recebimento."} Ao salvar, o app mostra quanto o PayPal ficou.</p>
-          <div style="margin-top:12px"><button type="submit" class="btn-tinta">Registrar recebimento</button></div>
+          <div style="margin-top:12px"><button type="submit" class="btn-tinta"><Icone nome="receber" tamanho={18} />Registrar recebimento</button></div>
         </form>
       </div>
     </div>

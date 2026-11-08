@@ -167,7 +167,7 @@ a{color:var(--azul)}
 .erro-campo{color:var(--fora);font-size:14px;margin-top:8px}
 .btn-tinta[disabled]{opacity:.7}
 nav.barra button:active,.btn:active,.chip:active,.item:active{transform:scale(.98)}
-.achado > span[aria-hidden]{font-weight:800;color:var(--fora);width:20px;text-align:center}
+.achado > svg{flex:none;color:var(--fora);margin-top:1px}
 .btn[disabled]{opacity:.5;cursor:default}
 .link-sub{color:var(--azul);font-weight:600;font-size:14px;min-height:32px;padding:0;text-align:left}
 .achado > div{min-width:0;overflow-wrap:anywhere}

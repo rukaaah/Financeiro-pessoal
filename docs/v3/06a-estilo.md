@@ -157,3 +157,13 @@ celular.
 - Oracle como referência principal, com o azul no lugar do grafite.
 - Números na sans do sistema com algarismo tabular, em vez de monoespaçada.
 - Botão Lançar redondo no centro da barra inferior.
+
+## Design sheet: ícones, botões e avisos (2026-11-08)
+
+Página navegável com os exemplos: artifact privado "Design sheet do Financeiro" (link fora do repo).
+
+- Todo botão (`.btn`, `.btn-cheio`, `.btn-claro`, `.btn-tinta`, `.btn-ia`) tem ícone à esquerda e um verbo. Link de texto (`.link-sub`) e chip não têm.
+- Ícone de traço, grade 24, linha 1,8, em `web/src/icone.tsx`. Tamanho 16 no bloco azul, 18 nos demais, 22 na barra de abas.
+- Mesmo verbo, mesmo ícone em todas as abas: salvar `ok`, criar `mais`, pagar `pagar`, receber `receber`, excluir `excluir`.
+- Um aviso por assunto em cada página. A faixa (`<Aviso>`) fica para o que pede ação agora e para a descoberta do mês; o assunto da faixa sai da lista Atenção daquela página.
+- Aviso diz o fato e a ação, sem explicar regra do app. Fórmulas não aparecem na tela.

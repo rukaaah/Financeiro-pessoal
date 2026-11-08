@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { apiMes, brl, diaMes, type CategoriaDoMes, type DetalheCategoria, type Mes as MesDados, num } from "../api.ts";
-import { Icone } from "../icone.tsx";
+import { Aviso, Icone } from "../icone.tsx";
 import { ListaDeAtencao, SaldoProjetado } from "./atencao.tsx";
 import type { ItemAtencao } from "../api.ts";
 
@@ -14,6 +14,8 @@ const semRS = (t: string) => brl(t).replace("R$ ", "");
 export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, aoAgir, aoPerguntar }: { mes: string; dados: MesDados | null; aoTrocarMes(m: string): void; aoAbrirCategoria(c: CategoriaDoMes): void; aoVerAtencao(): void; aoAgir(i: ItemAtencao): void; aoPerguntar(): void }) {
   const d = dados;
   const grupos = [...new Set(d?.categorias.map((c) => c.grupo) ?? [])];
+  // Um aviso por assunto na página: o que já está numa faixa acima não se repete na lista.
+  const naLista = (d?.atencao ?? []).filter((i) => i.acao.tipo !== "corrigir-cofrinho" && !(i.acao.tipo === "ver-categoria" && i.acao.id === d?.descoberta_categoria));
   return (
     <>
       <header><div><h1>Mês</h1>
@@ -24,7 +26,6 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
       <div class="heroi" aria-busy={!d}>
         <div class="rot">Livre para gastar até {d ? diaMes(`${mes}-${String(d.dias_no_mes).padStart(2, "0")}`) : "o fim do mês"}</div>
         <div class="grande">{d ? brl(d.livre) : <span class="esqueleto" />}</div>
-        <p class="conta">{d ? (d.dias_restantes > 0 && num(d.livre) > 0 ? `${brl(d.por_dia)} por dia nos ${d.dias_restantes} dias · ` : "") + "previsto − gasto − a pagar" : " "}</p>
         <div class="trilho" role="img" aria-label={d ? `Gasto ${pct(d.gasto, d.previsto)}% do previsto` : "Carregando"}>
           {d && <><i style={`width:${Math.min(100, pct(d.gasto, d.previsto))}%;background:var(--heroi-t)`} /><i style={`width:${Math.max(0, Math.min(100 - pct(d.gasto, d.previsto), pct(d.a_pagar, d.previsto)))}%;background:var(--azul-claro)`} /></>}
         </div>
@@ -37,15 +38,15 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
       </div>
 
       {d?.atencao.filter((i) => i.acao.tipo === "corrigir-cofrinho").map((i) => (
-        <div class="achado" role="alert"><span aria-hidden="true">!</span><div><strong>{i.titulo} ({brl(i.valor)}).</strong> Ele já tinha dinheiro antes do extrato. <button class="link-sub" onClick={() => aoAgir(i)}>Corrigir saldo</button></div></div>
+        <Aviso grave>{<><strong>{i.titulo} ({brl(i.valor)}).</strong> <button class="link-sub" onClick={() => aoAgir(i)}>Corrigir saldo</button></>}</Aviso>
       ))}
 
-      {d?.descoberta && <div class="achado" role="note"><span aria-hidden="true">!</span><div>{d.descoberta}</div></div>}
+      {d?.descoberta && <Aviso>{d.descoberta}</Aviso>}
 
       {d && (
         <section aria-labelledby="h-at">
-          <h2 id="h-at">Atenção · {d.atencao.length} <button class="link-sub" onClick={aoVerAtencao}>Ver todos</button></h2>
-          <ListaDeAtencao itens={d.atencao} limite={3} aoAgir={aoAgir} />
+          <h2 id="h-at">Atenção · {naLista.length} <button class="link-sub" onClick={aoVerAtencao}>Ver todos</button></h2>
+          <ListaDeAtencao itens={naLista} limite={3} aoAgir={aoAgir} />
         </section>
       )}
       {d && <SaldoProjetado dados={d} />}
@@ -88,7 +89,6 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
             <div class="item"><span class="nome">Guardado no mês</span><span class="valor">{brl(d.guardado)}</span><span class="sub">em cofrinhos e investimentos</span><span /></div>
           </div>
           <div class="linha-total"><span>Sobra do mês</span><span>{brl(d.sobra)}</span></div>
-          <p class="sub">Renda − gasto − guardado.</p>
         </section>
       )}
       </div></div>
@@ -119,7 +119,7 @@ export function DetalheDaCategoria({ c, mes, aoFechar, aoSalvar, aoPerguntar }: 
             <button type="button" class="chip" aria-pressed={padrao} onClick={() => setPadrao(true)}>Daqui em diante</button>
           </div>
           <p class="nota">{padrao ? "Muda o padrão a partir deste mês. Os meses anteriores continuam como estavam." : "Vale só para este mês; o padrão continua o mesmo."}</p>
-          <div style="margin-top:12px"><button type="submit" class="btn-tinta">Salvar previsto</button></div>
+          <div style="margin-top:12px"><button type="submit" class="btn-tinta"><Icone nome="ok" tamanho={18} />Salvar previsto</button></div>
         </form>
         {det && det.lancamentos.length > 0 && (
           <section><h2>Lançamentos do mês</h2><div class="lista">{det.lancamentos.map((l) => (

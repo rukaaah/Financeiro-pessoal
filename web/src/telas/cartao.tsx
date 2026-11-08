@@ -32,7 +32,7 @@ export function Cartao({ dados, aoPagar }: { dados: { cartoes: CartaoDados[]; co
           : fatura.situacao === "futura" ? `parcelas que já caem nesta fatura · vence ${dataCurta(fatura.vencimento)}`
           : `${fatura.situacao === "parcial" ? `faltam, de ${brl(fatura.total)} · ` : ""}vence ${dataCurta(fatura.vencimento)}${diasAte(fatura.vencimento) >= 0 ? `, em ${diasAte(fatura.vencimento)} dias` : `, há ${-diasAte(fatura.vencimento)} dias`}`}</p>
         {fatura && fatura.situacao !== "paga" && num(fatura.falta) > 0 && cartao && (
-          <div class="acao-heroi"><button class="btn-cheio" onClick={() => aoPagar(cartao, fatura)}>{fatura.situacao === "futura" ? "Antecipar fatura" : "Pagar fatura"}</button></div>
+          <div class="acao-heroi"><button class="btn-cheio" onClick={() => aoPagar(cartao, fatura)}><Icone nome="pagar" tamanho={16} />{fatura.situacao === "futura" ? "Antecipar fatura" : "Pagar fatura"}</button></div>
         )}
       </div>
       {cartao && (
@@ -84,7 +84,7 @@ export function PagarFatura({ cartao, fatura, opcoes, aoFechar, aoPagar }: { car
             : <p class="nota">{conferido?.ok && conferido.antecipado
               ? <>{conferido.quita ? "Antecipa a fatura inteira" : <>Antecipa parte; ficam <b>{formatar(conferido.resta)}</b> para o vencimento</>}, {conferido.diasAntes} {conferido.diasAntes === 1 ? "dia" : "dias"} antes de {dataCurta(fatura.vencimento)}. {fatura.situacao === "aberta" || fatura.situacao === "futura" ? "Compras até o fechamento ainda entram nesta fatura. " : ""}</>
               : "Valor igual ao que falta: a fatura fica paga. Menor: fica parcial. "}Não entra como gasto.</p>}
-          <div style="margin-top:16px"><button type="submit" class="btn-tinta" disabled={!conferido?.ok}>{antecipa ? "Antecipar" : "Pagar"}</button></div>
+          <div style="margin-top:16px"><button type="submit" class="btn-tinta" disabled={!conferido?.ok}><Icone nome="pagar" tamanho={18} />{antecipa ? "Antecipar" : "Pagar"}</button></div>
         </form>
       </div>
     </div>

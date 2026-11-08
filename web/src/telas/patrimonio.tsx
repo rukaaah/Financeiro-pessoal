@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import { brl, type Cofrinho, diaMes, hoje, num, type Patrimonio as Dados } from "../api.ts";
-import { Icone } from "../icone.tsx";
+import { Aviso, Icone } from "../icone.tsx";
 import { Investimentos } from "./investimentos.tsx";
 import type { Opcoes } from "../api.ts";
 
@@ -23,7 +23,7 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
       <header><div><h1>Patrimônio</h1><div class="sub">hoje, {dm(hoje())}</div></div></header>
       <div class="abas" role="tablist">{(["Visão", "Cofrinhos", "Investimentos", "A receber"] as Aba[]).map((a) => <button role="tab" aria-selected={a === aba} onClick={() => setAba(a)}>{a}</button>)}</div>
       {d?.cofrinhos.filter((k) => num(k.saldo) < 0).map((k) => (
-        <div class="achado" role="alert"><span aria-hidden="true">!</span><div><strong>Cofrinho {k.nome} está negativo ({brl(k.saldo)}).</strong> Cofrinho não fica negativo: ele já tinha dinheiro antes do extrato. <button class="link-sub" onClick={() => aoMover({ tipo: "ajustar", id: k.id, nome: k.nome, saldo: k.saldo })}>Corrigir saldo</button></div></div>
+        <Aviso grave>{<><strong>Cofrinho {k.nome} está negativo ({brl(k.saldo)}).</strong> <button class="link-sub" onClick={() => aoMover({ tipo: "ajustar", id: k.id, nome: k.nome, saldo: k.saldo })}>Corrigir saldo</button></>}</Aviso>
       ))}
       {aba === "Visão" && (
         <div class="grade-desk">
@@ -32,7 +32,7 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
             <section><h2>As partes</h2>
               <div class="lista">
                 <div class="item"><span class="nome com-icone"><Icone nome="contas" tamanho={18} />Contas</span><span class="valor">{brl(d.partes.contas)}</span><span class="sub">{d.contas.filter((k) => k.tipo !== "investment").map((k) => k.nome).join(", ") || "—"}</span><span /></div>
-                <div class="item"><span class="nome com-icone"><Icone nome="cofrinho" tamanho={18} />Cofrinhos</span><span class="valor">{brl(d.partes.cofrinhos)}</span><span class="sub">{d.cofrinhos.length} cofrinhos, com os CDBs</span><span /></div>
+                <div class="item"><span class="nome com-icone"><Icone nome="cofrinho" tamanho={18} />Cofrinhos</span><span class="valor">{brl(d.partes.cofrinhos)}</span><span class="sub">{d.cofrinhos.length} cofrinhos</span><span /></div>
                 <div class="item"><span class="nome com-icone"><Icone nome="investimentos" tamanho={18} />Investimentos</span><span class="valor">{brl(d.partes.investimentos)}</span><span class="sub">carteira detalhada na fatia 7</span><span /></div>
                 <div class="item"><span class="nome com-icone"><Icone nome="cartao" tamanho={18} />Cartão</span><span class="valor">{brl(`-${d.partes.cartao}`.replace("--", ""))}</span><span class="sub">fatura aberta e parcelas futuras</span><span /></div>
               </div>
@@ -78,7 +78,7 @@ export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { 
           {d?.receber.map((r) => (
             <section><h2><span>{r.pessoa ?? r.nome}</span><span>{brl(r.saldo)}</span></h2>
               <div class="lista">{r.itens.map((i) => <div class="item"><span class="nome">{i.descricao}</span><span class="valor">{brl(i.valor, true)}</span><span class="sub">{dm(i.data)}</span><span /></div>)}</div>
-              {num(r.saldo) > 0 && <div class="rodape" style="margin-top:8px"><button class="btn" onClick={() => aoMover({ tipo: "receber-de", id: r.id, nome: r.pessoa ?? r.nome, saldo: r.saldo })}>Registrar recebimento</button></div>}
+              {num(r.saldo) > 0 && <div class="rodape" style="margin-top:8px"><button class="btn" onClick={() => aoMover({ tipo: "receber-de", id: r.id, nome: r.pessoa ?? r.nome, saldo: r.saldo })}><Icone nome="receber" tamanho={18} />Registrar recebimento</button></div>}
             </section>
           ))}
         </>
@@ -112,7 +112,7 @@ export function Mover({ m, contas, aoFechar, aoSalvar }: { m: Movimento; contas:
               <option value="use">Usei no objetivo</option><option value="loan">Empréstimo (fica a devolver)</option><option value="withdrawal">Retirada definitiva</option>
             </select></div>
           )}
-          <div style="margin-top:16px"><button type="submit" class="btn-tinta">Salvar</button></div>
+          <div style="margin-top:16px"><button type="submit" class="btn-tinta"><Icone nome="ok" tamanho={18} />Salvar</button></div>
         </form>
       </div>
     </div>

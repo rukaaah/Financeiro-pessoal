@@ -154,7 +154,7 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
                       <option value="+">Novo grupo…</option>
                     </select>
                     {novaCat.grupo === "+" && <input aria-label="Nome do novo grupo" placeholder="Nome do grupo, como Casa…" maxLength={40} value={novaCat.grupoNovo} onInput={(e) => setNovaCat({ ...novaCat, grupoNovo: e.currentTarget.value })} />}
-                    <div class="mini-acoes"><button type="button" class="btn" disabled={criando} onClick={criarCategoria}>{criando ? "Criando…" : "Criar e usar"}</button><button type="button" class="link-sub" onClick={() => setNovaCat(null)}>Cancelar</button></div>
+                    <div class="mini-acoes"><button type="button" class="btn" disabled={criando} onClick={criarCategoria}><Icone nome="mais" tamanho={18} />{criando ? "Criando…" : "Criar e usar"}</button><button type="button" class="link-sub" onClick={() => setNovaCat(null)}>Cancelar</button></div>
                   </div>}
             </div>}
             <div class={classeDoCampo(falta.conta, tentou)}><Rotulo para="f-conta" texto={intencao === "gastei" ? "Pago com" : entreContas ? "Saiu de" : "Entrou em"} falta={falta.conta} />
@@ -174,7 +174,7 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
                       <option value="investment">Investimento</option>
                       <option value="checking">Conta corrente</option>
                     </select>
-                    <div class="mini-acoes"><button type="button" class="btn" disabled={criando} onClick={criarConta}>{criando ? "Criando…" : "Criar e usar"}</button><button type="button" class="link-sub" onClick={() => setNovaConta(null)}>Cancelar</button></div>
+                    <div class="mini-acoes"><button type="button" class="btn" disabled={criando} onClick={criarConta}><Icone nome="mais" tamanho={18} />{criando ? "Criando…" : "Criar e usar"}</button><button type="button" class="link-sub" onClick={() => setNovaConta(null)}>Cancelar</button></div>
                   </div>}
             </div>}
             {entreContas && <p class="nota">Troca de conta <b>não conta como gasto</b>. {destino?.tipo === "investment" ? <>Para investimento, entra como <b>guardado</b> no mês.</> : "Só muda o dinheiro de lugar."}</p>}
@@ -196,7 +196,7 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
             <div class="campo"><label for="f-data">{intencao === "vou-receber" ? "Data prevista" : "Data"}</label><input id="f-data" type="date" value={data} onInput={(e) => setData(e.currentTarget.value)} /></div>
             <div class={classeDoCampo(falta.nome, tentou)}><Rotulo para="f-desc" texto={intencao === "vou-receber" ? "Nome" : repete ? "Nome da conta" : "Descrição (opcional)"} falta={falta.nome} /><input id="f-desc" value={descricao} placeholder={repete ? "Aluguel, academia…" : entreContas ? `Transferência para ${destino?.nome ?? "…"}` : undefined} maxLength={200} onInput={(e) => setDescricao(e.currentTarget.value)} /></div>
             {erro && <p class="erro-campo" role="alert">{erro}</p>}
-            <div style="margin-top:16px"><button type="submit" class="btn-tinta">{intencao === "vou-receber" ? "Salvar previsão" : entreContas ? "Salvar transferência" : "Salvar"}</button></div>
+            <div style="margin-top:16px"><button type="submit" class="btn-tinta"><Icone nome="ok" tamanho={18} />{intencao === "vou-receber" ? "Salvar previsão" : entreContas ? "Salvar transferência" : "Salvar"}</button></div>
           </form>
         )}
       </div>
