@@ -38,7 +38,7 @@ export function brl(texto: string, comSinal = false): string {
 export const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export interface CategoriaDoMes { id: string; nome: string; grupo: string; previsto: string; gasto: string; media3m: string; ajustado: boolean; estado: "dentro" | "perto" | "fora" }
-export interface ItemAtencao { chave: string; gravidade: "critico" | "atencao" | "informativo"; titulo: string; detalhe: string; valor: string; data: string | null; acao: { tipo: "ver-categoria"; id: string } | { tipo: "pagar-conta"; id: string } | { tipo: "pagar-fatura"; cartao: string; mes: string } | { tipo: "receber"; id: string } | { tipo: "nenhuma" } }
+export interface ItemAtencao { chave: string; gravidade: "critico" | "atencao" | "informativo"; titulo: string; detalhe: string; valor: string; data: string | null; acao: { tipo: "ver-categoria"; id: string } | { tipo: "pagar-conta"; id: string } | { tipo: "pagar-fatura"; cartao: string; mes: string } | { tipo: "receber"; id: string } | { tipo: "corrigir-cofrinho"; id: string; nome: string } | { tipo: "nenhuma" } }
 export interface ContaDoMes { id: string; nome: string; valor: string; vencimento: string; urgencia: "essential" | "important" | "deferrable"; paga: boolean; noCartao: boolean }
 export interface EntradaDoMes { id: string; descricao: string; data: string; estimativa: string }
 export interface Mes { atencao: ItemAtencao[]; projecao: { dia: string; saldo: string }[]; contas: ContaDoMes[]; entradas: EntradaDoMes[]; ptax: string | null; desconto_pb: number; saldo_hoje: string; mes: string; previsto: string; gasto: string; a_pagar: string; livre: string; por_dia: string; dia_do_mes: number; dias_no_mes: number; dias_restantes: number; renda: string; renda_prevista: string; guardado: string; sobra: string; descoberta: string | null; categorias: CategoriaDoMes[] }
@@ -83,6 +83,7 @@ export const apiPatrimonio = {
   resgatar: (corpo: object) => pedir("/api/resgatar", { method: "POST", body: JSON.stringify(corpo) }),
   receberDe: (corpo: object) => pedir("/api/receber-de", { method: "POST", body: JSON.stringify(corpo) }),
   conciliar: (corpo: object) => pedir<{ diferenca: string }>("/api/conciliar", { method: "POST", body: JSON.stringify(corpo) }),
+  ajustarCofrinho: (corpo: { cofrinho_id: string; saldo: string }) => pedir<{ saldo: string }>("/api/cofrinhos/saldo", { method: "POST", body: JSON.stringify(corpo) }),
 };
 
 export interface Ativo { id: string; ticker: string; nome: string; classe: string; classe_nome: string; quantidade: number; preco_medio: string; preco: string | null; valor: string; custo: string; peso: number; variacao_pm: number; variacao_mes: number | null; pvp: number | null; dy: number | null; liquidez: number | null; cotado_em: string | null; fonte: string | null; atualizado_em: string | null; variacao_dia: number | null; variacao_30d: number | null; vp_cota: number | null; vp_mes: string | null }

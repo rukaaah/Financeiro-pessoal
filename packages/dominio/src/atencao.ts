@@ -12,6 +12,7 @@ export type Urgencia = "essential" | "important" | "deferrable";
 export interface ContaRecorrente { id: string; nome: string; valor: Centavos; vencimento: string; urgencia: Urgencia; paga: boolean; noCartao: boolean }
 export interface FaturaPendente { cartao: string; nome: string; mes: string; vencimento: string; falta: Centavos }
 export interface EntradaPrevista { id: string; descricao: string; data: string; estimativa: Centavos }
+export interface CofrinhoNegativo { id: string; nome: string; saldo: Centavos }
 
 export interface Item {
   readonly chave: string;
@@ -20,7 +21,7 @@ export interface Item {
   readonly detalhe: string;
   readonly valor: Centavos;
   readonly data: string | null;
-  readonly acao: { tipo: "ver-categoria"; id: string } | { tipo: "pagar-conta"; id: string } | { tipo: "pagar-fatura"; cartao: string; mes: string } | { tipo: "receber"; id: string } | { tipo: "nenhuma" };
+  readonly acao: { tipo: "ver-categoria"; id: string } | { tipo: "pagar-conta"; id: string } | { tipo: "pagar-fatura"; cartao: string; mes: string } | { tipo: "receber"; id: string } | { tipo: "corrigir-cofrinho"; id: string; nome: string } | { tipo: "nenhuma" };
 }
 
 export const URGENCIA: Record<Urgencia, string> = { essential: "Essencial", important: "Importante", deferrable: "Adiável" };
@@ -33,8 +34,17 @@ const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 export function itensDeAtencao(e: {
   hoje: string; mes: string; categorias: readonly Categoria[]; contas: readonly ContaRecorrente[]; faturas: readonly FaturaPendente[];
   entradas: readonly EntradaPrevista[]; adiados: ReadonlyMap<string, string | null>; formatar(v: Centavos): string; menorSaldo?: { dia: string; valor: Centavos } | null;
+  cofrinhosNegativos?: readonly CofrinhoNegativo[];
 }): Item[] {
   const itens: Item[] = [];
+  // Cofrinho não fica negativo: quando fica, é porque ele já tinha dinheiro antes do
+  // primeiro lançamento. O aviso não pode ser adiado nem marcado como resolvido;
+  // só some quando o saldo é corrigido.
+  const fixos: Item[] = (e.cofrinhosNegativos ?? []).filter((k) => k.saldo < 0n).map((k) => ({
+    chave: `cofrinho-negativo:${k.id}`, gravidade: "critico", titulo: `Cofrinho ${k.nome} está negativo`,
+    detalhe: "Cofrinho não fica negativo: ele já tinha dinheiro antes do extrato. Corrija com o saldo real.",
+    valor: k.saldo, data: null, acao: { tipo: "corrigir-cofrinho", id: k.id, nome: k.nome },
+  }));
   for (const c of e.categorias) {
     if (c.estado === "dentro") continue;
     itens.push({
@@ -68,9 +78,9 @@ export function itensDeAtencao(e: {
   if (e.menorSaldo && e.menorSaldo.valor < 0n) {
     itens.push({ chave: `saldo:${e.mes}`, gravidade: "critico", titulo: `Saldo fica negativo em ${dm(e.menorSaldo.dia)}`, detalhe: "Pela projeção das contas, da fatura e das entradas previstas.", valor: -e.menorSaldo.valor, data: e.menorSaldo.dia, acao: { tipo: "nenhuma" } });
   }
-  return itens
+  return [...fixos, ...itens
     .filter((i) => { if (!e.adiados.has(i.chave)) return true; const ate = e.adiados.get(i.chave); return ate != null && ate <= e.hoje; })
-    .sort((a, b) => ORDEM[a.gravidade] - ORDEM[b.gravidade] || (a.data ?? "").localeCompare(b.data ?? ""));
+    .sort((a, b) => ORDEM[a.gravidade] - ORDEM[b.gravidade] || (a.data ?? "").localeCompare(b.data ?? ""))];
 }
 
 /**

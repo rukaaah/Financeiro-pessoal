@@ -36,6 +36,10 @@ export function Mes({ mes, dados, aoTrocarMes, aoAbrirCategoria, aoVerAtencao, a
         {d && <div class="pe"><span>{pct(d.gasto, d.previsto)}% gasto · dia {d.dia_do_mes} de {d.dias_no_mes}</span><button class="btn-ia mini" onClick={aoPerguntar}><Icone nome="ia" tamanho={16} />Perguntar à IA</button></div>}
       </div>
 
+      {d?.atencao.filter((i) => i.acao.tipo === "corrigir-cofrinho").map((i) => (
+        <div class="achado" role="alert"><span aria-hidden="true">!</span><div><strong>{i.titulo} ({brl(i.valor)}).</strong> Ele já tinha dinheiro antes do extrato. <button class="link-sub" onClick={() => aoAgir(i)}>Corrigir saldo</button></div></div>
+      ))}
+
       {d?.descoberta && <div class="achado" role="note"><span aria-hidden="true">!</span><div>{d.descoberta}</div></div>}
 
       {d && (

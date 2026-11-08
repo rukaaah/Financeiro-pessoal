@@ -54,6 +54,28 @@ describe("patrimônio e cofrinhos pelo Worker, como papel app", () => {
     expect(r.diferenca).toBe("10.00");
   });
 
+  it("cofrinho criado no negativo: aviso fixo no Mês até corrigir o saldo, sem mexer no guardado do mês", async () => {
+    const u = (await owner.query("select id from app_users where email = $1", [email("a")])).rows[0].id as string;
+    ids.freela = (await owner.query("insert into accounts (user_id, name, kind) values ($1, 'Freelancer', 'goal') returning id", [u])).rows[0].id as string;
+    expect((await post("a", "/api/resgatar", { conta_id: ids.picpay, cofrinho_id: ids.freela, valor: "100,00", data: "2026-01-09", finalidade: "withdrawal" })).status).toBe(201);
+    const freela = async () => (await ver("a")).cofrinhos.find((k) => k.id === ids.freela)!.saldo;
+    type M = { guardado: string; atencao: { chave: string; acao: { tipo: string } }[] };
+    const mes = async () => (await (await como("a").request("/api/mes?mes=2026-01")).json()) as M;
+    expect(await freela()).toBe("-100.00");
+    const antes = await mes();
+    expect(antes.atencao[0]).toMatchObject({ chave: `cofrinho-negativo:${ids.freela}`, acao: { tipo: "corrigir-cofrinho" } });
+
+    expect((await post("a", "/api/cofrinhos/saldo", { cofrinho_id: ids.freela, saldo: "-5,00" })).status).toBe(400);
+    expect((await post("b", "/api/cofrinhos/saldo", { cofrinho_id: ids.freela, saldo: "1,00" })).status).toBe(404);
+    expect((await post("a", "/api/cofrinhos/saldo", { cofrinho_id: ids.picpay, saldo: "1,00" })).status).toBe(404);
+    const r = await post("a", "/api/cofrinhos/saldo", { cofrinho_id: ids.freela, saldo: "900,00" });
+    expect([r.status, await r.json()]).toEqual([200, { saldo: "900.00" }]);
+    expect(await freela()).toBe("900.00");
+    const depois = await mes();
+    expect(depois.atencao.some((i) => i.chave.startsWith("cofrinho-negativo:"))).toBe(false);
+    expect(depois.guardado).toBe(antes.guardado);
+  });
+
   it("B não guarda no cofrinho de A nem vê o patrimônio de A", async () => {
     expect((await post("b", "/api/guardar", { conta_id: ids.picpay, cofrinho_id: ids.reserva, valor: "1,00" })).status).toBe(400);
     expect((await ver("b")).patrimonio).toBe("0.00");

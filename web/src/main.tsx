@@ -102,6 +102,7 @@ function App() {
       if (c && f) setFolha({ tipo: "pagar", c, f });
     }
     if (a.tipo === "receber") setFolha({ tipo: "receber", id: a.id });
+    if (a.tipo === "corrigir-cofrinho") setFolha({ tipo: "mover", m: { tipo: "ajustar", id: a.id, nome: a.nome, saldo: i.valor } });
   }
 
   function adiar(i: ItemAtencao, ate: string | null) {
@@ -174,6 +175,7 @@ function App() {
         const feito = m.tipo === "guardar" ? apiPatrimonio.guardar({ ...corpo, cofrinho_id: m.cofrinho.id })
           : m.tipo === "resgatar" ? apiPatrimonio.resgatar({ ...corpo, cofrinho_id: m.cofrinho.id })
           : m.tipo === "receber-de" ? apiPatrimonio.receberDe({ ...corpo, receber_id: m.id })
+          : m.tipo === "ajustar" ? apiPatrimonio.ajustarCofrinho({ cofrinho_id: m.id, saldo: String(corpo.valor ?? "") })
           : apiPatrimonio.conciliar(corpo).then((r) => { avisar({ texto: r.diferenca === "0.00" ? "Conferido: o saldo bate com o banco." : `Diferença de R$ ${r.diferenca.replace(".", ",")} contra o banco.` }); return r; });
         feito.then(() => recarregar()).then(() => { if (m.tipo !== "conciliar") avisar({ texto: "Salvo." }); }).catch((e: Error) => avisar({ texto: e.message }));
       }} />}
