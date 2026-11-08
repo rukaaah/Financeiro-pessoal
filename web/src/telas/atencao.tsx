@@ -1,10 +1,10 @@
 import { useState } from "preact/hooks";
-import { apiAtencao, brl, hoje, type ItemAtencao, type Mes, num, type Opcoes } from "../api.ts";
+import { apiAtencao, brl, diaMes, hoje, type ItemAtencao, type Mes, num, type Opcoes } from "../api.ts";
 import { Icone } from "../icone.tsx";
 
 const SELO = { critico: ["fora", "crítico"], atencao: ["perto", "atenção"], informativo: ["", "informativo"] } as const;
 const ACAO: Record<string, string> = { "ver-categoria": "Ver", "pagar-conta": "Pagar", "pagar-fatura": "Pagar", receber: "Receber", "corrigir-cofrinho": "Corrigir", nenhuma: "" };
-const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+const dm = diaMes;
 export const amanha = () => new Date(Date.parse(`${hoje()}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
 export function ListaDeAtencao({ itens, limite, aoAgir, aoAdiar }: { itens: ItemAtencao[]; limite?: number; aoAgir(i: ItemAtencao): void; aoAdiar?(i: ItemAtencao, ate: string | null): void }) {

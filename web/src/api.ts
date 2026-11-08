@@ -53,6 +53,14 @@ export const apiMes = {
 /** Centavos a partir do texto de numeric, só para comparar e desenhar barras. */
 export const num = (t: string) => Number(t);
 
+const FMT_DIA_MES = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+const FMT_DIA_COMPLETO = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+const meioDia = (d: string) => new Date(`${d.slice(0, 10)}T12:00:00Z`);
+/** "2026-11-05" → "05/11". Aceita data ou data-hora ISO. */
+export const diaMes = (d: string) => FMT_DIA_MES.format(meioDia(d));
+/** "2026-11-05" → "qua, 05/11/2026": o dia da semana ajuda a lembrar onde foi o gasto. */
+export const diaCompleto = (d: string) => FMT_DIA_COMPLETO.format(meioDia(d)).replace(".", "");
+
 export interface Fatura { mes: string; vencimento: string; total: string; pago: string; falta: string; situacao: "paga" | "parcial" | "aberta" | "atrasada" | "futura" }
 export interface Cartao { id: string; nome: string; fechamento: number | null; vencimento: number | null; comprometido: string; faturas: Fatura[] }
 export interface Compra { id: string; cartao: string; mes: string; data: string; descricao: string; valor: string; categoria: string | null; parcela: number | null; parcelas: number | null }

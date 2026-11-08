@@ -1,11 +1,11 @@
 import { deDigitado, deNumeric, formatar, pagamentoDaFatura } from "@financeiro/dominio";
 import { useState } from "preact/hooks";
-import { brl, type Cartao as CartaoDados, type Compra, type Fatura, hoje, num, type Opcoes } from "../api.ts";
+import { brl, type Cartao as CartaoDados, diaMes, type Compra, type Fatura, hoje, num, type Opcoes } from "../api.ts";
 import { Icone } from "../icone.tsx";
 
 const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const rotulo = (m: string) => `${CURTOS[Number(m.slice(5, 7)) - 1]}/${m.slice(2, 4)}`.replace(/^./, (c) => c.toUpperCase());
-const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+const dataCurta = diaMes;
 const diasAte = (d: string) => Math.round((Date.parse(`${d}T12:00:00`) - Date.parse(`${hoje()}T12:00:00`)) / 86400000);
 
 export function Cartao({ dados, aoPagar }: { dados: { cartoes: CartaoDados[]; compras: Compra[] } | null; aoPagar(c: CartaoDados, f: Fatura): void }) {

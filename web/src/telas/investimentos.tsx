@@ -1,10 +1,10 @@
 import { useEffect, useState } from "preact/hooks";
-import { apiInvest, brl, hoje, type Investimentos as Dados, num, type Opcoes } from "../api.ts";
+import { apiInvest, brl, diaMes, hoje, type Investimentos as Dados, num, type Opcoes } from "../api.ts";
 import { Icone } from "../icone.tsx";
 
 const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const FONTES: Record<string, string> = { b3: "fechamento da B3", brapi: "brapi, até 30 min de atraso", demo: "dados fictícios", investidor10: "Investidor10" };
-const quando = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}${iso.length > 10 ? ` às ${iso.slice(11, 16)}` : ""}` : "");
+const quando = (iso: string | null) => (iso ? `${diaMes(iso)}${iso.length > 10 ? ` às ${iso.slice(11, 16)}` : ""}` : "");
 const pct = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1).replace(".", ",")}%`);
 
 function Barras({ vals, destacaUltimo, rotulo }: { vals: { mes: string; v: number }[]; destacaUltimo?: boolean; rotulo: string }) {
@@ -140,7 +140,7 @@ function Comprar({ opcoes, aoFechar, aoSalvar }: { opcoes: Opcoes | null; aoFech
     <div class="veu" onClick={(e) => e.target === e.currentTarget && aoFechar()}><div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-cp">
       <div class="topo"><h3 id="t-cp">Comprei um ativo</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
       <form onSubmit={(e) => { e.preventDefault(); aoSalvar(f); }}>
-        <div class="campo"><label for="cp-t">Ativo</label><input id="cp-t" value={f.ticker} placeholder="MXRF11…" onInput={set("ticker")} /></div>
+        <div class="campo"><label for="cp-t">Ativo</label><input id="cp-t" value={f.ticker} placeholder="MXRF11…" autoComplete="off" autocapitalize="characters" spellcheck={false} onInput={set("ticker")} /></div>
         <div class="campo"><label for="cp-c">Classe</label><select id="cp-c" value={f.classe} onChange={set("classe")}>{[["paper", "Papel"], ["brick", "Tijolo"], ["logistics", "Logística"], ["infra", "FI-Infra"], ["treasury", "Tesouro"], ["other", "Outros"]].map(([v, r]) => <option value={v}>{r}</option>)}</select></div>
         <div class="kv"><div class="campo" style="margin:0;background:none;padding:0"><label for="cp-q">Quantidade</label><input id="cp-q" inputMode="decimal" autoComplete="off" value={f.quantidade} onInput={set("quantidade")} /></div><div class="campo" style="margin:0;background:none;padding:0"><label for="cp-p">Preço por cota (R$)</label><input id="cp-p" inputMode="decimal" autoComplete="off" value={f.preco} onInput={set("preco")} /></div></div>
         <div class="campo"><label for="cp-o">Saiu de</label><select id="cp-o" value={f.conta_id} onChange={set("conta_id")}>{origens.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>

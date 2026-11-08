@@ -169,7 +169,17 @@ a{color:var(--azul)}
 nav.barra button:active,.btn:active,.chip:active,.item:active{transform:scale(.98)}
 .achado > svg{flex:none;color:var(--fora);margin-top:1px}
 .btn[disabled]{opacity:.5;cursor:default}
-.link-sub{color:var(--azul);font-weight:600;font-size:14px;min-height:32px}
+.link-sub{color:var(--azul);font-weight:600;font-size:14px;min-height:32px;padding:0;text-align:left}
+.achado > div{min-width:0;overflow-wrap:anywhere}
+.achado .link-sub{display:block;margin-top:4px}
+h1,h3{text-wrap:balance}
+/* Retorno de hover só onde há mouse: no toque, o hover gruda depois do toque. */
+@media (hover:hover){
+  .btn:hover,.btn-claro:hover,.btn-cheio:hover,.btn-tinta:hover,.btn-ia:hover,.chip:hover{opacity:.85}
+  .link-sub:hover,.acao:hover,h2 a:hover,h2 button.link:hover,a:hover{text-decoration:underline;text-underline-offset:3px}
+  .abas [role="tab"]:hover{color:var(--tinta)}
+  button.icone:hover{background:var(--regua)}
+}
 .item .acao{background:none;border:0;min-height:32px}
 .app{position:relative}
 .ajustes-topo{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 52px);z-index:2}

@@ -1,15 +1,19 @@
 import { useState } from "preact/hooks";
-import { brl, type Cofrinho, hoje, num, type Patrimonio as Dados } from "../api.ts";
+import { brl, type Cofrinho, diaMes, hoje, num, type Patrimonio as Dados } from "../api.ts";
 import { Aviso, Icone } from "../icone.tsx";
 import { Investimentos } from "./investimentos.tsx";
 import type { Opcoes } from "../api.ts";
 
 type Aba = "Visão" | "Cofrinhos" | "Investimentos" | "A receber";
-const dm = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "—");
+const ABAS: Record<Aba, string> = { "Visão": "visao", Cofrinhos: "cofrinhos", Investimentos: "investimentos", "A receber": "a-receber" };
+/** A aba fica no endereço (#patrimonio/cofrinhos): recarregar ou compartilhar volta nela. */
+const abaDaHash = (): Aba => (Object.keys(ABAS) as Aba[]).find((a) => location.hash === `#patrimonio/${ABAS[a]}`) ?? "Visão";
+const dm = (d: string | null) => (d ? diaMes(d) : "—");
 export type Movimento = { tipo: "guardar" | "resgatar"; cofrinho: Cofrinho } | { tipo: "conciliar" } | { tipo: "receber-de"; id: string; nome: string; saldo: string } | { tipo: "ajustar"; id: string; nome: string; saldo: string };
 
 export function Patrimonio({ dados, opcoes, aoMover, aoAvisar, aoPerguntar }: { dados: Dados | null; opcoes: Opcoes | null; aoMover(m: Movimento): void; aoAvisar(t: string): void; aoPerguntar(): void }) {
-  const [aba, setAba] = useState<Aba>("Visão");
+  const [aba, setAbaEstado] = useState<Aba>(abaDaHash);
+  const setAba = (a: Aba) => { history.replaceState(null, "", a === "Visão" ? "#patrimonio" : `#patrimonio/${ABAS[a]}`); setAbaEstado(a); };
   const d = dados;
   const heroi = (rot: string, valor: string | undefined, conta: string, acoes?: preact.ComponentChildren) => (
     <div class="heroi" aria-busy={!d}><div class="rot">{rot}</div><div class="grande">{valor ? brl(valor) : <span class="esqueleto" />}</div><p class="conta">{conta}</p>{acoes}</div>

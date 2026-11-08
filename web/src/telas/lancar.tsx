@@ -148,12 +148,12 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
               {!novaCat
                 ? <button type="button" class="link-sub alinhar-inicio" onClick={() => setNovaCat({ nome: "", grupo: categorias.find((c) => c.id === categoriaId)?.grupo ?? grupos[0] ?? "+", grupoNovo: "" })}><Icone nome="mais" tamanho={16} />Nova categoria</button>
                 : <div class="mini-form" role="group" aria-label="Nova categoria">
-                    <input aria-label="Nome da nova categoria" placeholder="Nome, como Pet" maxLength={40} value={novaCat.nome} onInput={(e) => setNovaCat({ ...novaCat, nome: e.currentTarget.value })} />
+                    <input aria-label="Nome da nova categoria" placeholder="Nome, como Pet…" maxLength={40} value={novaCat.nome} onInput={(e) => setNovaCat({ ...novaCat, nome: e.currentTarget.value })} />
                     <select aria-label="Grupo da nova categoria" value={novaCat.grupo} onChange={(e) => setNovaCat({ ...novaCat, grupo: e.currentTarget.value })}>
                       {grupos.map((g) => <option value={g}>{g}</option>)}
                       <option value="+">Novo grupo…</option>
                     </select>
-                    {novaCat.grupo === "+" && <input aria-label="Nome do novo grupo" placeholder="Nome do grupo" maxLength={40} value={novaCat.grupoNovo} onInput={(e) => setNovaCat({ ...novaCat, grupoNovo: e.currentTarget.value })} />}
+                    {novaCat.grupo === "+" && <input aria-label="Nome do novo grupo" placeholder="Nome do grupo, como Casa…" maxLength={40} value={novaCat.grupoNovo} onInput={(e) => setNovaCat({ ...novaCat, grupoNovo: e.currentTarget.value })} />}
                     <div class="mini-acoes"><button type="button" class="btn" disabled={criando} onClick={criarCategoria}><Icone nome="mais" tamanho={18} />{criando ? "Criando…" : "Criar e usar"}</button><button type="button" class="link-sub" onClick={() => setNovaCat(null)}>Cancelar</button></div>
                   </div>}
             </div>}
@@ -169,7 +169,7 @@ export function Lancar({ opcoes, inicial, intencaoInicial, ptax, descontoPb, aoF
               {!novaConta
                 ? <button type="button" class="link-sub alinhar-inicio" onClick={() => setNovaConta({ nome: "", tipo: "investment" })}><Icone nome="mais" tamanho={16} />Nova conta</button>
                 : <div class="mini-form" role="group" aria-label="Nova conta">
-                    <input aria-label="Nome da nova conta" placeholder="Nome, como Inter" maxLength={60} value={novaConta.nome} onInput={(e) => setNovaConta({ ...novaConta, nome: e.currentTarget.value })} />
+                    <input aria-label="Nome da nova conta" placeholder="Nome, como Inter…" maxLength={60} value={novaConta.nome} onInput={(e) => setNovaConta({ ...novaConta, nome: e.currentTarget.value })} />
                     <select aria-label="Tipo da nova conta" value={novaConta.tipo} onChange={(e) => setNovaConta({ ...novaConta, tipo: e.currentTarget.value as "investment" | "checking" })}>
                       <option value="investment">Investimento</option>
                       <option value="checking">Conta corrente</option>
