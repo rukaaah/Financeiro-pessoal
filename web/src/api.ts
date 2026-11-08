@@ -78,6 +78,7 @@ export interface Patrimonio {
 }
 export const apiPatrimonio = {
   ver: () => pedir<Patrimonio>("/api/patrimonio"),
+  transferir: (corpo: object) => pedir<{ ok: boolean; id: string }>("/api/transferir", { method: "POST", body: JSON.stringify(corpo) }),
   guardar: (corpo: object) => pedir("/api/guardar", { method: "POST", body: JSON.stringify(corpo) }),
   resgatar: (corpo: object) => pedir("/api/resgatar", { method: "POST", body: JSON.stringify(corpo) }),
   receberDe: (corpo: object) => pedir("/api/receber-de", { method: "POST", body: JSON.stringify(corpo) }),
@@ -98,8 +99,8 @@ export const apiInvest = {
   comprar: (corpo: object) => pedir<{ valor: string }>("/api/comprar-ativo", { method: "POST", body: JSON.stringify(corpo) }),
 };
 
-export type TipoDaLinha = "gasto" | "entrada" | "guardar" | "resgatar";
-export interface LinhaImportada { data: string; descricao: string; valor: string; duplicada?: boolean; categoria_id?: string | null; tipo?: TipoDaLinha; cofrinho?: string | null; cofrinho_id?: string | null; finalidade?: string | null; original?: string | null }
+export type TipoDaLinha = "gasto" | "entrada" | "guardar" | "resgatar" | "transferir";
+export interface LinhaImportada { outra_conta_id?: string | null; data: string; descricao: string; valor: string; duplicada?: boolean; categoria_id?: string | null; tipo?: TipoDaLinha; cofrinho?: string | null; cofrinho_id?: string | null; finalidade?: string | null; original?: string | null }
 export const apiEntrada = {
   sugerir: (descricao: string, tipo: "income" | "expense") => pedir<{ categoria_id: string | null }>(`/api/sugerir-categoria?descricao=${encodeURIComponent(descricao)}&tipo=${tipo}`),
   previa: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ linhas: LinhaImportada[] }>("/api/importar/previa", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),

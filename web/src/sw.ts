@@ -2,10 +2,11 @@
 // Guarda a casca do app no celular (ADR-015): abrir desenha do cache na hora, mesmo
 // com a rede lenta ou o servidor longe. Dados (/api) nunca são guardados aqui.
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const CACHE = "casca-v16";
+// v17: ícones com ?v=2, para o celular trocar o ícone antigo guardado no cache do navegador.
+const CACHE = "casca-v17";
 
 sw.addEventListener("install", (e: ExtendableEvent) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/icone.svg", "/icone-192.png"])).then(() => sw.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/icone.svg?v=2", "/icone-192.png?v=2", "/apple-touch-icon.png?v=2"])).then(() => sw.skipWaiting()));
 });
 
 sw.addEventListener("activate", (e: ExtendableEvent) => {

@@ -150,6 +150,8 @@ function App() {
         {destinos.slice(2).map(([id, nome]) => <button aria-current={tela === id ? "page" : undefined} onClick={() => setTela(id)}><Icone nome={id} />{nome}</button>)}
       </div></nav>
       {folha?.tipo === "lancar" && <Lancar opcoes={opcoes} inicial={folha.inicial} intencaoInicial={folha.intencao} ptax={dadosMes?.ptax ?? null} descontoPb={dadosMes?.desconto_pb ?? 0} aoFechar={() => setFolha(null)} aoLancar={lancar} aoRepetir={lancarRepetindo}
+        aoRecarregarOpcoes={() => api.opcoes().then(setOpcoes)}
+        aoTransferir={(corpo) => { setFolha(null); avisar({ texto: "Lançando…" }); apiPatrimonio.transferir(corpo).then(async (r) => { await recarregar(); avisar({ texto: "Transferência lançada.", desfazer: () => api.excluir(r.id).then(recarregar).then(() => avisar({ texto: "Transferência desfeita." })) }); }).catch((e: Error) => avisar({ texto: e.message })); }}
         aoPrever={(corpo) => { setFolha(null); apiAtencao.novaEntrada(corpo).then(() => recarregarMes()).then(() => avisar({ texto: "Entrada prevista salva." })).catch((e: Error) => avisar({ texto: e.message })); }} />}
       {folha?.tipo === "atencao" && dadosMes && <Atencao dados={dadosMes} aoFechar={() => setFolha(null)} aoAgir={agir} aoAdiar={adiar} aoNovaConta={() => setFolha({ tipo: "nova-conta" })} />}
       {folha?.tipo === "nova-conta" && <NovaConta opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => { setFolha(null); apiAtencao.novaConta(corpo).then(() => recarregarMes()).then(() => avisar({ texto: "Conta recorrente salva." })).catch((e: Error) => avisar({ texto: e.message })); }} />}
