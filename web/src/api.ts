@@ -103,7 +103,13 @@ export interface Investimentos {
   onde_aportar: { aporte: string; sugestoes: { ticker: string; valor: string; cotas: number | null; motivo: string }[]; fora: { ticker: string; motivo: string }[]; sobra: string; avisos: string[] };
   relatorio: { renda_mensal: string; alertas: { ticker: string; tipo: "oportunidade" | "atencao"; texto: string }[]; desatualizado: string | null; atualizado_em: string | null; fonte: string | null };
 }
+export interface EventoFii { tipo: "data_com" | "pagamento" | "subscricao" | "assembleia" | "outro"; data: string; texto: string; documento: number }
+export interface NoticiasFii {
+  ticker: string; resumo: string | null; preparar: string[]; eventos: EventoFii[]; gerado_em: string | null;
+  documentos: { id: number; titulo: string; categoria: string; entregue_em: string }[];
+}
 export const apiInvest = {
+  noticias: () => pedir<{ noticias: NoticiasFii[] }>("/api/investimentos/noticias"),
   ver: (aporte?: string) => pedir<Investimentos>(`/api/investimentos${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),
   comprar: (corpo: object) => pedir<{ valor: string }>("/api/comprar-ativo", { method: "POST", body: JSON.stringify(corpo) }),
 };

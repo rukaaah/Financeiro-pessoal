@@ -1,10 +1,13 @@
 import { useEffect, useState } from "preact/hooks";
-import { apiInvest, brl, diaMes, hoje, type Investimentos as Dados, num, type Opcoes } from "../api.ts";
+import { apiInvest, brl, diaMes, type EventoFii, hoje, type Investimentos as Dados, type NoticiasFii, num, type Opcoes } from "../api.ts";
 import { Icone } from "../icone.tsx";
 
 const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const FONTES: Record<string, string> = { b3: "fechamento da B3", brapi: "brapi, até 30 min de atraso", demo: "dados fictícios", investidor10: "Investidor10" };
 const quando = (iso: string | null) => (iso ? `${diaMes(iso)}${iso.length > 10 ? ` às ${iso.slice(11, 16)}` : ""}` : "");
+const EVENTO: Record<EventoFii["tipo"], string> = { data_com: "Data-com", pagamento: "Pagamento", subscricao: "Subscrição", assembleia: "Assembleia", outro: "Data" };
+const FNET = "https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=";
+const proximo = (n: NoticiasFii | undefined) => n?.eventos.find((e) => e.data >= hoje());
 const pct = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1).replace(".", ",")}%`);
 
 function Barras({ vals, destacaUltimo, rotulo }: { vals: { mes: string; v: number }[]; destacaUltimo?: boolean; rotulo: string }) {
@@ -22,8 +25,12 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
   const [face, setFace] = useState<"Resumo" | "Carteira" | "Proventos">("Resumo");
   const [folha, setFolha] = useState<null | "comprar" | "aportar">(null);
   const [aberto, setAberto] = useState<string | null>(null);
+  const [noticias, setNoticias] = useState<Record<string, NoticiasFii>>({});
   const carregar = (aporte?: string) => apiInvest.ver(aporte).then(setD).catch((e: Error) => aoAvisar(e.message));
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    carregar();
+    apiInvest.noticias().then((r) => setNoticias(Object.fromEntries(r.noticias.map((n) => [n.ticker, n])))).catch(() => {});
+  }, []);
   const proventos12 = d?.series.reduce((s, x) => s + num(x.proventos), 0) ?? 0;
   return (
     <>
@@ -57,7 +64,8 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
               {d.ativos.filter((a) => a.classe === k.classe).map((a) => (
                 <button type="button" class="item" aria-haspopup="dialog" onClick={() => setAberto(a.id)}><span class="nome">{a.ticker}</span><span class="valor">{brl(a.valor)}</span>
                   <span class="sub" style="grid-column:1/-1">{a.quantidade.toLocaleString("pt-BR")} cotas · PM {brl(a.preco_medio)}{a.pvp != null ? ` · P/VP ${a.pvp.toFixed(2).replace(".", ",")}` : ""}{a.dy != null ? ` · DY ${a.dy.toFixed(1).replace(".", ",")}%` : ""}{a.vp_mes ? ` · VP de ${a.vp_mes.slice(5)}/${a.vp_mes.slice(2, 4)}` : ""}</span>
-                  <span class={`sub ${a.variacao_pm >= 0 ? "pos" : "neg"}`} style="grid-column:1/-1">{a.variacao_dia != null ? `${pct(a.variacao_dia)} hoje · ` : ""}{pct(a.variacao_mes)} · {pct(a.variacao_pm)}</span></button>
+                  <span class={`sub ${a.variacao_pm >= 0 ? "pos" : "neg"}`} style="grid-column:1/-1">{a.variacao_dia != null ? `${pct(a.variacao_dia)} hoje · ` : ""}{pct(a.variacao_mes)} · {pct(a.variacao_pm)}</span>
+                  <LinhaDeNoticia n={noticias[a.ticker]} /></button>
               ))}</div>
           ))}
           <p class="sub">{d.relatorio.atualizado_em ? `Cotação de ${quando(d.relatorio.atualizado_em)} (${FONTES[d.relatorio.fonte ?? ""] ?? d.relatorio.fonte}). P/VP e DY calculados com o informe mensal da CVM.` : "Sem cotação ainda: o valor mostrado é o custo."}</p>
@@ -67,14 +75,42 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
         <section><h2>Recebido por mês</h2><div class="graf"><Barras vals={d.series.map((x) => ({ mes: x.mes, v: num(x.proventos) }))} destacaUltimo rotulo="Proventos por mês" />
           <p class="sub">{brl(proventos12.toFixed(2))} em 12 meses. Proventos são as receitas lançadas na conta de investimento.</p></div></section>
       )}
-      {aberto && d && (() => { const a = d.ativos.find((x) => x.id === aberto); return a ? <Detalhe a={a} d={d} aoFechar={() => setAberto(null)} /> : null; })()}
+      {aberto && d && (() => { const a = d.ativos.find((x) => x.id === aberto); return a ? <Detalhe a={a} d={d} n={noticias[a.ticker]} aoFechar={() => setAberto(null)} /> : null; })()}
       {folha === "aportar" && d && <OndeAportar d={d} aoFechar={() => setFolha(null)} aoRecalcular={(v) => carregar(v)} />}
       {folha === "comprar" && <Comprar opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => { setFolha(null); apiInvest.comprar(corpo).then(() => carregar()).then(() => aoAvisar("Compra registrada.")).catch((e: Error) => aoAvisar(e.message)); }} />}
     </>
   );
 }
 
-function Detalhe({ a, d, aoFechar }: { a: Dados["ativos"][number]; d: Dados; aoFechar(): void }) {
+/** No card da carteira: a próxima data que pede atenção e a primeira frase do resumo. */
+function LinhaDeNoticia({ n }: { n: NoticiasFii | undefined }) {
+  if (!n?.resumo) return null;
+  const p = proximo(n);
+  const frase = n.resumo.match(/^.+?[.!?](?=\s|$)/)?.[0] ?? n.resumo;
+  return (
+    <span class="sub linha-ia" style="grid-column:1/-1"><Icone nome="ia" tamanho={14} />
+      <span>{p && <b>{EVENTO[p.tipo]} {diaMes(p.data)} · </b>}{frase}</span></span>
+  );
+}
+
+function Noticias({ n }: { n: NoticiasFii | undefined }) {
+  if (!n || (!n.resumo && n.documentos.length === 0)) return <p class="nota">Sem comunicados do fundo nos últimos 90 dias.</p>;
+  const proximas = n.eventos.filter((e) => e.data >= hoje());
+  return (
+    <section class="noticias-fii">
+      <h2><span class="ia-tit"><Icone nome="ia" tamanho={18} />Notícias do fundo</span>{n.gerado_em && <span class="lado">{quando(n.gerado_em)}</span>}</h2>
+      {n.resumo && <div class="msg ia"><div class="quem"><Icone nome="ia" tamanho={14} />Resumo da IA</div>{n.resumo}</div>}
+      {n.preparar.length > 0 && <><h3 class="tit-preparar">Como se preparar</h3><ul class="preparar">{n.preparar.map((p) => <li>{p}</li>)}</ul></>}
+      {proximas.length > 0 && <div class="lista">{proximas.map((e) => <div class="item"><span class="nome">{EVENTO[e.tipo]}</span><span class="valor">{diaMes(e.data)}</span><span class="sub" style="grid-column:1/-1">{e.texto}</span></div>)}</div>}
+      {n.documentos.length > 0 && <div class="lista">{n.documentos.map((doc) => (
+        <a class="item" href={FNET + doc.id} target="_blank" rel="noopener noreferrer"><span class="nome">{doc.titulo}</span><span class="sub">{diaMes(doc.entregue_em)}</span></a>
+      ))}</div>}
+      <p class="nota">Documentos oficiais do fundo no Fundos.NET (B3). Confira as datas no documento.</p>
+    </section>
+  );
+}
+
+function Detalhe({ a, d, n, aoFechar }: { a: Dados["ativos"][number]; d: Dados; n: NoticiasFii | undefined; aoFechar(): void }) {
   const v2 = (x: number | null, casas = 2) => (x == null ? "—" : x.toFixed(casas).replace(".", ","));
   const fora = d.onde_aportar.fora.find((f) => f.ticker === a.ticker);
   const kv: [string, string][] = [
@@ -92,6 +128,7 @@ function Detalhe({ a, d, aoFechar }: { a: Dados["ativos"][number]; d: Dados; aoF
       <div class="kv">{kv.map(([r, v]) => <div><div class="r">{r}</div><div class="v">{v}</div></div>)}</div>
       <p class="nota">{a.atualizado_em ? <>Dado de <b>{quando(a.atualizado_em)}</b>, fonte: {FONTES[a.fonte ?? ""] ?? a.fonte}.</> : "Ainda sem cotação: o valor é o custo."}{a.fonte === "demo" ? " No modo demonstração os números são inventados; entre com sua conta para ver dados reais." : ""}</p>
       <p class="nota">{fora ? `Fora do "Onde aportar": ${fora.motivo}.` : "Passa nas suas regras do \"Onde aportar\"."}</p>
+      {a.classe !== "treasury" && <Noticias n={n} />}
     </div></div>
   );
 }

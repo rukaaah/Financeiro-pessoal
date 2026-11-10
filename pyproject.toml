@@ -22,7 +22,10 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.8",
     "yoyo-migrations>=9.0.0",
+    {include-group = "jobs"},
 ]
+# Só os jobs do GitHub Actions: texto dos PDFs do Fundos.NET (ADR-021).
+jobs = ["pypdf>=5.0"]
 
 [build-system]
 requires = ["hatchling"]

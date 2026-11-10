@@ -1056,6 +1056,39 @@ COMMENT ON COLUMN public.expected_incomes.fee_brl IS 'Quanto o intermediário (P
 
 
 --
+-- Name: fii_documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_documents (
+    ticker text NOT NULL,
+    id bigint NOT NULL,
+    category text NOT NULL,
+    title text NOT NULL,
+    ref_date date,
+    delivered_at timestamp with time zone NOT NULL,
+    content text DEFAULT ''::text NOT NULL,
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: fii_insights; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_insights (
+    ticker text NOT NULL,
+    summary text NOT NULL,
+    prepare jsonb DEFAULT '[]'::jsonb NOT NULL,
+    events jsonb DEFAULT '[]'::jsonb NOT NULL,
+    documents bigint[] NOT NULL,
+    model text NOT NULL,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_insights_events_lista CHECK ((jsonb_typeof(events) = 'array'::text)),
+    CONSTRAINT fii_insights_prepare_lista CHECK ((jsonb_typeof(prepare) = 'array'::text))
+);
+
+
+--
 -- Name: fii_reports; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1469,6 +1502,22 @@ ALTER TABLE ONLY public.expected_incomes
 
 
 --
+-- Name: fii_documents fii_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_documents
+    ADD CONSTRAINT fii_documents_pkey PRIMARY KEY (ticker, id);
+
+
+--
+-- Name: fii_insights fii_insights_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_insights
+    ADD CONSTRAINT fii_insights_pkey PRIMARY KEY (ticker);
+
+
+--
 -- Name: fii_reports fii_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1567,6 +1616,13 @@ CREATE UNIQUE INDEX app_users_um_demo_ativo ON public.app_users USING btree (is_
 --
 
 CREATE UNIQUE INDEX categories_um_cofrinho_por_categoria ON public.categories USING btree (goal_account_id) WHERE (goal_account_id IS NOT NULL);
+
+
+--
+-- Name: fii_documents_recentes; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX fii_documents_recentes ON public.fii_documents USING btree (ticker, delivered_at DESC);
 
 
 --
@@ -2485,6 +2541,22 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.counterparties TO app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.expected_incomes TO app;
+
+
+--
+-- Name: TABLE fii_documents; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_documents TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_documents TO jobs;
+
+
+--
+-- Name: TABLE fii_insights; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_insights TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_insights TO jobs;
 
 
 --

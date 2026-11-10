@@ -28,6 +28,18 @@ const SQL_ATIVOS = `
    group by a.id, q.price, q.pvp, q.dy_12m, q.quoted_on, q.source, q.fetched_at, liq.media, q0.price, q1.price, q30.price, vp.nav_per_share, vp.ref_month
    order by a.class, a.ticker`;
 
+/** Notícias dos FIIs da carteira (ADR-021): resumo da IA e os documentos oficiais mais novos. */
+const SQL_NOTICIAS = `
+  select a.ticker, i.summary as resumo, coalesce(i.prepare, '[]') as preparar, coalesce(i.events, '[]') as eventos,
+         to_char(i.generated_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI') as gerado_em,
+         coalesce((select json_agg(json_build_object('id', d.id, 'titulo', d.title, 'categoria', d.category,
+                                                     'entregue_em', to_char(d.delivered_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD')) order by d.delivered_at desc)
+                     from (select * from fii_documents x where x.ticker = a.ticker order by x.delivered_at desc limit 6) d), '[]') as documentos
+    from assets a
+    left join fii_insights i on i.ticker = a.ticker
+   where a.class <> 'treasury'
+   order by a.ticker`;
+
 /** Aportes e proventos por mês, nas contas de investimento, 12 meses. */
 const SQL_SERIES = `
   with meses as (select generate_series(date_trunc('month', current_date) - interval '11 months', date_trunc('month', current_date), interval '1 month')::date as mm)
@@ -46,6 +58,11 @@ const SQL_REGRAS = `
     from (select 1) x left join investment_rules r on true`;
 
 export function rotasDeInvestimentos<E extends object>(app: Hono<{ Bindings: E }>, rodar: Rodar<E>) {
+  app.get("/api/investimentos/noticias", async (c) => {
+    const [linhas = []] = await rodar(c, [consulta(SQL_NOTICIAS)]);
+    return c.json({ noticias: linhas });
+  });
+
   app.get("/api/investimentos", async (c) => {
     let aporte: bigint;
     try { aporte = deDigitado(c.req.query("aporte") ?? "500"); } catch { return c.json({ erro: "Valor do aporte em reais, como 500 ou 1.250,00." }, 400); }
