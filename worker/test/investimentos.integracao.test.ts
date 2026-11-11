@@ -28,6 +28,7 @@ afterAll(async () => {
   await owner.query("delete from asset_quotes where ticker = $1", [ticker]);
   await owner.query("delete from fii_documents where ticker = $1", [ticker]);
   await owner.query("delete from fii_insights where ticker = $1", [ticker]);
+  await owner.query("delete from fii_management where ticker = $1", [ticker]);
   await owner.query("delete from fii_reports where ticker = $1", [ticker]);
   await owner.query("delete from app_users where email like $1", [`%-${sufixo}@teste.dev`]);
   await owner.end();
@@ -66,12 +67,16 @@ describe("investimentos pelo Worker, como papel app", () => {
     await owner.query("insert into fii_documents (ticker, id, category, title, delivered_at, content) values ($1, 9001, 'Fato Relevante', 'Fato Relevante', now() - interval '1 day', 'texto'), ($1, 9002, 'Relatórios', 'Relatório Gerencial', now() - interval '3 days', '')", [ticker]);
     await owner.query(`insert into fii_insights (ticker, summary, prepare, events, documents, model)
                        values ($1, 'Nova emissão anunciada.', '["Decida até 28/11."]', '[{"tipo":"subscricao","data":"2026-11-28","texto":"Fim do direito de preferência","documento":9001}]', '{9001,9002}', 'teste')`, [ticker]);
-    type N = { noticias: { ticker: string; resumo: string | null; preparar: string[]; eventos: { tipo: string }[]; documentos: { id: number; titulo: string }[] }[] };
+    await owner.query(`insert into fii_management (ticker, management, documents, model)
+                       values ($1, '{"postura":"Adiou a venda.","planos":[],"mudancas":[{"tema":"Venda","antes":"2026","agora":"2027","documento_antes":9002,"documento_agora":9001,"trecho":"adiada para 2027"}]}', '{9001,9002}', 'teste')`, [ticker]);
+    type N = { noticias: { ticker: string; gestao: { postura: string } | null; gestao_datas: Record<string, string> | null; resumo: string | null; preparar: string[]; eventos: { tipo: string }[]; documentos: { id: number; titulo: string }[] }[] };
     const r = (await (await como("a").request("/api/investimentos/noticias")).json()) as N;
     const n = r.noticias.find((x) => x.ticker === ticker)!;
     expect(n).toMatchObject({ resumo: "Nova emissão anunciada.", preparar: ["Decida até 28/11."] });
     expect(n.eventos[0]?.tipo).toBe("subscricao");
     expect(n.documentos.map((d) => d.id)).toEqual([9001, 9002]);
+    expect(n.gestao?.postura).toBe("Adiou a venda.");
+    expect(Object.keys(n.gestao_datas ?? {}).sort()).toEqual(["9001", "9002"]);
     expect(((await (await como("b").request("/api/investimentos/noticias")).json()) as N).noticias).toEqual([]);
   });
 

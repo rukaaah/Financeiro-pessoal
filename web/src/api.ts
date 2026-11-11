@@ -107,6 +107,12 @@ export interface EventoFii { tipo: "data_com" | "pagamento" | "subscricao" | "as
 export interface NoticiasFii {
   ticker: string; resumo: string | null; preparar: string[]; eventos: EventoFii[]; gerado_em: string | null;
   documentos: { id: number; titulo: string; categoria: string; entregue_em: string }[];
+  gestao: GestaoFii | null; gestao_datas: Record<string, string> | null;
+}
+export interface GestaoFii {
+  postura: string;
+  planos: { texto: string; documento: number; trecho: string }[];
+  mudancas: { tema: string; antes: string; agora: string; documento_antes: number; documento_agora: number; trecho: string }[];
 }
 export const apiInvest = {
   noticias: () => pedir<{ noticias: NoticiasFii[] }>("/api/investimentos/noticias"),
@@ -122,9 +128,9 @@ export const apiEntrada = {
   importar: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ importadas: number; cofrinhos_criados: number }>("/api/importar", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
 };
 
-export interface RespostaChat { resposta: string; perguntas_seguintes?: string[]; demo?: boolean; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
+export interface RespostaChat { resposta: string; perguntas_seguintes?: string[]; demo?: boolean; verificado?: string[]; faltou?: string | null; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
 export const apiIA = {
-  chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
+  chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string; ticker?: string; historico?: { eu: string; ia: string }[] }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
   extrato: (texto: string) => pedir<{ demo?: boolean; motivo?: string; linhas?: LinhaImportada[]; descartadas?: number; de_fora?: number }>("/api/ia/extrato", { method: "POST", body: JSON.stringify({ texto }) }),
   notificacao: (texto: string) => pedir<{ regra?: boolean; reconheceu?: boolean; valor?: string | null; data?: string | null; estabelecimento?: string | null; sentido?: string; motivo?: string }>("/api/ia/notificacao", { method: "POST", body: JSON.stringify({ texto }) }),
 };

@@ -287,15 +287,49 @@ h2 .ia-tit svg{color:var(--ia)}
   @keyframes pulsa{50%{transform:scale(.88);opacity:.75}}
   @keyframes anda{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
 }
-/* Notícias dos FIIs (ADR-021) */
-.linha-ia{display:flex;gap:6px;align-items:flex-start;line-height:1.4}
-.linha-ia svg{color:var(--ia);flex:none;margin-top:3px}
-.linha-ia>span{min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-.linha-ia b{color:var(--ia-t)}
-.noticias-fii{margin-top:16px}
-.noticias-fii .msg.ia{border-radius:4px;padding:10px 12px;line-height:1.45;overflow-wrap:anywhere}
-.tit-preparar{font-size:15px;font-weight:700;margin:12px 0 4px}
-.preparar{margin:0;padding-left:20px;line-height:1.45;overflow-wrap:anywhere}
-.preparar li+li{margin-top:4px}
+/* Cards de FII e notícias (ADR-021). Auditoria de 11/11: texto respirando (linhas de 1,5),
+   indicadores em linhas próprias com rótulo, insight da IA como bloco tocável que abre o chat. */
+.cartao-fii{border-top:1px solid var(--sup2);padding-bottom:12px}
+.grupo>.cartao-fii:first-of-type{border-top:0}
+.cartao-fii>.item{border-top:0;gap:4px 12px;padding-bottom:0}
+.cartao-fii .sub{line-height:1.5}
+.indicadores{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:14px;line-height:1.5;color:var(--t2)}
+.indicadores b{font-weight:600;color:var(--tinta)}
+.indicadores b.pos{color:var(--dentro)}.indicadores b.neg{color:var(--fora)}
+.linha-ia{display:flex;gap:8px;align-items:flex-start;width:100%;margin-top:10px;padding:10px 12px;border-radius:4px;background:var(--ia-f);color:var(--tinta);text-align:left;font-size:14px;line-height:1.5;min-height:44px}
+.linha-ia>svg{color:var(--ia);flex:none;margin-top:2px}
+.linha-ia>svg:last-child{margin-left:auto;color:var(--ia-t)}
+.linha-ia .texto{min-width:0;flex:1;overflow-wrap:anywhere}
+.linha-ia .texto b{display:block;color:var(--ia-t);font-weight:700}
+.linha-ia .frase{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ficha{background:var(--sup);border-radius:6px;padding:2px 14px;margin:12px 0 0}
+.ficha>div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-top:1px solid var(--sup2);line-height:1.4}
+.ficha>div:first-child{border-top:0}
+.ficha dt{font-size:14px;color:var(--t2)}
+.ficha dd{margin:0;font-weight:600;text-align:right;overflow-wrap:anywhere}
+.btn-ia.largo{width:100%;margin-top:16px}
+.noticias-fii{margin-top:20px}
+.noticias-fii h2{margin-bottom:10px}
+.noticias-fii .msg.ia{border-radius:4px;padding:12px 14px;line-height:1.55;overflow-wrap:anywhere}
+.resumo-ia{display:block;width:100%;text-align:left;font:inherit;font-size:15px}
+.resumo-ia .quem{margin-bottom:6px}
+.resumo-ia .conversar{display:flex;align-items:center;gap:4px;margin-top:10px;font-size:14px;font-weight:700;color:var(--ia-t)}
+.tit-secao,.tit-preparar{font-size:16px;font-weight:700;margin:24px 0 8px}
+.gestao-fii h4{font-size:14px;font-weight:700;color:var(--t2);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.04em}
+.postura{margin:0;line-height:1.55}
+.preparar{margin:0;padding-left:20px;line-height:1.55;overflow-wrap:anywhere}
+.preparar li+li{margin-top:8px}
+.fonte{font-size:13px;color:var(--azul);white-space:nowrap}
+.mudanca{background:var(--sup);border-radius:6px;padding:12px 14px;margin-top:8px;line-height:1.5;overflow-wrap:anywhere}
+.mudanca .tema{font-weight:700;margin-bottom:6px}
+.mudanca .antes,.mudanca .agora{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;font-size:15px}
+.mudanca .antes{color:var(--t2)}
+.mudanca .agora{margin-top:4px}
+.mudanca .quando{font-size:13px;color:var(--t2);padding-top:1px}
+.mudanca blockquote{margin:10px 0 0;padding-left:10px;border-left:2px solid var(--regua);font-size:14px;color:var(--t2);font-style:italic}
+.mudanca blockquote .fonte{font-style:normal}
+.noticias-fii .lista{margin-top:12px}
+.noticias-fii .lista .item{padding:14px 0;gap:4px 12px;line-height:1.45}
 .noticias-fii a.item{color:inherit;text-decoration:none}
-.noticias-fii a.item .nome{color:var(--azul);overflow-wrap:anywhere}
+.noticias-fii a.item .nome{color:var(--azul);overflow-wrap:anywhere;font-weight:600}
+.noticias-fii .nota{line-height:1.5;margin-top:12px}

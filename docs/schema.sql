@@ -1089,6 +1089,20 @@ CREATE TABLE public.fii_insights (
 
 
 --
+-- Name: fii_management; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_management (
+    ticker text NOT NULL,
+    management jsonb NOT NULL,
+    documents bigint[] NOT NULL,
+    model text NOT NULL,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_management_objeto CHECK ((jsonb_typeof(management) = 'object'::text))
+);
+
+
+--
 -- Name: fii_reports; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1515,6 +1529,14 @@ ALTER TABLE ONLY public.fii_documents
 
 ALTER TABLE ONLY public.fii_insights
     ADD CONSTRAINT fii_insights_pkey PRIMARY KEY (ticker);
+
+
+--
+-- Name: fii_management fii_management_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_management
+    ADD CONSTRAINT fii_management_pkey PRIMARY KEY (ticker);
 
 
 --
@@ -2557,6 +2579,14 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_documents TO jobs;
 
 GRANT SELECT ON TABLE public.fii_insights TO app;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_insights TO jobs;
+
+
+--
+-- Name: TABLE fii_management; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_management TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_management TO jobs;
 
 
 --
