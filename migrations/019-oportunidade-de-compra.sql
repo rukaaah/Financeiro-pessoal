@@ -1,4 +1,4 @@
--- Migration 018 — medidor diário de oportunidade de compra de FII (ADR-022).
+-- Migration 019 — medidor diário de oportunidade de compra de FII (ADR-022).
 --
 -- Dado de mercado, como fii_insights: sem user_id, lido por todos, escrito só pelo job.
 -- A tela mostra só os tickers da carteira de quem pede (RLS em assets) e calcula as
