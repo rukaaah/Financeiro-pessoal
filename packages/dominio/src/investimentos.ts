@@ -16,7 +16,7 @@ export function deDecimal6(t: string): bigint {
   const v = BigInt(m[2]!) * ESCALA + BigInt((m[3] ?? "").padEnd(6, "0"));
   return m[1] ? -v : v;
 }
-const centavosDe = (qtd6: bigint, preco6: bigint): Centavos => (qtd6 * preco6 * 2n / (ESCALA * ESCALA / 100n) + 1n) / 2n;
+export const centavosDe = (qtd6: bigint, preco6: bigint): Centavos => (qtd6 * preco6 * 2n / (ESCALA * ESCALA / 100n) + 1n) / 2n;
 
 export interface Operacao { readonly quantidade: string; readonly preco: string }
 export interface Posicao { readonly quantidade6: bigint; readonly precoMedio6: bigint; readonly custo: Centavos }

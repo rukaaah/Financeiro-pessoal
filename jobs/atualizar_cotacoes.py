@@ -24,6 +24,7 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
@@ -32,7 +33,13 @@ import psycopg
 
 from financeiro.market_data.adapters.brapi import ler_preco
 from financeiro.market_data.adapters.cotahist import Fechamento, ler_cotahist
-from financeiro.market_data.adapters.cvm_informe_mensal import informes_por_cnpj, isin_para_cnpj
+from financeiro.market_data.adapters.cvm_informe_mensal import (
+    PerfilDoFundo,
+    extras_por_cnpj,
+    informes_por_cnpj,
+    isin_para_cnpj,
+    perfis_por_cnpj,
+)
 from financeiro.market_data.domain.indicadores import InformeMensal, dy_12m_percentual, pvp
 
 AGENTE = "financeiro-pessoal-job (projeto pessoal)"
@@ -87,6 +94,56 @@ def indicadores(
 ) -> tuple[Decimal | None, Decimal | None]:
     validos = [i for i in informes if i.referencia < ate.replace(day=1)]
     return pvp(preco, validos), dy_12m_percentual(preco, validos)
+
+
+def gravar_historico(
+    cur: psycopg.Cursor[tuple[object, ...]],
+    cnpj_de: dict[str, str],
+    gerais: list[str],
+    complementos: list[str],
+) -> None:
+    """Perfil do fundo e, por mês, cotas emitidas, cotistas e PL (histórico de funcionamento)."""
+    cnpjs = set(cnpj_de.values())
+    perfis: dict[str, PerfilDoFundo] = {}
+    for geral in gerais:  # do ano anterior para o atual: o perfil mais novo vence
+        for cnpj, novo in perfis_por_cnpj(geral, cnpjs).items():
+            antigo = perfis.get(cnpj)
+            juntas = {**(antigo.cotas_por_mes if antigo else {}), **novo.cotas_por_mes}
+            perfis[cnpj] = replace(novo, cotas_por_mes=juntas)
+    extras: dict[tuple[str, date], tuple[int | None, Decimal | None]] = {}
+    for complemento in complementos:
+        extras.update(extras_por_cnpj(complemento, cnpjs))
+    for ticker, cnpj in cnpj_de.items():
+        perfil = perfis.get(cnpj)
+        if perfil is not None:
+            cur.execute(
+                "INSERT INTO fii_profiles"
+                " (ticker, cnpj, name, started_on, segment, mandate, management)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (ticker) DO UPDATE"
+                " SET cnpj = excluded.cnpj, name = excluded.name, started_on = excluded.started_on,"
+                " segment = excluded.segment, mandate = excluded.mandate,"
+                " management = excluded.management, fetched_at = now()",
+                (
+                    ticker,
+                    cnpj,
+                    perfil.nome,
+                    perfil.inicio,
+                    perfil.segmento,
+                    perfil.mandato,
+                    perfil.gestao,
+                ),
+            )
+        meses = set(perfil.cotas_por_mes if perfil else {}) | {
+            ref for c, ref in extras if c == cnpj
+        }
+        for ref in meses:
+            cotistas, pl = extras.get((cnpj, ref), (None, None))
+            emitidas = perfil.cotas_por_mes.get(ref) if perfil else None
+            cur.execute(
+                "UPDATE fii_reports SET shares_outstanding = %s, shareholders = %s, net_assets = %s"
+                " WHERE ticker = %s AND ref_month = %s",
+                (emitidas, cotistas, pl, ticker, ref),
+            )
 
 
 def tickers(cur: psycopg.Cursor[tuple[object, ...]]) -> list[str]:
@@ -189,6 +246,7 @@ def fechamento(conexao: psycopg.Connection[tuple[object, ...]]) -> int:
                         " dy_month = excluded.dy_month, fetched_at = now()",
                         (ticker, inf.referencia, cnpj, inf.vp_cota, inf.dy_mes),
                     )
+        gravar_historico(cur, cnpj_de, gerais, complementos)
         conexao.commit()
 
         # 3. Grava os fechamentos com P/VP e DY calculados.

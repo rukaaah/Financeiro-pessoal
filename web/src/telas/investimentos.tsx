@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { apiInvest, brl, diaMes, type EventoFii, hoje, type Investimentos as Dados, type NoticiasFii, num, type Opcoes } from "../api.ts";
+import { apiInvest, brl, diaMes, type EventoFii, type FichaFundo, hoje, type Investimentos as Dados, type Macro, type NoticiasFii, num, type Opcoes, type Rendimento } from "../api.ts";
 import { Icone } from "../icone.tsx";
 
 const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -8,6 +8,8 @@ const quando = (iso: string | null) => (iso ? `${diaMes(iso)}${iso.length > 10 ?
 const EVENTO: Record<EventoFii["tipo"], string> = { data_com: "Data-com", pagamento: "Pagamento", subscricao: "Subscrição", assembleia: "Assembleia", outro: "Data" };
 const FNET = "https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=";
 const proximo = (n: NoticiasFii | undefined) => n?.eventos.find((e) => e.data >= hoje());
+const TICKER_FII = /^[A-Z]{4}\d{2}$/;
+const mesAno = (m: string) => `${CURTOS[Number(m.slice(5, 7)) - 1]}/${m.slice(2, 4)}`;
 const pct = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1).replace(".", ",")}%`);
 
 function Barras({ vals, destacaUltimo, rotulo }: { vals: { mes: string; v: number }[]; destacaUltimo?: boolean; rotulo: string }) {
@@ -49,6 +51,8 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
       {d && face === "Resumo" && (
         <>
           {d.ativos.length > 0 && <Relatorio d={d} />}
+          {d.ativos.length > 0 && <RendimentoPorCampo d={d} />}
+          <Selic />
           <section><h2>Aportes por mês <span class="lado">12 meses</span></h2><div class="graf"><Barras vals={d.series.map((x) => ({ mes: x.mes, v: num(x.aporte) }))} destacaUltimo rotulo="Aportes por mês" />
             <p class="sub">Você colocou {brl(d.series.reduce((s, x) => s + num(x.aporte), 0).toFixed(2))} em 12 meses. Comparação com CDI e IFIX entra com o job do CDI.</p></div></section>
           <section><h2>Alocação contra a meta</h2><div class="proj">{d.classes.map((k) => (
@@ -57,14 +61,14 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
         </>
       )}
       {d && face === "Carteira" && (
-        <section><h2>Ativos <span class="lado">hoje · no mês · sobre o preço médio</span></h2>
+        <section><h2>Ativos <span class="lado">hoje · no mês · total</span></h2>
           {d.ativos.length === 0 && <div class="vazio">Nenhum ativo ainda. Toque em "Comprei" para registrar a primeira compra.</div>}
           {d.classes.filter((k) => num(k.valor) > 0).map((k) => (
             <div class="grupo"><div class="grupo-cab"><span>{k.nome}</span><span>{brl(k.valor)}</span></div>
               {d.ativos.filter((a) => a.classe === k.classe).map((a) => (
                 <button type="button" class="item" aria-haspopup="dialog" onClick={() => setAberto(a.id)}><span class="nome">{a.ticker}</span><span class="valor">{brl(a.valor)}</span>
                   <span class="sub" style="grid-column:1/-1">{a.quantidade.toLocaleString("pt-BR")} cotas · PM {brl(a.preco_medio)}{a.pvp != null ? ` · P/VP ${a.pvp.toFixed(2).replace(".", ",")}` : ""}{a.dy != null ? ` · DY ${a.dy.toFixed(1).replace(".", ",")}%` : ""}{a.vp_mes ? ` · VP de ${a.vp_mes.slice(5)}/${a.vp_mes.slice(2, 4)}` : ""}</span>
-                  <span class={`sub ${a.variacao_pm >= 0 ? "pos" : "neg"}`} style="grid-column:1/-1">{a.variacao_dia != null ? `${pct(a.variacao_dia)} hoje · ` : ""}{pct(a.variacao_mes)} · {pct(a.variacao_pm)}</span>
+                  <span class={`sub ${(a.rendimento.total ?? a.variacao_pm) >= 0 ? "pos" : "neg"}`} style="grid-column:1/-1">{a.variacao_dia != null ? `${pct(a.variacao_dia)} hoje · ` : ""}{pct(a.variacao_mes)} no mês · {pct(a.rendimento.total ?? a.variacao_pm)} total</span>
                   <LinhaDeNoticia n={noticias[a.ticker]} /></button>
               ))}</div>
           ))}
@@ -116,7 +120,8 @@ function Detalhe({ a, d, n, aoFechar }: { a: Dados["ativos"][number]; d: Dados; 
   const kv: [string, string][] = [
     ["Cotas", a.quantidade.toLocaleString("pt-BR")], ["Preço médio", brl(a.preco_medio)],
     ["Preço", a.preco ? brl(Number(a.preco).toFixed(2)) : "sem cotação"], ["Valor", brl(a.valor)],
-    ["Resultado", `${brl((num(a.valor) - num(a.custo)).toFixed(2), true)} (${pct(a.variacao_pm)})`], ["Peso na carteira", `${v2(a.peso, 1)}%`],
+    ["Cota", `${brl((num(a.valor) - num(a.custo)).toFixed(2), true)} (${pct(a.variacao_pm)})`], ["Proventos", a.classe === "treasury" ? "—" : `${brl(a.rendimento.proventos_valor)} (${pct(a.rendimento.proventos)})`],
+    ["Rendimento total", pct(a.rendimento.total)], ["Peso na carteira", `${v2(a.peso, 1)}%`],
     ["Hoje", pct(a.variacao_dia)], ["30 dias", pct(a.variacao_30d)],
     ["P/VP", v2(a.pvp)], ["VP da cota", a.vp_cota != null ? `${brl(a.vp_cota.toFixed(2))}${a.vp_mes ? ` (${a.vp_mes.slice(5)}/${a.vp_mes.slice(2, 4)})` : ""}` : "—"],
     ["DY 12 meses", a.dy != null ? `${v2(a.dy, 1)}%` : "—"], ["Liquidez média", a.liquidez != null ? `R$ ${Math.round(a.liquidez / 1000).toLocaleString("pt-BR")} mil/dia` : "—"],
@@ -128,6 +133,8 @@ function Detalhe({ a, d, n, aoFechar }: { a: Dados["ativos"][number]; d: Dados; 
       <div class="kv">{kv.map(([r, v]) => <div><div class="r">{r}</div><div class="v">{v}</div></div>)}</div>
       <p class="nota">{a.atualizado_em ? <>Dado de <b>{quando(a.atualizado_em)}</b>, fonte: {FONTES[a.fonte ?? ""] ?? a.fonte}.</> : "Ainda sem cotação: o valor é o custo."}{a.fonte === "demo" ? " No modo demonstração os números são inventados; entre com sua conta para ver dados reais." : ""}</p>
       <p class="nota">{fora ? `Fora do "Onde aportar": ${fora.motivo}.` : "Passa nas suas regras do \"Onde aportar\"."}</p>
+      {a.classe !== "treasury" && a.proventos_desde && <p class="nota">Proventos estimados pelos informes da CVM desde {mesAno(a.proventos_desde)}, com as cotas que você tinha no início de cada mês.</p>}
+      {a.classe !== "treasury" && <Ficha ticker={a.ticker} />}
       {a.classe !== "treasury" && <Noticias n={n} />}
     </div></div>
   );
@@ -178,6 +185,7 @@ function Comprar({ opcoes, aoFechar, aoSalvar }: { opcoes: Opcoes | null; aoFech
       <div class="topo"><h3 id="t-cp">Comprei um ativo</h3><button class="icone" onClick={aoFechar} aria-label="Fechar"><Icone nome="fechar" /></button></div>
       <form onSubmit={(e) => { e.preventDefault(); aoSalvar(f); }}>
         <div class="campo"><label for="cp-t">Ativo</label><input id="cp-t" value={f.ticker} placeholder="MXRF11…" autoComplete="off" autocapitalize="characters" spellcheck={false} onInput={set("ticker")} /></div>
+        {f.classe !== "treasury" && TICKER_FII.test(f.ticker.trim().toUpperCase()) && <Ficha ticker={f.ticker.trim().toUpperCase()} comNoticias />}
         <div class="campo"><label for="cp-c">Classe</label><select id="cp-c" value={f.classe} onChange={set("classe")}>{[["paper", "Papel"], ["brick", "Tijolo"], ["logistics", "Logística"], ["infra", "FI-Infra"], ["treasury", "Tesouro"], ["other", "Outros"]].map(([v, r]) => <option value={v}>{r}</option>)}</select></div>
         <div class="kv"><div class="campo" style="margin:0;background:none;padding:0"><label for="cp-q">Quantidade</label><input id="cp-q" inputMode="decimal" autoComplete="off" value={f.quantidade} onInput={set("quantidade")} /></div><div class="campo" style="margin:0;background:none;padding:0"><label for="cp-p">Preço por cota (R$)</label><input id="cp-p" inputMode="decimal" autoComplete="off" value={f.preco} onInput={set("preco")} /></div></div>
         <div class="campo"><label for="cp-o">Saiu de</label><select id="cp-o" value={f.conta_id} onChange={set("conta_id")}>{origens.map((c) => <option value={c.id}>{c.nome}</option>)}</select></div>
@@ -186,5 +194,95 @@ function Comprar({ opcoes, aoFechar, aoSalvar }: { opcoes: Opcoes | null; aoFech
         <div style="margin-top:12px"><button type="submit" class="btn-tinta"><Icone nome="comprar" tamanho={18} />Registrar compra</button></div>
       </form>
     </div></div>
+  );
+}
+
+/** Rendimento sobre o custo em cada classe e na carteira: cota + proventos. */
+function RendimentoPorCampo({ d }: { d: Dados }) {
+  const linha = (nome: string, r: Rendimento, forte = false, semProventos = false) => (
+    <tr class={forte ? "forte" : ""}><th scope="row">{nome}</th><td class={(r.valorizacao ?? 0) >= 0 ? "pos" : "neg"}>{pct(r.valorizacao)}</td><td>{semProventos ? "—" : pct(r.proventos)}</td><td class={(r.total ?? 0) >= 0 ? "pos" : "neg"}>{pct(r.total)}</td></tr>
+  );
+  const classes = d.classes.filter((k) => num(k.valor) > 0);
+  return (
+    <section><h2>Rendimento por classe <span class="lado">sobre o custo</span></h2>
+      <div class="tabela-rend"><table>
+        <thead><tr><th scope="col">Classe</th><th scope="col">Cota</th><th scope="col">Proventos</th><th scope="col">Total</th></tr></thead>
+        <tbody>{classes.map((k) => linha(k.nome, k.rendimento, false, k.classe === "treasury"))}{linha("Carteira", d.rendimento, true)}</tbody>
+      </table></div>
+      <p class="sub">Proventos estimados pelos informes da CVM ({brl(d.rendimento.proventos_valor)}). Por ativo, na aba Carteira.</p>
+    </section>
+  );
+}
+
+const FASE: Record<Macro["fase"], string> = { manutencao: "Em manutenção", queda: "Em queda", alta: "Em alta" };
+const ACAO: Record<Macro["ultima"]["acao"], string> = { manteve: "manteve", reduziu: "cortou", elevou: "subiu" };
+const taxa = (v: number) => `${v.toFixed(2).replace(".", ",")}%`;
+
+/** Caminho da Selic e a última reunião do Copom, pelo Banco Central. */
+function Selic() {
+  const [m, setM] = useState<Macro | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  useEffect(() => { apiInvest.macro().then(setM).catch((e: Error) => setErro(e.message)); }, []);
+  if (erro) return <section><h2>Selic e Copom</h2><p class="nota">{erro}</p></section>;
+  if (!m) return <section aria-busy="true"><h2>Selic e Copom</h2><div class="graf"><span class="esqueleto" /></div></section>;
+  const u = m.ultima;
+  const reunioes = (n: number) => `${n} ${n === 1 ? "reunião" : "reuniões"}`;
+  const resumo = m.fase === "manutencao"
+    ? `Parada há ${reunioes(m.seguidas)}${m.antes ? `, depois de ${m.antes.reunioes} ${m.antes.acao === "reduziu" ? (m.antes.reunioes === 1 ? "corte" : "cortes") : (m.antes.reunioes === 1 ? "alta" : "altas")}${m.antes.pontos != null ? ` (${m.antes.pontos > 0 ? "+" : "−"}${Math.abs(m.antes.pontos).toFixed(2).replace(".", ",")} p.p.)` : ""}` : ""}.`
+    : `${m.seguidas === 1 ? "Primeira" : `${m.seguidas}ª`} ${m.fase === "queda" ? "redução" : "alta"} seguida.`;
+  const serie = [...m.historico].reverse().slice(-6);
+  return (
+    <section class="selic"><h2>Selic e Copom <span class="lado">{u.reuniao}ª reunião, {diaMes(u.data)}</span></h2>
+      <div class="graf">
+        <div class="selic-topo"><span class="selic-taxa">{taxa(m.selic)} <small>a.a.</small></span><span class={`fase ${m.fase}`}>{FASE[m.fase]}</span></div>
+        <p class="selic-frase">{resumo}</p>
+        <p class="sub">Na última reunião o Copom {ACAO[u.acao]} a taxa{u.unanime === true ? ", por unanimidade" : u.unanime === false ? ", sem unanimidade" : ""}.{m.ata ? ` Ata publicada em ${diaMes(m.ata.publicada)}.` : ""}</p>
+        {serie.length > 1 && <ol class="selic-linha" aria-label="Últimas decisões">{serie.map((h) => <li class={h.acao}><b>{taxa(h.taxa)}</b><span>{mesAno(h.data.slice(0, 7))}</span></li>)}</ol>}
+        {u.texto.length > 0 && <details class="comunicado"><summary>Ler o comunicado do Copom</summary>{u.texto.map((t) => <p>{t}</p>)}</details>}
+        <p class="nota">Fonte: {m.fonte}. Texto oficial, sem resumo de IA.</p>
+      </div>
+    </section>
+  );
+}
+
+/** Ficha de um fundo: perfil e histórico da CVM, indicadores e, na compra, as notícias. */
+function Ficha({ ticker, comNoticias = false }: { ticker: string; comNoticias?: boolean }) {
+  const [f, setF] = useState<FichaFundo | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const carregar = () => apiInvest.fundo(ticker).then((x) => { setF(x); setErro(null); }).catch((e: Error) => setErro(e.message));
+  useEffect(() => { setF(null); const t = setTimeout(carregar, 400); return () => clearTimeout(t); }, [ticker]);
+  if (erro) return <p class="nota">{erro}</p>;
+  if (!f) return <div class="ficha" aria-busy="true"><span class="esqueleto" /></div>;
+  const v2 = (x: number | null | undefined, casas = 2) => (x == null ? "—" : x.toFixed(casas).replace(".", ","));
+  const ult = f.historico[f.historico.length - 1];
+  const p = f.perfil;
+  const anos = p?.inicio ? Math.floor((Date.parse(hoje()) - Date.parse(p.inicio)) / (365.25 * 86_400_000)) : null;
+  const acompanhar = () => (f.acompanhando ? apiInvest.deixarDeAcompanhar(ticker) : apiInvest.acompanhar(ticker)).then(carregar).catch((e: Error) => setErro(e.message));
+  const semDados = !p && f.historico.length === 0 && !f.cotacao;
+  const botao = !f.em_carteira && (
+    <button type="button" class={f.acompanhando ? "link-sub" : "btn"} onClick={acompanhar}>{f.acompanhando ? "Deixar de acompanhar" : <><Icone nome="mais" tamanho={16} />Acompanhar {ticker}</>}</button>
+  );
+  if (semDados) return (
+    <div class="ficha"><p class="nota">{f.acompanhando ? `Acompanhando ${ticker}. Cotação e informes chegam na próxima atualização (dias úteis, 20h40).` : `Ainda sem dados de ${ticker}. Acompanhe para buscar cotação, informes da CVM e documentos do fundo.`}</p>{botao}</div>
+  );
+  const kv: [string, string][] = [
+    ["Preço", f.cotacao ? brl(Number(f.cotacao.preco).toFixed(2)) : "—"], ["P/VP", v2(f.cotacao?.pvp)],
+    ["DY 12 meses", f.cotacao?.dy != null ? `${v2(f.cotacao.dy, 1)}%` : "—"], ["Pago por cota 12m", f.rendimento_12m != null ? brl(f.rendimento_12m.toFixed(2)) : "—"],
+    ["Liquidez média", f.cotacao?.liquidez != null ? `R$ ${(f.cotacao.liquidez / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi/dia` : "—"],
+    ["Cotistas", ult?.cotistas != null ? ult.cotistas.toLocaleString("pt-BR") : "—"],
+    ["Patrimônio", ult?.pl != null ? `R$ ${(ult.pl / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi` : "—"],
+    ["VP da cota", ult ? brl(ult.vp_cota.toFixed(2)) : "—"],
+  ];
+  const barras = f.historico.filter((h) => h.por_cota != null).slice(-12).map((h) => ({ mes: h.mes, v: h.por_cota! }));
+  return (
+    <section class="ficha"><h2>Histórico do fundo <span class="lado">CVM</span></h2>
+      {p && <p class="ficha-perfil">{p.nome ?? ticker}{p.inicio ? <> · funciona desde <b>{mesAno(p.inicio.slice(0, 7))}</b>{anos != null && anos >= 1 ? ` (${anos} ${anos === 1 ? "ano" : "anos"})` : ""}</> : ""}{p.segmento ? ` · ${p.segmento}` : ""}{p.gestao ? ` · gestão ${p.gestao.toLowerCase()}` : ""}{p.mandato ? ` · mandato ${p.mandato.toLowerCase()}` : ""}</p>}
+      <div class="kv">{kv.map(([r, v]) => <div><div class="r">{r}</div><div class="v">{v}</div></div>)}</div>
+      {barras.length > 1 && <div class="graf"><Barras vals={barras} destacaUltimo rotulo="Rendimento por cota nos últimos meses" /><p class="sub">Rendimento por cota de {mesAno(barras[0]!.mes)} a {mesAno(barras[barras.length - 1]!.mes)}.</p></div>}
+      {f.emissoes.length > 0 && <div class="lista">{f.emissoes.map((e) => <div class="item"><span class="nome">Emissão</span><span class="valor">{mesAno(e.mes)}</span><span class="sub" style="grid-column:1/-1">+{e.novas.toLocaleString("pt-BR")} cotas emitidas</span></div>)}</div>}
+      {f.emissoes.length === 0 && f.historico.length > 1 && <p class="nota">Sem emissão de cotas nos meses que temos ({mesAno(f.historico[0]!.mes)} em diante).</p>}
+      {comNoticias && <Noticias n={f.noticias ?? undefined} />}
+      {botao}
+    </section>
   );
 }

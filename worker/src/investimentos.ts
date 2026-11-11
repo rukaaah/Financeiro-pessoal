@@ -1,22 +1,26 @@
-import { type AtivoNaCarteira, type Classe, deDecimal6, deDigitado, NOME_DA_CLASSE, ondeAportar, paraNumeric, posicaoDe, relatorioDaCarteira, valorDe } from "@financeiro/dominio";
+import { type AtivoNaCarteira, type Classe, deDecimal6, deDigitado, emissoesDe, NOME_DA_CLASSE, ondeAportar, type OperacaoDatada, paraNumeric, posicaoDe, proventosEstimados, relatorioDaCarteira, type RendimentoDoMes, rendimentoSobreCusto, valorDe } from "@financeiro/dominio";
 import type { Hono } from "hono";
 import type { Rodar } from "./app.ts";
 import { consulta } from "./banco.ts";
 import { hojeEmSaoPaulo } from "./contexto.ts";
 
 const UUID = /^[0-9a-f-]{36}$/i;
+const TICKER_FII = /^[A-Z]{4}\d{2}$/;
 const CLASSES = Object.keys(NOME_DA_CLASSE) as Classe[];
 type Corpo = Record<string, unknown>;
 
 const SQL_ATIVOS = `
   select a.id, a.ticker, a.name as nome, a.class as classe,
-         coalesce(json_agg(json_build_object('quantidade', t.quantity::text, 'preco', t.unit_price::text) order by t.traded_on, t.created_at)
+         coalesce(json_agg(json_build_object('quantidade', t.quantity::text, 'preco', t.unit_price::text, 'data', t.traded_on::text) order by t.traded_on, t.created_at)
                   filter (where t.id is not null), '[]') as operacoes,
          q.price::text as preco, q.pvp::float as pvp, q.dy_12m::float as dy, q.quoted_on::text as cotado_em,
          q.source as fonte, to_char(q.fetched_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI') as atualizado_em,
          liq.media::float as liquidez,
          q0.price::text as preco_mes_passado, q1.price::float as preco_anterior, q30.price::float as preco_30d,
-         vp.nav_per_share::float as vp_cota, to_char(vp.ref_month, 'YYYY-MM') as vp_mes
+         vp.nav_per_share::float as vp_cota, to_char(vp.ref_month, 'YYYY-MM') as vp_mes,
+         (select coalesce(json_agg(json_build_object('mes', to_char(r.ref_month, 'YYYY-MM'), 'porCota', (r.dy_month * p.nav_per_share)::numeric(14,6)::text) order by r.ref_month), '[]')
+            from fii_reports r join fii_reports p on p.ticker = r.ticker and p.ref_month = (r.ref_month - interval '1 month')::date
+           where r.ticker = a.ticker) as rendimentos
     from assets a
     left join asset_trades t on t.asset_id = a.id
     left join lateral (select * from asset_quotes x where x.ticker = a.ticker order by quoted_on desc limit 1) q on true
@@ -72,8 +76,14 @@ export function rotasDeInvestimentos<E extends object>(app: Hono<{ Bindings: E }
       const pos = posicaoDe(a.operacoes as { quantidade: string; preco: string }[]);
       const valor = valorDe(pos, a.preco ? String(a.preco) : null);
       const mesPassado = a.preco_mes_passado ? valorDe(pos, String(a.preco_mes_passado)) : null;
-      return { a, pos, valor, mesPassado };
+      const rend = (a.rendimentos ?? []) as RendimentoDoMes[];
+      const proventos = proventosEstimados(a.operacoes as OperacaoDatada[], rend);
+      return { a, pos, valor, mesPassado, proventos, proventosDesde: rend[0]?.mes ?? null };
     });
+    const rendimentoDe = (xs: typeof ativos) => {
+      const custo = xs.reduce((s, x) => s + x.pos.custo, 0n), valor = xs.reduce((s, x) => s + x.valor, 0n), prov = xs.reduce((s, x) => s + x.proventos, 0n);
+      return { ...rendimentoSobreCusto(custo, valor, prov), proventos_valor: paraNumeric(prov) };
+    };
     const total = ativos.reduce((s, x) => s + x.valor, 0n);
     const r = regrasL[0] ?? {};
     const regras = { maxPvp: Number(r.max_pvp ?? 1), maxPeso: Number(r.max_peso ?? 20), minLiquidez: Number(r.min_liquidez ?? 500000), metas: (r.metas ?? {}) as Partial<Record<Classe, number>> };
@@ -90,7 +100,7 @@ export function rotasDeInvestimentos<E extends object>(app: Hono<{ Bindings: E }
     return c.json({
       total: n(total), custo: n(ativos.reduce((s, x) => s + x.pos.custo, 0n)),
       variacao_mes: n(ativos.reduce((s, x) => s + (x.mesPassado != null ? x.valor - x.mesPassado : 0n), 0n)),
-      ativos: ativos.map(({ a, pos, valor, mesPassado }) => ({
+      ativos: ativos.map((x) => { const { a, pos, valor, mesPassado } = x; return {
         id: a.id, ticker: a.ticker, nome: a.nome, classe: a.classe, classe_nome: NOME_DA_CLASSE[a.classe as Classe],
         quantidade: Number(pos.quantidade6) / 1e6, preco_medio: n(pos.precoMedio6 / 10000n),
         preco: a.preco ?? null, valor: n(valor), custo: n(pos.custo), peso: total > 0n ? Number((valor * 1000n) / total) / 10 : 0,
@@ -100,11 +110,13 @@ export function rotasDeInvestimentos<E extends object>(app: Hono<{ Bindings: E }
         variacao_dia: a.preco && a.preco_anterior ? Math.round(((Number(a.preco) - Number(a.preco_anterior)) / Number(a.preco_anterior)) * 1000) / 10 : null,
         variacao_30d: a.preco && a.preco_30d ? Math.round(((Number(a.preco) - Number(a.preco_30d)) / Number(a.preco_30d)) * 1000) / 10 : null,
         vp_cota: a.vp_cota ?? null, vp_mes: a.vp_mes ?? null,
-      })),
+        rendimento: rendimentoDe([x]), proventos_desde: x.proventosDesde,
+      }; }),
+      rendimento: rendimentoDe(ativos),
       relatorio: { renda_mensal: n(relatorio.rendaMensal), alertas: relatorio.alertas, desatualizado: relatorio.desatualizado, atualizado_em: ultima?.atualizado_em ?? null, fonte: ultima?.fonte ?? null },
       classes: CLASSES.map((k) => {
         const v = ativos.filter((x) => x.a.classe === k).reduce((s, x) => s + x.valor, 0n);
-        return { classe: k, nome: NOME_DA_CLASSE[k], valor: n(v), peso: total > 0n ? Number((v * 1000n) / total) / 10 : 0, meta: regras.metas[k] ?? null };
+        return { classe: k, nome: NOME_DA_CLASSE[k], valor: n(v), peso: total > 0n ? Number((v * 1000n) / total) / 10 : 0, meta: regras.metas[k] ?? null, rendimento: rendimentoDe(ativos.filter((x) => x.a.classe === k)) };
       }).filter((k) => k.valor !== "0.00" || k.meta != null),
       series, regras,
       onde_aportar: { aporte: n(aporte), sugestoes: sugestao.sugestoes.map((s) => ({ ...s, valor: n(s.valor) })), fora: sugestao.fora, sobra: n(sugestao.sobra), avisos: sugestao.avisos },
@@ -148,5 +160,53 @@ export function rotasDeInvestimentos<E extends object>(app: Hono<{ Bindings: E }
       if (/^(22|23)/.test((e as { code?: string })?.code ?? "")) return c.json({ erro: "Conta não encontrada." }, 400);
       throw e;
     }
+  });
+
+  /** Ficha de um fundo, na carteira ou não: perfil e histórico da CVM, indicadores e notícias. */
+  app.get("/api/investimentos/fundo/:ticker", async (c) => {
+    const ticker = c.req.param("ticker").toUpperCase();
+    if (!TICKER_FII.test(ticker)) return c.json({ erro: "Código de fundo como MXRF11." }, 400);
+    const [perfil = [], cot = [], hist = [], not = [], meu = []] = await rodar(c, [
+      consulta(`select name as nome, cnpj, started_on::text as inicio, segment as segmento, mandate as mandato, management as gestao from fii_profiles where ticker = $1`, ticker),
+      consulta(`select q.price::text as preco, q.pvp::float as pvp, q.dy_12m::float as dy, q.quoted_on::text as cotado_em, q.source as fonte,
+                       (select avg(liquidity) from (select liquidity from asset_quotes x where x.ticker = $1 and x.liquidity is not null order by quoted_on desc limit 21) u)::float as liquidez
+                  from asset_quotes q where q.ticker = $1 order by q.quoted_on desc limit 1`, ticker),
+      consulta(`select to_char(r.ref_month, 'YYYY-MM') as mes, r.nav_per_share::float as vp_cota, (r.dy_month * 100)::float as dy_mes,
+                       (r.dy_month * p.nav_per_share)::numeric(14,4)::float as por_cota, r.shares_outstanding::text as cotas,
+                       r.shareholders as cotistas, r.net_assets::float as pl
+                  from fii_reports r left join fii_reports p on p.ticker = r.ticker and p.ref_month = (r.ref_month - interval '1 month')::date
+                 where r.ticker = $1 order by r.ref_month`, ticker),
+      consulta(`select i.summary as resumo, coalesce(i.prepare, '[]') as preparar, coalesce(i.events, '[]') as eventos,
+                       to_char(i.generated_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI') as gerado_em, $1::text as ticker,
+                       coalesce((select json_agg(json_build_object('id', d.id, 'titulo', d.title, 'categoria', d.category,
+                                  'entregue_em', to_char(d.delivered_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD')) order by d.delivered_at desc)
+                                   from (select * from fii_documents x where x.ticker = $1 order by x.delivered_at desc limit 6) d), '[]') as documentos
+                  from (select 1) z left join fii_insights i on i.ticker = $1`, ticker),
+      consulta(`select exists(select 1 from assets where ticker = $1) as em_carteira, exists(select 1 from asset_watchlist where ticker = $1) as acompanhando`, ticker),
+    ]);
+    const h = hist.map((r) => ({ mes: String(r.mes), vp_cota: r.vp_cota as number, dy_mes: r.dy_mes as number, por_cota: r.por_cota as number | null, cotas: r.cotas == null ? null : Number(r.cotas), cotistas: r.cotistas as number | null, pl: r.pl as number | null }));
+    const ult12 = h.slice(-12).map((r) => r.por_cota).filter((v): v is number => v != null);
+    return c.json({
+      ticker, perfil: perfil[0] ?? null, cotacao: cot[0] ?? null,
+      historico: h.slice(-24),
+      emissoes: emissoesDe(h.filter((r) => r.cotas != null).map((r) => ({ mes: r.mes, cotas: String(r.cotas) }))),
+      rendimento_12m: ult12.length === 12 ? Math.round(ult12.reduce((s, v) => s + v, 0) * 100) / 100 : null,
+      noticias: not[0]?.resumo || (not[0]?.documentos as unknown[] | undefined)?.length ? not[0] : null,
+      em_carteira: Boolean(meu[0]?.em_carteira), acompanhando: Boolean(meu[0]?.acompanhando),
+    });
+  });
+
+  /** Acompanhar um fundo antes de comprar: os jobs passam a buscar dados dele. */
+  app.post("/api/investimentos/acompanhar", async (c) => {
+    const b = await c.req.json<Corpo>().catch(() => ({}) as Corpo);
+    const ticker = String(b.ticker ?? "").trim().toUpperCase();
+    if (!TICKER_FII.test(ticker)) return c.json({ erro: "Código de fundo como MXRF11." }, 400);
+    await rodar(c, [consulta("insert into asset_watchlist (user_id, ticker) values (current_app_user(), $1) on conflict do nothing", ticker)]);
+    return c.json({ ok: true }, 201);
+  });
+
+  app.delete("/api/investimentos/acompanhar/:ticker", async (c) => {
+    await rodar(c, [consulta("delete from asset_watchlist where ticker = $1", c.req.param("ticker").toUpperCase())]);
+    return c.json({ ok: true });
   });
 }
