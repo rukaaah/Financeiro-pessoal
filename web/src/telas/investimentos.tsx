@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { apiInvest, brl, diaMes, type EventoFii, type GestaoFii, hoje, type Investimentos as Dados, type NoticiasFii, num, type Opcoes } from "../api.ts";
+import { apiInvest, brl, diaMes, type EventoFii, type GestaoFii, hoje, type MomentoFii, type Investimentos as Dados, type NoticiasFii, num, type Opcoes } from "../api.ts";
 import { Icone } from "../icone.tsx";
 import { Chat } from "./chat.tsx";
 
@@ -28,7 +28,11 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
   const [aberto, setAberto] = useState<string | null>(null);
   const [conversa, setConversa] = useState<string | null>(null);
   const [noticias, setNoticias] = useState<Record<string, NoticiasFii>>({});
-  const carregar = (aporte?: string) => apiInvest.ver(aporte).then(setD).catch((e: Error) => aoAvisar(e.message));
+  const [momento, setMomento] = useState<MomentoFii | null>(null);
+  const carregar = (aporte?: string) => {
+    apiInvest.momento(aporte).then(setMomento).catch(() => setMomento(null));
+    return apiInvest.ver(aporte).then(setD).catch((e: Error) => aoAvisar(e.message));
+  };
   useEffect(() => {
     carregar();
     apiInvest.noticias().then((r) => setNoticias(Object.fromEntries(r.noticias.map((n) => [n.ticker, n])))).catch(() => {});
@@ -50,6 +54,7 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
       <div class="seg" role="group" aria-label="Investimentos">{(["Resumo", "Carteira", "Proventos"] as const).map((f) => <button aria-pressed={f === face} onClick={() => setFace(f)}>{f}</button>)}</div>
       {d && face === "Resumo" && (
         <>
+          {momento && momento.fundos.length > 0 && <Momento m={momento} />}
           {d.ativos.length > 0 && <Relatorio d={d} />}
           <section><h2>Aportes por mês <span class="lado">12 meses</span></h2><div class="graf"><Barras vals={d.series.map((x) => ({ mes: x.mes, v: num(x.aporte) }))} destacaUltimo rotulo="Aportes por mês" />
             <p class="sub">Você colocou {brl(d.series.reduce((s, x) => s + num(x.aporte), 0).toFixed(2))} em 12 meses. Comparação com CDI e IFIX entra com o job do CDI.</p></div></section>
@@ -84,6 +89,51 @@ export function Investimentos({ opcoes, aoAvisar, aoPerguntar }: { opcoes: Opcoe
       {folha === "aportar" && d && <OndeAportar d={d} aoFechar={() => setFolha(null)} aoRecalcular={(v) => carregar(v)} />}
       {folha === "comprar" && <Comprar opcoes={opcoes} aoFechar={() => setFolha(null)} aoSalvar={(corpo) => { setFolha(null); apiInvest.comprar(corpo).then(() => carregar()).then(() => aoAvisar("Compra registrada.")).catch((e: Error) => aoAvisar(e.message)); }} />}
     </>
+  );
+}
+
+const VEREDITO: Record<MomentoFii["fundos"][number]["veredito"], string> = { grande_dia: "Um dos melhores dias do ano", bom_preco: "Bom preço", esperar: "Esperar", sem_dados: "Histórico curto" };
+const TENDENCIA: Record<NonNullable<MomentoFii["panorama"]>["tendencia"], string> = { alta: "Em alta", queda: "Em queda", lateral: "De lado", sem_dados: "Sem histórico" };
+const SELO: Record<string, string> = { grande_dia: "dentro", bom_preco: "dentro", esperar: "perto", sem_dados: "neutro" };
+
+/** Medidor diário (ADR-022): tendência dos fundos acompanhados, Selic e o melhor fundo para hoje. */
+function Momento({ m }: { m: MomentoFii }) {
+  const p = m.panorama;
+  const [top] = m.fundos;
+  const comprar = top && (top.veredito === "grande_dia" || top.veredito === "bom_preco");
+  const v1 = (x: number) => x.toFixed(1).replace(".", ",");
+  return (
+    <section class="momento">
+      <h2>Momento de compra{top && <span class="lado">pregão de {diaMes(top.dia)}</span>}</h2>
+      <div class="cartao-momento">
+        {p && p.tendencia !== "sem_dados" && (
+          <p class="mercado"><b>{TENDENCIA[p.tendencia]}</b>: {p.acima_da_media} de {p.fundos} fundos seus acima da média do mês{p.variacao_21 != null ? `, ${p.variacao_21 >= 0 ? "+" : ""}${v1(p.variacao_21)}% em 21 pregões (mediana)` : ""}.
+            {p.selic && <> Selic {Number(p.selic).toFixed(2).replace(".", ",")}% ao ano, {p.direcao_selic}.</>}</p>
+        )}
+        {top && comprar ? (
+          <div class="escolha">
+            <div class="cab"><span class="ticker">{top.ticker}</span><span class={`selo ${SELO[top.veredito]}`}>{VEREDITO[top.veredito]}</span></div>
+            <p class="motivo">{top.motivo}</p>
+            {top.sugestao && (top.sugestao.cotas > 0
+              ? <p class="sugestao">Com {brl(m.aporte)}: <b>{top.sugestao.cotas} {top.sugestao.cotas === 1 ? "cota" : "cotas"}</b> por {brl(top.sugestao.valor)}{top.sugestao.limite ? `, ${top.sugestao.limite}` : ""}.</p>
+              : <p class="sugestao">Nenhuma cota com {brl(m.aporte)}{top.sugestao.limite ? `: ${top.sugestao.limite}` : ": o aporte não paga uma cota"}.</p>)}
+            {top.previsao && <p class="previsao">{top.previsao}</p>}
+            {top.riscos.length > 0 && <ul class="riscos">{top.riscos.map((r) => <li>{r}</li>)}</ul>}
+          </div>
+        ) : (
+          <p class="motivo">Nenhum fundo da sua carteira está em ponto de compra hoje.{top?.nota != null ? ` O mais perto é ${top.ticker}, com nota ${top.nota} de 100.` : ""}</p>
+        )}
+        {m.fundos.length > 1 && (
+          <details class="todos"><summary>Todos os fundos ({m.fundos.length})</summary>
+            <div class="lista">{m.fundos.map((f) => (
+              <div class="item"><span class="nome">{f.ticker}</span><span class="valor">{f.nota != null ? `nota ${f.nota}` : "—"}</span>
+                <span class="sub" style="grid-column:1/-1">{f.veredito !== "esperar" && <span class={`selo ${SELO[f.veredito]}`}>{VEREDITO[f.veredito]}</span>}{f.motivo.match(/^.+?[.!?](?=\s|$)/)?.[0] ?? f.motivo}</span></div>
+            ))}</div>
+          </details>
+        )}
+        <p class="nota">Nota de 0 a 100: P/VP e DY contra o próprio último ano, desconto sobre o patrimônio e preço contra a média do mês. {top?.com_ia ? "Texto da IA conferido contra esses números. " : ""}Tendência só dos seus fundos, não do IFIX. Não é recomendação de analista.</p>
+      </div>
+    </section>
   );
 }
 

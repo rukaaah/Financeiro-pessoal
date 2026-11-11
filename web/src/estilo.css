@@ -333,3 +333,19 @@ h2 .ia-tit svg{color:var(--ia)}
 .noticias-fii a.item{color:inherit;text-decoration:none}
 .noticias-fii a.item .nome{color:var(--azul);overflow-wrap:anywhere;font-weight:600}
 .noticias-fii .nota{line-height:1.5;margin-top:12px}
+/* Momento de compra (ADR-022): texto com respiro, 16 px de margem herdada da seção */
+.momento .cartao-momento{background:var(--sup);border-radius:6px;padding:16px;display:grid;gap:12px;line-height:1.5;overflow-wrap:anywhere}
+.momento p{margin:0}
+.momento .mercado{font-size:14px;color:var(--t2)}
+.momento .escolha{display:grid;gap:10px}
+.momento .cab{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.momento .ticker{font-size:20px;font-weight:700;letter-spacing:.01em}
+.momento .selo{margin-right:0}
+.momento .sugestao{font-size:15px}
+.momento .previsao{font-size:14px;color:var(--t2)}
+.momento .riscos{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px}
+.momento .todos summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:700}
+.momento .todos .item .sub{line-height:1.5}
+.momento .todos .selo{margin-right:6px}
+.momento .todos .lista{background:var(--papel)}
+.selo.dentro{background:var(--dentro-f);color:var(--dentro)}.selo.neutro{background:var(--sup2);color:var(--t2)}

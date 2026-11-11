@@ -160,3 +160,22 @@ export function relatorioDaCarteira(ativos: readonly AtivoNoRelatorio[], regras:
   const desatualizado = maisNova && maisNova < diaUtilAnterior(hoje) ? maisNova : null;
   return { rendaMensal: renda, alertas, desatualizado };
 }
+
+/**
+ * Momento de compra (ADR-022): quantas cotas inteiras o aporte compra no fundo apontado
+ * pelo medidor, sem passar das regras do próprio usuário (P/VP máximo e peso máximo).
+ */
+export interface CotasSugeridas { cotas: number; valor: Centavos; limite: string | null }
+
+export function cotasSugeridas(preco: string, aporte: Centavos, valorAtual: Centavos, totalCarteira: Centavos, regras: Pick<Regras, "maxPvp" | "maxPeso">, pvp: number | null): CotasSugeridas {
+  const preco6 = deDecimal6(preco);
+  if (preco6 <= 0n || aporte <= 0n) return { cotas: 0, valor: 0n, limite: null };
+  if (pvp != null && pvp > regras.maxPvp) return { cotas: 0, valor: 0n, limite: `P/VP ${pp2(pvp)} acima do seu máximo (${pp2(regras.maxPvp)})` };
+  const peloAporte = (aporte * 10_000n) / preco6;
+  const teto = ((totalCarteira + aporte) * BigInt(Math.round(regras.maxPeso * 100))) / 10_000n - valorAtual;
+  const peloPeso = teto > 0n ? (teto * 10_000n) / preco6 : 0n;
+  const cotas = peloAporte < peloPeso ? peloAporte : peloPeso;
+  const limite = peloPeso < peloAporte ? `limitado ao seu peso máximo de ${pp(regras.maxPeso)}% por ativo` : null;
+  return { cotas: Number(cotas), valor: centavosDe(cotas * ESCALA, preco6), limite };
+}
+const pp2 = (v: number) => v.toFixed(2).replace(".", ",");

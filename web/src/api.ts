@@ -114,7 +114,14 @@ export interface GestaoFii {
   planos: { texto: string; documento: number; trecho: string }[];
   mudancas: { tema: string; antes: string; agora: string; documento_antes: number; documento_agora: number; trecho: string }[];
 }
+export type Veredito = "grande_dia" | "bom_preco" | "esperar" | "sem_dados";
+export interface MomentoFii {
+  aporte: string;
+  panorama: { dia: string; tendencia: "alta" | "queda" | "lateral" | "sem_dados"; fundos: number; acima_da_media: number; variacao_21: number | null; subindo: string[]; caindo: string[]; selic: string | null; direcao_selic: string | null } | null;
+  fundos: { ticker: string; dia: string; preco: number; nota: number | null; percentil: number | null; pregoes: number; veredito: Veredito; motivo: string; riscos: string[]; previsao: string; preco_alvo: string | null; fatos: Record<string, string>; com_ia: boolean; gerado_em: string; sugestao: { cotas: number; valor: string; limite: string | null } | null }[];
+}
 export const apiInvest = {
+  momento: (aporte?: string) => pedir<MomentoFii>(`/api/investimentos/momento${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),
   noticias: () => pedir<{ noticias: NoticiasFii[] }>("/api/investimentos/noticias"),
   ver: (aporte?: string) => pedir<Investimentos>(`/api/investimentos${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),
   comprar: (corpo: object) => pedir<{ valor: string }>("/api/comprar-ativo", { method: "POST", body: JSON.stringify(corpo) }),
