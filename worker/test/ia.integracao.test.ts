@@ -1,5 +1,5 @@
 import pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { criarApp } from "../src/app.ts";
 import { bancoPg } from "./banco-pg.ts";
 
@@ -11,6 +11,7 @@ const ids: Record<string, string> = {};
 let owner: pg.Client;
 const banco = bancoPg(URL_APP);
 const json = { "content-type": "application/json" };
+const fii = `${Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join("")}11`;
 
 beforeAll(async () => {
   owner = new pg.Client({ connectionString: URL_OWNER });
@@ -26,6 +27,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await owner.query("delete from fii_reports where ticker = $1", [fii]);
+  await owner.query("delete from fii_documents where ticker = $1", [fii]);
+  await owner.query("delete from fii_management where ticker = $1", [fii]);
   await owner.query("delete from app_users where email like $1", [`%-${sufixo}@teste.dev`]);
   await owner.end();
   await banco.fechar();
@@ -57,5 +61,32 @@ describe("chat pela IA, como papel app", () => {
     expect(r2.resposta).toMatch(/números que não estão nos seus dados/);
     const reg = (await owner.query("select accepted from ai_calls a join app_users u on u.id = a.user_id where u.email = $1 order by a.created_at", [email("a")])).rows.map((x) => x.accepted);
     expect(reg).toEqual([true, false]);
+  });
+
+  it("chat do fundo: leva todo o contexto do FII, o histórico e confere os números", async () => {
+    vi.stubGlobal("fetch", async () => new Response("", { status: 503 }));
+    await owner.query("insert into fii_reports (ticker, ref_month, cnpj, nav_per_share, dy_month) values ($1, '2026-09-01', '00000000000100', 9.87, 0.0105)", [fii]);
+    await owner.query("insert into fii_documents (ticker, id, category, title, delivered_at, content) values ($1, 7001, 'Relatórios', 'Relatório Gerencial', '2026-10-10', 'A venda do galpão foi adiada para 2027.')", [fii]);
+    await owner.query(`insert into fii_management (ticker, management, documents, model) values ($1, '{"postura":"Adiou a venda.","planos":[],"mudancas":[]}', '{7001}', 'teste')`, [fii]);
+    const certo = modelo([{ verificado: ["Informe CVM de 09/2026", "Relatório gerencial de 10/10/2026"], resposta: "O VP da cota é R$ 9,87 e a gestão adiou a venda.", numeros_citados: ["9.87"], perguntas_seguintes: ["E a vacância?"] }]);
+    const app = criarApp({ banco: () => banco, credenciais: async () => ({ email: email("a"), emailVerificado: true }), ia: () => certo.ia });
+    const corpo = { contexto: "fundo", ticker: fii, pergunta: "A gestão é confiável?", historico: [{ eu: "Oi", ia: "Olá" }] };
+    const r = (await (await app.request("/api/chat", { method: "POST", headers: json, body: JSON.stringify(corpo) })).json()) as { resposta: string; verificado: string[] };
+    expect(r.resposta).toMatch(/adiou a venda/);
+    expect(r.verificado).toHaveLength(2);
+    const entrada = certo.chamadas[0] as { messages: { role: string; content: string }[] };
+    expect(entrada.messages.map((m) => m.role)).toEqual(["system", "user", "assistant", "user"]);
+    expect(entrada.messages[0]!.content).toMatch(/brutalmente honesto/);
+    const ctx = JSON.parse(entrada.messages.at(-1)!.content) as { contexto: { informes_cvm: unknown[]; gestao: { postura: string }; documentos: { trecho: string }[]; selic_meta_pct_ao_ano: unknown } };
+    expect(ctx.contexto.informes_cvm).toHaveLength(1);
+    expect(ctx.contexto.gestao.postura).toBe("Adiou a venda.");
+    expect(ctx.contexto.documentos[0]!.trecho).toMatch(/adiada para 2027/);
+    expect(ctx.contexto.selic_meta_pct_ao_ano).toBeNull();
+    const inventado = modelo([{ resposta: "O DY é 14,5%.", numeros_citados: ["14.5"] }]);
+    const app2 = criarApp({ banco: () => banco, credenciais: async () => ({ email: email("a"), emailVerificado: true }), ia: () => inventado.ia });
+    const r2 = (await (await app2.request("/api/chat", { method: "POST", headers: json, body: JSON.stringify(corpo) })).json()) as { resposta: string };
+    expect(r2.resposta).toMatch(/não estão nos dados do fundo/);
+    expect((await app2.request("/api/chat", { method: "POST", headers: json, body: JSON.stringify({ ...corpo, ticker: "x; drop" }) })).status).toBe(400);
+    vi.unstubAllGlobals();
   });
 });

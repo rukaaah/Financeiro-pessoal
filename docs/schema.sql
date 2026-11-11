@@ -458,7 +458,8 @@ COMMENT ON FUNCTION public.resolve_app_user(p_email text) IS 'E-mail verificado 
 CREATE FUNCTION public.tickers_em_carteira() RETURNS SETOF text
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'public'
-    AS $$ SELECT DISTINCT ticker FROM assets WHERE class <> 'treasury' ORDER BY 1 $$;
+    AS $$ SELECT ticker FROM assets WHERE class <> 'treasury'
+          UNION SELECT ticker FROM asset_watchlist ORDER BY 1 $$;
 
 
 --
@@ -867,6 +868,18 @@ COMMENT ON COLUMN public.asset_trades.quantity IS 'Positiva na compra, negativa 
 
 
 --
+-- Name: asset_watchlist; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.asset_watchlist (
+    user_id uuid NOT NULL,
+    ticker text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT asset_watchlist_ticker_formato CHECK ((ticker ~ '^[A-Z]{4}[0-9]{2}$'::text))
+);
+
+
+--
 -- Name: assets; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1089,6 +1102,36 @@ CREATE TABLE public.fii_insights (
 
 
 --
+-- Name: fii_management; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_management (
+    ticker text NOT NULL,
+    management jsonb NOT NULL,
+    documents bigint[] NOT NULL,
+    model text NOT NULL,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_management_objeto CHECK ((jsonb_typeof(management) = 'object'::text))
+);
+
+
+--
+-- Name: fii_profiles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_profiles (
+    ticker text NOT NULL,
+    cnpj text NOT NULL,
+    name text,
+    started_on date,
+    segment text,
+    mandate text,
+    management text,
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: fii_reports; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1099,6 +1142,9 @@ CREATE TABLE public.fii_reports (
     nav_per_share numeric(18,6) NOT NULL,
     dy_month numeric(10,6) NOT NULL,
     fetched_at timestamp with time zone DEFAULT now() NOT NULL,
+    shares_outstanding numeric(20,0),
+    shareholders integer,
+    net_assets numeric(18,2),
     CONSTRAINT fii_reports_mes CHECK ((ref_month = (date_trunc('month'::text, (ref_month)::timestamp with time zone))::date))
 );
 
@@ -1350,6 +1396,14 @@ ALTER TABLE ONLY public.asset_trades
 
 
 --
+-- Name: asset_watchlist asset_watchlist_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_watchlist
+    ADD CONSTRAINT asset_watchlist_pkey PRIMARY KEY (user_id, ticker);
+
+
+--
 -- Name: assets assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1515,6 +1569,22 @@ ALTER TABLE ONLY public.fii_documents
 
 ALTER TABLE ONLY public.fii_insights
     ADD CONSTRAINT fii_insights_pkey PRIMARY KEY (ticker);
+
+
+--
+-- Name: fii_management fii_management_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_management
+    ADD CONSTRAINT fii_management_pkey PRIMARY KEY (ticker);
+
+
+--
+-- Name: fii_profiles fii_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_profiles
+    ADD CONSTRAINT fii_profiles_pkey PRIMARY KEY (ticker);
 
 
 --
@@ -1800,6 +1870,14 @@ ALTER TABLE ONLY public.asset_trades
 
 ALTER TABLE ONLY public.asset_trades
     ADD CONSTRAINT asset_trades_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_watchlist asset_watchlist_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_watchlist
+    ADD CONSTRAINT asset_watchlist_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
 
 
 --
@@ -2151,6 +2229,19 @@ CREATE POLICY asset_trades_isolamento ON public.asset_trades TO app USING ((user
 
 
 --
+-- Name: asset_watchlist; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.asset_watchlist ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: asset_watchlist asset_watchlist_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY asset_watchlist_isolamento ON public.asset_watchlist TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: assets; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -2481,6 +2572,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.asset_trades TO app;
 
 
 --
+-- Name: TABLE asset_watchlist; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE ON TABLE public.asset_watchlist TO app;
+
+
+--
 -- Name: TABLE assets; Type: ACL; Schema: public; Owner: -
 --
 
@@ -2557,6 +2655,22 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_documents TO jobs;
 
 GRANT SELECT ON TABLE public.fii_insights TO app;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_insights TO jobs;
+
+
+--
+-- Name: TABLE fii_management; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_management TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_management TO jobs;
+
+
+--
+-- Name: TABLE fii_profiles; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_profiles TO app;
+GRANT SELECT,INSERT,UPDATE ON TABLE public.fii_profiles TO jobs;
 
 
 --

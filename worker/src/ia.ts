@@ -3,6 +3,7 @@ import type { Context, Hono } from "hono";
 import { type Consulta, consulta, type Linha } from "./banco.ts";
 import { hojeEmSaoPaulo } from "./contexto.ts";
 import { lerExtratoComIA } from "./extrato-ia.ts";
+import { consultasDoFundo, historicoLimpo, montarContextoDoFundo, PAPEL_FUNDO, RESPOSTA_DEMO_FUNDO, selicMeta, TICKER } from "./ia-fundo.ts";
 
 /**
  * IA (ADR-018, docs/v3/04-ia.md, prompts/ia/chat.md). A IA não lê o banco: ela escolhe
@@ -26,6 +27,7 @@ export const RESPOSTAS_DEMO: Record<string, { pergunta: string; resposta: string
   ],
   categoria: [{ pergunta: "Onde gastei mais?", resposta: "Exemplo: a maior parte desta categoria saiu em duas compras no cartão." }],
   investimentos: [{ pergunta: "O que mudou na carteira?", resposta: "Exemplo: EXEMP11 foi o que mais subiu no mês e TESTE11 o que mais caiu. Não faço recomendação de compra ou venda." }],
+  fundo: [{ pergunta: "Vale a pena aumentar a posição?", resposta: RESPOSTA_DEMO_FUNDO }],
 };
 
 /**
@@ -107,7 +109,7 @@ Responda SOMENTE JSON: {"resposta":"...","numeros_citados":["123.45"],"perguntas
 export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: RodarComSessao<E>, modelo: (env: E) => ModeloDeIA | null) {
   app.post("/api/chat", async (c) => {
     const b = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
-    const contexto = ["mes", "categoria", "investimentos"].includes(String(b.contexto)) ? String(b.contexto) : "mes";
+    const contexto = ["mes", "categoria", "investimentos", "fundo"].includes(String(b.contexto)) ? String(b.contexto) : "mes";
     const pergunta = String(b.pergunta ?? "").trim().slice(0, 300);
     const hoje = hojeEmSaoPaulo(), mes = MES.test(String(b.mes)) ? String(b.mes) : hoje.slice(0, 7);
     const [{ sessao, linhas: [cats = [], hojeL = []] }] = await Promise.all([rodar(c, [
@@ -122,6 +124,19 @@ export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: R
     if (!ia) return c.json({ erro: "IA desligada neste ambiente." }, 503);
     if (Number(hojeL[0]?.n ?? 0) >= COTA_DIARIA) return c.json({ erro: "Limite de perguntas de hoje atingido. Volta amanhã." }, 429);
     if (!pergunta) return c.json({ erro: "Escreva a pergunta." }, 400);
+    if (contexto === "fundo") {
+      const ticker = String(b.ticker ?? "").toUpperCase();
+      if (!TICKER.test(ticker)) return c.json({ erro: "Fundo inválido." }, 400);
+      const [{ linhas }, selic] = await Promise.all([rodar(c, consultasDoFundo(ticker)), selicMeta()]);
+      const dados = montarContextoDoFundo(ticker, hoje, linhas, selic);
+      const entrada = JSON.stringify({ contexto: dados, pergunta });
+      const resp = jsonDe(await ia.run(MODELO, { messages: [{ role: "system", content: PAPEL_FUNDO }, ...historicoLimpo(b.historico), { role: "user", content: entrada }], max_tokens: 700, temperature: 0.2 }));
+      const aceito = !!resp && typeof resp.resposta === "string" && numerosConferem(resp.numeros_citados, dados);
+      await rodar(c, [consulta("insert into ai_calls (user_id, use_case, input_chars, accepted) values (current_app_user(), 'chat', $1, $2)", entrada.length, aceito)]);
+      if (!aceito) return c.json({ resposta: "A resposta da IA citou números que não estão nos dados do fundo, então descartei. Pergunte de outro jeito.", perguntas_seguintes: [] });
+      const lista = (v: unknown, n: number) => (Array.isArray(v) ? v.map(String).filter(Boolean).slice(0, n) : []);
+      return c.json({ resposta: resp!.resposta, verificado: lista(resp!.verificado, 6), faltou: typeof resp!.faltou === "string" && resp!.faltou ? resp!.faltou : null, perguntas_seguintes: lista(resp!.perguntas_seguintes, 2) });
+    }
     const contextoTexto = { hoje, mes, contexto, categoria_id: UUID.test(String(b.categoria_id)) ? b.categoria_id : null, categorias: cats.map((k) => ({ id: k.id, nome: k.nome, grupo: k.grupo })) };
     const plano = jsonDe(await ia.run(MODELO, { messages: [{ role: "system", content: PAPEL_PLANO }, { role: "user", content: JSON.stringify({ ...contextoTexto, pergunta }) }], max_tokens: 400 }));
     const chamadas = (Array.isArray(plano?.chamadas) ? plano!.chamadas : []).slice(0, 4) as { funcao?: string; args?: Record<string, unknown> }[];

@@ -1,4 +1,4 @@
--- Migration 018 — histórico de funcionamento dos FIIs e fundos acompanhados.
+-- Migration 020 — histórico de funcionamento dos FIIs e fundos acompanhados.
 --
 -- O informe mensal da CVM (ADR-020) já é baixado pelo job de cotações. Esta migration
 -- guarda mais três colunas do arquivo "geral"/"complemento" por mês (cotas emitidas,

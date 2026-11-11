@@ -8,7 +8,10 @@ pelo informe da CVM (``fii_reports``):
    o texto extraído;
 2. se chegou documento novo, pede à Workers AI um resumo, o que o cotista precisa fazer
    e as datas (data-com, pagamento, subscrição, assembleia). Data que não está escrita no
-   documento citado é descartada. Sem os secrets da Cloudflare, só guarda os documentos.
+   documento citado é descartada. Sem os secrets da Cloudflare, só guarda os documentos;
+3. se chegou relatório gerencial novo, pede à IA o comportamento da gestão: o que ela
+   pretende fazer e onde mudou de ideia entre os relatórios. Plano ou mudança sem trecho
+   copiado do documento citado é descartado.
 
 Falha de um fundo não derruba os outros nem apaga o último resumo bom.
 
@@ -32,10 +35,14 @@ from financeiro.market_data.adapters.fundosnet import BUSCA, DOWNLOAD, ler_busca
 from financeiro.market_data.adapters.workers_ai import MODELO, gerar
 from financeiro.market_data.domain.insights import (
     Documento,
+    gestao_para_banco,
     insight_para_banco,
+    ler_gestao,
     ler_resposta,
     mensagens,
+    mensagens_da_gestao,
     para_resumir,
+    relatorios_da_gestao,
     relevante,
 )
 
@@ -147,6 +154,32 @@ def resumir(cur: Cursor, ticker: str, conta: str | None, token: str | None) -> s
     return f"resumo novo com {len(ids)} documentos"
 
 
+def ler_a_gestao(cur: Cursor, ticker: str, conta: str | None, token: str | None) -> str:
+    hoje = datetime.now(SP).date()
+    docs = relatorios_da_gestao(documentos_do_banco(cur, ticker))
+    ids = sorted(d.id for d in docs)
+    cur.execute("SELECT documents FROM fii_management WHERE ticker = %s", (ticker,))
+    atual = cur.fetchone()
+    if atual and isinstance(atual[0], list) and sorted(atual[0]) == ids:
+        return "gestão sem novidade"
+    if len(docs) < 2:
+        return "gestão: menos de 2 relatórios para comparar"
+    if not (conta and token):
+        return "gestão sem IA"
+    resposta = gerar(mensagens_da_gestao(ticker, docs, hoje), conta, token, AGENTE)
+    gestao = ler_gestao(resposta, docs) if resposta is not None else None
+    if gestao is None:
+        return "gestão: resposta da IA descartada"
+    cur.execute(
+        "INSERT INTO fii_management (ticker, management, documents, model)"
+        " VALUES (%s, %s::jsonb, %s, %s)"
+        " ON CONFLICT (ticker) DO UPDATE SET management = excluded.management,"
+        " documents = excluded.documents, model = excluded.model, generated_at = now()",
+        (ticker, gestao_para_banco(gestao), ids, MODELO),
+    )
+    return f"gestão nova com {len(ids)} relatórios"
+
+
 def main() -> int:
     url = os.environ.get("DATABASE_URL")
     if not url:
@@ -164,7 +197,8 @@ def main() -> int:
                 with conexao.transaction(), conexao.cursor() as cur:
                     novos = guardar_novos(cur, ticker, cnpj)
                     situacao = resumir(cur, ticker, conta, token)
-                print(f"{ticker}: {novos} documentos novos, {situacao}")
+                    gestao = ler_a_gestao(cur, ticker, conta, token)
+                print(f"{ticker}: {novos} documentos novos, {situacao}, {gestao}")
             except (urllib.error.URLError, TimeoutError, psycopg.Error) as erro:
                 falhas += 1
                 print(f"{ticker}: falhou ({erro})", file=sys.stderr)

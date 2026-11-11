@@ -31,6 +31,11 @@ assembleia). Mesma restrição do ADR-020: nada de raspar site que proíbe cópi
 - Tabelas de mercado sem `user_id`, como `fii_reports`; a tela filtra pelos tickers da
   carteira de quem pede (RLS em `assets`).
 
+### Gestão e chat do fundo (11/11/2026)
+
+- O job também compara os relatórios gerenciais do último ano (até 6, do mais velho ao mais novo) e guarda em `fii_management` (migration 018) a postura da gestão, o que ela pretende e onde mudou de ideia. Cada plano e cada mudança traz um trecho copiado do documento citado; o que não está escrito lá é descartado, e a mudança precisa ir do relatório mais velho para o mais novo. Só roda quando chega relatório novo.
+- Tocar no insight da IA (card ou detalhe) abre um chat sobre o fundo com todo o contexto dele. Prompt de especialista em `prompts/ia/chat-fundo.md`.
+
 ## Consequências
 
 - O token `CLOUDFLARE_API_TOKEN` do GitHub precisa da permissão "Workers AI: Read". Sem

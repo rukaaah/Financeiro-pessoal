@@ -38,9 +38,13 @@ const SQL_NOTICIAS = `
          to_char(i.generated_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI') as gerado_em,
          coalesce((select json_agg(json_build_object('id', d.id, 'titulo', d.title, 'categoria', d.category,
                                                      'entregue_em', to_char(d.delivered_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD')) order by d.delivered_at desc)
-                     from (select * from fii_documents x where x.ticker = a.ticker order by x.delivered_at desc limit 6) d), '[]') as documentos
+                     from (select * from fii_documents x where x.ticker = a.ticker order by x.delivered_at desc limit 6) d), '[]') as documentos,
+         m.management as gestao,
+         (select json_object_agg(d.id, to_char(d.delivered_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD'))
+            from fii_documents d where d.ticker = a.ticker and d.id = any(m.documents)) as gestao_datas
     from assets a
     left join fii_insights i on i.ticker = a.ticker
+    left join fii_management m on m.ticker = a.ticker
    where a.class <> 'treasury'
    order by a.ticker`;
 

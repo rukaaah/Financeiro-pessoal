@@ -174,3 +174,159 @@ def insight_para_banco(insight: Insight) -> tuple[str, str, str]:
         json.dumps(insight.preparar, ensure_ascii=False),
         json.dumps(eventos, ensure_ascii=False),
     )
+
+
+# --- Comportamento da gestão -------------------------------------------------------
+#
+# O que a gestão diz que vai fazer e onde mudou de ideia, comparando os relatórios
+# gerenciais ao longo do tempo. Mesma regra do resumo: cada plano e cada mudança traz
+# um trecho copiado do documento citado; o que não está escrito lá é jogado fora.
+
+RELATORIOS_NA_GESTAO = 6
+TRECHO_POR_RELATORIO = 3500
+
+
+@dataclass(frozen=True, slots=True)
+class Plano:
+    texto: str
+    documento: int
+    trecho: str
+
+
+@dataclass(frozen=True, slots=True)
+class Mudanca:
+    tema: str
+    antes: str
+    agora: str
+    documento_antes: int
+    documento_agora: int
+    trecho: str
+
+
+@dataclass(frozen=True, slots=True)
+class Gestao:
+    postura: str
+    planos: list[Plano] = field(default_factory=list)
+    mudancas: list[Mudanca] = field(default_factory=list)
+
+
+def relatorios_da_gestao(
+    docs: list[Documento], limite: int = RELATORIOS_NA_GESTAO
+) -> list[Documento]:
+    """Os relatórios gerenciais com texto, do mais velho ao mais novo (a ordem da comparação)."""
+    rel = [d for d in docs if d.categoria.strip() == "Relatórios" and d.texto.strip()]
+    return sorted(
+        sorted(rel, key=lambda d: d.entregue_em, reverse=True)[:limite], key=lambda d: d.entregue_em
+    )
+
+
+SISTEMA_GESTAO = (
+    "Você é analista de fundos imobiliários (FII) e lê os relatórios gerenciais de um fundo, "
+    "do mais velho ao mais novo, para contar ao cotista como a gestão se comporta. Use só o "
+    "que está escrito: não invente números, datas, planos nem mudanças, e não recomende "
+    "comprar nem vender. Compare os relatórios entre si: o que a gestão diz que pretende "
+    "fazer (venda ou compra de ativos, emissão, alavancagem, distribuição, recompra, "
+    "vacância, renegociação, guidance de rendimento) e onde mudou de ideia ou de tom. "
+    "Promessa que sumiu dos relatórios seguintes também é mudança. Seja direto e cético: "
+    "se a gestão adiou ou mudou o discurso, diga. Todo plano e toda mudança precisa de um "
+    '"trecho": até 200 caracteres copiados literalmente do documento citado. Responda só '
+    'com JSON, sem texto fora dele: {"postura": "até 2 frases sobre a linha da gestão", '
+    '"planos": [{"texto": "curto", "documento": 123, "trecho": "..."}], "mudancas": '
+    '[{"tema": "curto", "antes": "o que dizia", "agora": "o que diz", "documento_antes": 1, '
+    '"documento_agora": 2, "trecho": "trecho do documento_agora"}]}. No máximo 4 planos e '
+    "4 mudanças; listas vazias quando não houver."
+)
+
+
+def mensagens_da_gestao(ticker: str, docs: list[Documento], hoje: date) -> list[dict[str, str]]:
+    partes = [f"Fundo {ticker}. Hoje é {hoje:%d/%m/%Y}. Relatórios do mais velho ao mais novo."]
+    for d in docs:
+        partes.append(
+            f"### Documento {d.id} · {d.titulo} · entregue em {d.entregue_em:%d/%m/%Y}\n"
+            f"{d.texto[:TRECHO_POR_RELATORIO]}"
+        )
+    return [
+        {"role": "system", "content": SISTEMA_GESTAO},
+        {"role": "user", "content": "\n\n".join(partes)},
+    ]
+
+
+def _normal(texto: str) -> str:
+    return re.sub(r"\s+", " ", texto.lower()).strip(" .\"'“”")
+
+
+def trecho_no_texto(trecho: str, texto: str) -> bool:
+    """O trecho existe no documento (ignorando caixa e espaços) e tem tamanho de citação."""
+    t = _normal(trecho)
+    return len(t) >= 20 and t in re.sub(r"\s+", " ", texto.lower())
+
+
+def _id(valor: object) -> int | None:
+    try:
+        return int(str(valor))
+    except ValueError:
+        return None
+
+
+def ler_gestao(resposta: str | dict[str, object], docs: list[Documento]) -> Gestao | None:
+    """Valida o JSON da IA sobre a gestão. None se não sobrar nada confiável."""
+    dados = resposta if isinstance(resposta, dict) else _json_da_resposta(resposta)
+    if dados is None:
+        return None
+    por_id = {d.id: d for d in docs}
+    planos: list[Plano] = []
+    brutos = dados.get("planos")
+    for p in brutos if isinstance(brutos, list) else []:
+        if not isinstance(p, dict):
+            continue
+        doc = por_id.get(_id(p.get("documento")) or -1)
+        texto, trecho = _curto(p.get("texto"), 200), _curto(p.get("trecho"), 240)
+        if doc and texto and trecho_no_texto(trecho, doc.texto):
+            planos.append(Plano(texto, doc.id, trecho))
+    mudancas: list[Mudanca] = []
+    brutas = dados.get("mudancas")
+    for m in brutas if isinstance(brutas, list) else []:
+        if not isinstance(m, dict):
+            continue
+        antes_doc = por_id.get(_id(m.get("documento_antes")) or -1)
+        agora_doc = por_id.get(_id(m.get("documento_agora")) or -1)
+        tema, antes, agora = (_curto(m.get(k), 200) for k in ("tema", "antes", "agora"))
+        trecho = _curto(m.get("trecho"), 240)
+        if (
+            antes_doc
+            and agora_doc
+            and antes_doc.entregue_em < agora_doc.entregue_em
+            and tema
+            and antes
+            and agora
+            and trecho_no_texto(trecho, agora_doc.texto)
+        ):
+            mudancas.append(Mudanca(tema, antes, agora, antes_doc.id, agora_doc.id, trecho))
+    postura = _curto(dados.get("postura"), 400)
+    if not (planos or mudancas):
+        return None
+    return Gestao(postura, planos[:4], mudancas[:4])
+
+
+def gestao_para_banco(g: Gestao) -> str:
+    """jsonb em texto para fii_insights.management."""
+    return json.dumps(
+        {
+            "postura": g.postura,
+            "planos": [
+                {"texto": p.texto, "documento": p.documento, "trecho": p.trecho} for p in g.planos
+            ],
+            "mudancas": [
+                {
+                    "tema": m.tema,
+                    "antes": m.antes,
+                    "agora": m.agora,
+                    "documento_antes": m.documento_antes,
+                    "documento_agora": m.documento_agora,
+                    "trecho": m.trecho,
+                }
+                for m in g.mudancas
+            ],
+        },
+        ensure_ascii=False,
+    )
