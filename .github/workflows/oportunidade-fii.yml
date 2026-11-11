@@ -1,14 +1,16 @@
 name: Momento de compra dos FIIs
 
-# ADR-022. Uma vez por dia útil, depois do fechamento da B3 (cotacoes.yml, 20h40 e
-# 23h10) e das notícias dos fundos (insights-fii.yml, 21h30): nota, veredito e motivo
-# de cada FII em carteira, mais a tendência do dia e a meta Selic do Banco Central.
+# ADR-022. Durante o pregão, para dar tempo de comprar no mesmo dia: 13h30 e 16h30,
+# logo depois do preço intradia da brapi (cotacoes.yml roda aos 17 de cada hora). À
+# noite, de novo com o fechamento oficial da B3 e as notícias do dia, para o registro.
 #
 # Como o cotacoes.yml: `schedule` só dispara pelo branch padrão (main), então este
 # arquivo também precisa viver no main, rodando o código da v3 pelo `ref` até o corte.
 on:
   schedule:
-    - cron: "30 2 * * 2-6" # 23h30 em Brasília, terça a sábado (pregões de seg a sex)
+    - cron: "30 16 * * 1-5" # 13h30 em Brasília, no pregão
+    - cron: "30 19 * * 1-5" # 16h30 em Brasília, antes do fechamento
+    - cron: "30 2 * * 2-6" # 23h30 em Brasília, com o fechamento oficial
   workflow_dispatch:
 
 concurrency:

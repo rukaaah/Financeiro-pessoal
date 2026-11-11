@@ -39,5 +39,9 @@ zero, nenhuma fonte cujos termos proíbam robôs.
 - **Ponto aberto:** a página de cotações históricas da B3 diz que é "expressamente
   vedada a coleta automatizada". O job de cotações (ADR-020) baixa o COTAHIST todo dia.
   Este ADR não aumenta esse uso, mas a decisão do ADR-020 precisa ser revista.
-- Workflow `oportunidade-fii.yml` (23h30, terça a sábado) precisa estar também no
+- Horário: 13h30 e 16h30 em dia útil, com o preço intradia da brapi (o job de cotações
+  grava aos 17 de cada hora), para dar tempo de comprar no mesmo pregão; e 23h30 com o
+  fechamento oficial. Sem o `BRAPI_TOKEN`, as rodadas do pregão usam o fechamento
+  anterior e a tela mostra a data e a hora do cálculo.
+- Workflow `oportunidade-fii.yml` precisa estar também no
   `main` para o `schedule` disparar, como os outros jobs.

@@ -96,42 +96,49 @@ const VEREDITO: Record<MomentoFii["fundos"][number]["veredito"], string> = { gra
 const TENDENCIA: Record<NonNullable<MomentoFii["panorama"]>["tendencia"], string> = { alta: "Em alta", queda: "Em queda", lateral: "De lado", sem_dados: "Sem histórico" };
 const SELO: Record<string, string> = { grande_dia: "dentro", bom_preco: "dentro", esperar: "perto", sem_dados: "neutro" };
 
-/** Medidor diário (ADR-022): tendência dos fundos acompanhados, Selic e o melhor fundo para hoje. */
+/** Medidor diário (ADR-022): o essencial em três linhas; motivo completo, cenário, riscos e os outros fundos ao expandir. */
 function Momento({ m }: { m: MomentoFii }) {
   const p = m.panorama;
   const [top] = m.fundos;
   const comprar = top && (top.veredito === "grande_dia" || top.veredito === "bom_preco");
-  const v1 = (x: number) => x.toFixed(1).replace(".", ",");
+  const frase = (t: string) => t.match(/^.+?[.!?](?=\s|$)/)?.[0] ?? t;
+  const hora = top?.gerado_em ? top.gerado_em.slice(11, 16).replace(":", "h") : "";
+  const s = top?.sugestao;
   return (
     <section class="momento">
-      <h2>Momento de compra{top && <span class="lado">pregão de {diaMes(top.dia)}</span>}</h2>
+      <h2>Momento de compra{top && <span class="lado">{diaMes(top.dia)}{hora ? ` · ${hora}` : ""}</span>}</h2>
       <div class="cartao-momento">
-        {p && p.tendencia !== "sem_dados" && (
-          <p class="mercado"><b>{TENDENCIA[p.tendencia]}</b>: {p.acima_da_media} de {p.fundos} fundos seus acima da média do mês{p.variacao_21 != null ? `, ${p.variacao_21 >= 0 ? "+" : ""}${v1(p.variacao_21)}% em 21 pregões (mediana)` : ""}.
-            {p.selic && <> Selic {Number(p.selic).toFixed(2).replace(".", ",")}% ao ano, {p.direcao_selic}.</>}</p>
+        {p && (p.tendencia !== "sem_dados" || p.selic) && (
+          <p class="mercado">{p.tendencia !== "sem_dados" && <><b>{TENDENCIA[p.tendencia]}</b> · </>}{p.selic && `Selic ${Number(p.selic).toFixed(2).replace(".", ",")}% ${p.direcao_selic ?? ""}`}</p>
         )}
         {top && comprar ? (
-          <div class="escolha">
+          <>
             <div class="cab"><span class="ticker">{top.ticker}</span><span class={`selo ${SELO[top.veredito]}`}>{VEREDITO[top.veredito]}</span></div>
-            <p class="motivo">{top.motivo}</p>
-            {top.sugestao && (top.sugestao.cotas > 0
-              ? <p class="sugestao">Com {brl(m.aporte)}: <b>{top.sugestao.cotas} {top.sugestao.cotas === 1 ? "cota" : "cotas"}</b> por {brl(top.sugestao.valor)}{top.sugestao.limite ? `, ${top.sugestao.limite}` : ""}.</p>
-              : <p class="sugestao">Nenhuma cota com {brl(m.aporte)}{top.sugestao.limite ? `: ${top.sugestao.limite}` : ": o aporte não paga uma cota"}.</p>)}
-            {top.previsao && <p class="previsao">{top.previsao}</p>}
-            {top.riscos.length > 0 && <ul class="riscos">{top.riscos.map((r) => <li>{r}</li>)}</ul>}
-          </div>
+            {s && <p class="sugestao">{s.cotas > 0 ? <><b>{s.cotas} {s.cotas === 1 ? "cota" : "cotas"}</b> por {brl(s.valor)}</> : "Nenhuma cota"} com {brl(m.aporte)}</p>}
+            <p class="motivo">{frase(top.motivo)}</p>
+            {(top.motivo !== frase(top.motivo) || top.previsao || top.riscos.length > 0 || s?.limite) && (
+              <details class="mais"><summary>Por quê, cenário e riscos</summary>
+                <div class="corpo">
+                  {top.motivo !== frase(top.motivo) && <p>{top.motivo.slice(frase(top.motivo).length).trim()}</p>}
+                  {s?.limite && <p>Cotas {s.limite}.</p>}
+                  {top.previsao && <p class="previsao">{top.previsao}</p>}
+                  {top.riscos.length > 0 && <ul class="riscos">{top.riscos.map((r) => <li>{r}</li>)}</ul>}
+                </div>
+              </details>
+            )}
+          </>
         ) : (
-          <p class="motivo">Nenhum fundo da sua carteira está em ponto de compra hoje.{top?.nota != null ? ` O mais perto é ${top.ticker}, com nota ${top.nota} de 100.` : ""}</p>
+          <p class="motivo">Nenhum fundo seu em ponto de compra agora.{top?.nota != null ? ` Mais perto: ${top.ticker} (nota ${top.nota}).` : ""}</p>
         )}
         {m.fundos.length > 1 && (
-          <details class="todos"><summary>Todos os fundos ({m.fundos.length})</summary>
+          <details class="mais"><summary>Todos os fundos ({m.fundos.length})</summary>
             <div class="lista">{m.fundos.map((f) => (
-              <div class="item"><span class="nome">{f.ticker}</span><span class="valor">{f.nota != null ? `nota ${f.nota}` : "—"}</span>
-                <span class="sub" style="grid-column:1/-1">{f.veredito !== "esperar" && <span class={`selo ${SELO[f.veredito]}`}>{VEREDITO[f.veredito]}</span>}{f.motivo.match(/^.+?[.!?](?=\s|$)/)?.[0] ?? f.motivo}</span></div>
+              <div class="item"><span class="nome">{f.ticker}</span><span class="valor">{f.veredito === "sem_dados" ? <span class={`selo ${SELO[f.veredito]}`}>{VEREDITO[f.veredito]}</span> : f.nota != null ? `nota ${f.nota}` : "—"}</span>
+                {f.veredito !== "sem_dados" && <span class="sub" style="grid-column:1/-1">{f.veredito !== "esperar" && <span class={`selo ${SELO[f.veredito]}`}>{VEREDITO[f.veredito]}</span>}{frase(f.motivo)}</span>}</div>
             ))}</div>
           </details>
         )}
-        <p class="nota">Nota de 0 a 100: P/VP e DY contra o próprio último ano, desconto sobre o patrimônio e preço contra a média do mês. {top?.com_ia ? "Texto da IA conferido contra esses números. " : ""}Tendência só dos seus fundos, não do IFIX. Não é recomendação de analista.</p>
+        <p class="nota">Não é recomendação de analista.</p>
       </div>
     </section>
   );

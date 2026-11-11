@@ -1,6 +1,7 @@
 """Medidor diário de oportunidade de compra dos FIIs em carteira (ADR-022).
 
-Roda depois do fechamento da B3 e das notícias dos fundos. Para cada ticker em carteira
+Roda no pregão (13h30 e 16h30, com o preço intradia da brapi já no banco) e à noite
+(com o fechamento oficial da B3 e as notícias do dia). Para cada ticker em carteira
 de alguém (``tickers_em_carteira()``):
 
 1. lê do banco o último ano de pregões (preço, P/VP, DY 12m e volume, gravados pelo
