@@ -6,8 +6,8 @@
 --
 
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.7
+-- Dumped by pg_dump version 18.7
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -777,6 +777,7 @@ CREATE TABLE public.ai_calls (
     input_chars integer NOT NULL,
     accepted boolean NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    response text,
     CONSTRAINT ai_calls_uso CHECK ((use_case = ANY (ARRAY['chat'::text, 'notificacao'::text, 'categoria'::text, 'extrato'::text])))
 );
 

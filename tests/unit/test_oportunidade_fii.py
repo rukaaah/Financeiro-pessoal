@@ -118,9 +118,28 @@ def test_prompt_pede_honestidade_e_traz_os_fatos() -> None:
 
 def test_resposta_com_numero_dos_fatos_passa() -> None:
     s, _, _, fatos = _caso()
-    texto = f'{{"veredito": "bom_preco", "motivo": "P/VP {fatos["pvp"]} e DY {fatos["dy_12m"]}.", "riscos": ["emissão"], "previsao": "Cota a {fatos["preco_se_pvp_voltar_a_mediana"]}."}}'
+    texto = f'{{"veredito": "bom_preco", "motivo": "P/VP {fatos["pvp"]} e DY {fatos["dy_12m"]}.", "riscos": ["emissão"], "previsao": "Cota a {fatos["preco_se_pvp_voltar_a_mediana"]}; ou a {fatos["preco_se_pvp_for_ao_minimo"]}."}}'
     leitura = ler_resposta(texto, s, fatos)
     assert leitura is not None and leitura.veredito == "bom_preco"
+
+
+def test_previsao_com_um_lado_so_e_descartada() -> None:
+    s, _, _, fatos = _caso()
+    texto = f'{{"veredito": "bom_preco", "motivo": "P/VP {fatos["pvp"]}.", "riscos": ["emissão"], "previsao": "Cota a {fatos["preco_se_pvp_voltar_a_mediana"]}."}}'
+    assert ler_resposta(texto, s, fatos) is None
+
+
+def test_resposta_sem_risco_e_descartada() -> None:
+    s, _, _, fatos = _caso()
+    texto = f'{{"veredito": "bom_preco", "motivo": "P/VP {fatos["pvp"]}.", "riscos": [], "previsao": "Cota a {fatos["preco_se_pvp_voltar_a_mediana"]}; ou a {fatos["preco_se_pvp_for_ao_minimo"]}."}}'
+    assert ler_resposta(texto, s, fatos) is None
+
+
+def test_prompt_nao_veste_persona_de_analista() -> None:
+    s, pano, selic, _ = _caso()
+    sistema = mensagens(s, pano, selic, None)[0]["content"]
+    assert "analista sênior" not in sistema and "não é analista" in sistema
+    assert "preco_se_pvp_for_ao_minimo" in sistema
 
 
 def test_resposta_com_numero_inventado_e_descartada() -> None:
@@ -134,7 +153,15 @@ def test_ia_nao_sobe_o_veredito() -> None:
     curto = avaliar("ABCD11", _serie([D(100) + D(i % 3) for i in range(200)]))
     assert curto.veredito == "esperar"
     assert ler_resposta('{"veredito": "bom_preco", "motivo": "Bom."}', curto, fatos) is None
-    assert ler_resposta('{"veredito": "esperar", "motivo": "Sem pressa."}', s, fatos) is not None
+    lados = f"{fatos['preco_se_pvp_voltar_a_mediana']} ou {fatos['preco_se_pvp_for_ao_minimo']}"
+    assert (
+        ler_resposta(
+            f'{{"veredito": "esperar", "motivo": "Sem pressa.", "riscos": ["volátil"], "previsao": "{lados}"}}',
+            s,
+            fatos,
+        )
+        is not None
+    )
 
 
 def test_leitura_sem_ia_usa_so_a_conta() -> None:
@@ -142,6 +169,7 @@ def test_leitura_sem_ia_usa_so_a_conta() -> None:
     leitura = leitura_sem_ia(s)
     assert leitura.veredito == "grande_dia"
     assert "cenário, não promessa" in leitura.previsao
+    assert s.fatos["preco_se_pvp_for_ao_minimo"] in leitura.previsao
 
 
 def test_le_a_selic_do_sgs() -> None:
