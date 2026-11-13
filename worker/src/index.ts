@@ -2,6 +2,7 @@ import { criarApp } from "./app.ts";
 import { credenciaisDoPedido } from "./auth.ts";
 import { bancoNeon } from "./banco-neon.ts";
 import { hojeEmSaoPaulo } from "./contexto.ts";
+import { selicECopom } from "./macro.ts";
 import { ptaxDeHoje } from "./ptax.ts";
 
 export interface Env {
@@ -18,6 +19,7 @@ export default criarApp<Env>({
   // Sem SESSION_SECRET não existe sessão válida: todo mundo cai no demo.
   credenciais: async (req, env) => (env.SESSION_SECRET ? credenciaisDoPedido(req, env.SESSION_SECRET) : null),
   ptax: () => ptaxDeHoje(hojeEmSaoPaulo()),
+  macro: () => selicECopom(),
   ia: (env) => env.AI ?? null,
   login: (env) =>
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.SESSION_SECRET
