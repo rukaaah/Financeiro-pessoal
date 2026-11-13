@@ -172,6 +172,11 @@ def avaliar(ticker: str, historico: list[Pregao]) -> Sinal:
             fatos["pvp_mediana_ano"] = br(mediana)
             fatos["preco_se_pvp_voltar_a_mediana"] = f"R$ {br(alvo)}"
             fatos["variacao_ate_la"] = f"{br((alvo / hoje.preco - 1) * 100, 1)}%"
+            minimo = min(pvps)
+            baixa = _q(hoje.preco * minimo / hoje.pvp)
+            fatos["pvp_minimo_ano"] = br(minimo)
+            fatos["preco_se_pvp_for_ao_minimo"] = f"R$ {br(baixa)}"
+            fatos["variacao_ate_o_minimo"] = f"{br((baixa / hoje.preco - 1) * 100, 1)}%"
             if hoje.pvp < mediana:
                 motivos.append(f"P/VP {br(hoje.pvp)} abaixo da mediana do período ({br(mediana)})")
         if hoje.pvp < 1:
@@ -267,9 +272,10 @@ def panorama(series: dict[str, list[Pregao]]) -> Panorama:
 # --- IA -------------------------------------------------------------------------------
 
 SISTEMA = """\
-Você é um analista sênior de fundos imobiliários (FII) brasileiros, com 15 anos de \
-mercado, escrevendo para um cotista pessoa física em português do Brasil. Seu trabalho \
-é dizer se HOJE é um bom momento para comprar o fundo, e por quê.
+Você lê os dados de mercado de um fundo imobiliário (FII) brasileiro e explica, para \
+um cotista pessoa física e em português do Brasil, se os fatos de HOJE sustentam o \
+veredito que a conta do app calculou. Você não é analista nem consultor de \
+investimentos, e não fala como se fosse.
 
 Como você trabalha:
 1. Pesquise antes de falar: leia todos os fatos e o resumo dos documentos oficiais \
@@ -282,17 +288,21 @@ rebaixar o veredito (grande_dia > bom_preco > esperar), nunca subir.
 4. Preço caindo não é sinônimo de oportunidade: separe "barato" de "barato por um \
 motivo" (vacância, inadimplência, alavancagem, emissão abaixo do VP, corte de \
 rendimento, fato relevante ruim no resumo).
-5. "Previsão" é cenário, não promessa: descreva o que acontece com a renda e com o \
-preço se o P/VP voltar à mediana, e o que derrubaria o cenário.
+5. "Previsão" é cenário, não promessa, e sempre tem os dois lados: o preço se o P/VP \
+voltar à mediana (preco_se_pvp_voltar_a_mediana) e o preço se o P/VP for ao mínimo do \
+período (preco_se_pvp_for_ao_minimo), citando os dois valores dos fatos. Resposta com \
+um lado só é descartada.
+6. "riscos" nunca vem vazio: diga ao menos um motivo concreto para não comprar hoje.
+7. Não preveja a Selic nem o Copom; use só a Selic e a direção que estão nos fatos.
 
 Métricas de referência do mercado de FII (use para julgar, não para citar como dado \
 do fundo):
 - P/VP: abaixo de 1 = desconto sobre o patrimônio; acima de 1,05 = ágio. Fundo de \
 papel costuma negociar perto de 1; tijolo com desconto grande pode refletir \
 vacância ou ativos de pior qualidade.
-- DY 12 meses: compare com a Selic e com a NTN-B; rendimento de FII é isento de IR \
-para pessoa física, a Selic e o CDI não. Selic em queda tende a valorizar FII de \
-tijolo; em alta, favorece papel indexado ao CDI e pressiona o preço do tijolo.
+- DY 12 meses: compare com a Selic dos fatos (dy_menos_selic); o Tesouro Selic é a \
+alternativa de toda compra. Rendimento de FII é isento de IR para pessoa física, a \
+Selic e o CDI não.
 - Liquidez diária abaixo de R$ 500 mil: difícil sair rápido.
 - Vacância física e financeira, inadimplência, LTV/alavancagem, concentração de \
 inquilino e prazo dos contratos pesam mais que um dia de preço.
@@ -301,8 +311,8 @@ cotista acompanha, não do IFIX.
 
 Responda só com JSON, sem texto fora dele:
 {"veredito": "grande_dia|bom_preco|esperar", "motivo": "até 3 frases, citando os \
-números dos fatos", "riscos": ["até 3 itens curtos"], "previsao": "até 2 frases de \
-cenário, sem número que não esteja nos fatos"}"""
+números dos fatos", "riscos": ["de 1 a 3 itens curtos"], "previsao": "até 2 frases \
+com o cenário de alta e o de baixa, sem número que não esteja nos fatos"}"""
 
 
 def mensagens(
@@ -367,7 +377,8 @@ def _json(texto: str) -> dict[str, object] | None:
 def ler_resposta(
     resposta: str | dict[str, object], sinal: Sinal, fatos: dict[str, str]
 ) -> Leitura | None:
-    """Valida a resposta. None se houver número fora dos fatos ou veredito acima do calculado."""
+    """Valida a resposta. None se houver número fora dos fatos, veredito acima do calculado,
+    nenhum risco ou previsão sem o cenário de alta e o de baixa."""
     dados = resposta if isinstance(resposta, dict) else _json(resposta)
     if dados is None:
         return None
@@ -379,8 +390,11 @@ def ler_resposta(
     riscos = [
         r for r in (_curto(x, 160) for x in (brutos if isinstance(brutos, list) else [])) if r
     ][:3]
-    if not motivo:
+    if not motivo or not riscos:
         return None
+    for chave in ("preco_se_pvp_voltar_a_mediana", "preco_se_pvp_for_ao_minimo"):
+        if chave in fatos and not _numeros(fatos[chave]) & _numeros(previsao):
+            return None
     permitidos = (
         _LIVRES
         | set().union(*(_numeros(v) for v in fatos.values()))
@@ -403,6 +417,8 @@ def leitura_sem_ia(sinal: Sinal) -> Leitura:
     if alvo:
         previsao = (
             f"Se o P/VP voltar à mediana do período, a cota iria a {alvo}"
-            f" ({sinal.fatos['variacao_ate_la']}). É cenário, não promessa."
+            f" ({sinal.fatos['variacao_ate_la']}); se for ao mínimo do período, a"
+            f" {sinal.fatos['preco_se_pvp_for_ao_minimo']}"
+            f" ({sinal.fatos['variacao_ate_o_minimo']}). É cenário, não promessa."
         )
     return Leitura(sinal.veredito, motivo, sinal.riscos[:3], previsao)

@@ -3,7 +3,7 @@ import type { Context, Hono } from "hono";
 import { type Consulta, consulta, type Linha } from "./banco.ts";
 import { hojeEmSaoPaulo } from "./contexto.ts";
 import { lerExtratoComIA } from "./extrato-ia.ts";
-import { consultasDoFundo, historicoLimpo, montarContextoDoFundo, PAPEL_FUNDO, RESPOSTA_DEMO_FUNDO, selicMeta, TICKER } from "./ia-fundo.ts";
+import { consultasDoFundo, descarteDoFundo, historicoLimpo, montarContextoDoFundo, PAPEL_FUNDO, RESPOSTA_DEMO_FUNDO, selicMeta, TICKER } from "./ia-fundo.ts";
 
 /**
  * IA (ADR-018, docs/v3/04-ia.md, prompts/ia/chat.md). A IA não lê o banco: ela escolhe
@@ -27,7 +27,7 @@ export const RESPOSTAS_DEMO: Record<string, { pergunta: string; resposta: string
   ],
   categoria: [{ pergunta: "Onde gastei mais?", resposta: "Exemplo: a maior parte desta categoria saiu em duas compras no cartão." }],
   investimentos: [{ pergunta: "O que mudou na carteira?", resposta: "Exemplo: EXEMP11 foi o que mais subiu no mês e TESTE11 o que mais caiu. Não faço recomendação de compra ou venda." }],
-  fundo: [{ pergunta: "Vale a pena aumentar a posição?", resposta: RESPOSTA_DEMO_FUNDO }],
+  fundo: [{ pergunta: "O que pesa contra aumentar a posição?", resposta: RESPOSTA_DEMO_FUNDO }],
 };
 
 /**
@@ -50,6 +50,12 @@ export function numerosConferem(citados: unknown, resultados: unknown): boolean 
   JSON.stringify(resultados).replace(/-?\d+(?:\.\d+)?/g, (n) => { pool.add(Number(n).toFixed(2)); pool.add(String(Number(n))); return n; });
   const numero = (c: unknown) => { const t = String(c).replace(/R\$\s?/, "").trim(); return Number(t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t); };
   return citados.every((c) => { const n = numero(c); return Number.isFinite(n) && (pool.has(n.toFixed(2)) || pool.has(String(n))); });
+}
+
+/** Registro de cada chamada do chat, com a resposta da IA guardada para auditoria (aceita ou não). */
+function registro(chars: number, aceito: boolean, resp: Record<string, unknown> | null): Consulta {
+  const texto = resp ? JSON.stringify(resp).slice(0, 4000) : null;
+  return consulta("insert into ai_calls (user_id, use_case, input_chars, accepted, response) values (current_app_user(), 'chat', $1, $2, $3)", chars, aceito, texto);
 }
 
 function jsonDe(saida: unknown): Record<string, unknown> | null {
@@ -128,14 +134,16 @@ export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: R
       const ticker = String(b.ticker ?? "").toUpperCase();
       if (!TICKER.test(ticker)) return c.json({ erro: "Fundo inválido." }, 400);
       const [{ linhas }, selic] = await Promise.all([rodar(c, consultasDoFundo(ticker)), selicMeta()]);
-      const dados = montarContextoDoFundo(ticker, hoje, linhas, selic);
+      const dados = montarContextoDoFundo(ticker, hoje, linhas, selic, pergunta);
       const entrada = JSON.stringify({ contexto: dados, pergunta });
       const resp = jsonDe(await ia.run(MODELO, { messages: [{ role: "system", content: PAPEL_FUNDO }, ...historicoLimpo(b.historico), { role: "user", content: entrada }], max_tokens: 700, temperature: 0.2 }));
-      const aceito = !!resp && typeof resp.resposta === "string" && numerosConferem(resp.numeros_citados, dados);
-      await rodar(c, [consulta("insert into ai_calls (user_id, use_case, input_chars, accepted) values (current_app_user(), 'chat', $1, $2)", entrada.length, aceito)]);
-      if (!aceito) return c.json({ resposta: "A resposta da IA citou números que não estão nos dados do fundo, então descartei. Pergunte de outro jeito.", perguntas_seguintes: [] });
+      const descarte = !resp || typeof resp.resposta !== "string" ? "A IA não respondeu no formato combinado, então descartei."
+        : !numerosConferem(resp.numeros_citados, dados) ? "A resposta da IA citou números que não estão nos dados do fundo, então descartei."
+        : descarteDoFundo(resp, dados);
+      await rodar(c, [registro(entrada.length, !descarte, resp)]);
+      if (descarte) return c.json({ resposta: `${descarte} Pergunte de outro jeito.`, perguntas_seguintes: [] });
       const lista = (v: unknown, n: number) => (Array.isArray(v) ? v.map(String).filter(Boolean).slice(0, n) : []);
-      return c.json({ resposta: resp!.resposta, verificado: lista(resp!.verificado, 6), faltou: typeof resp!.faltou === "string" && resp!.faltou ? resp!.faltou : null, perguntas_seguintes: lista(resp!.perguntas_seguintes, 2) });
+      return c.json({ resposta: resp!.resposta, contra: String(resp!.contra).trim(), verificado: lista(resp!.verificado, 6), faltou: typeof resp!.faltou === "string" && resp!.faltou ? resp!.faltou : null, perguntas_seguintes: lista(resp!.perguntas_seguintes, 2) });
     }
     const contextoTexto = { hoje, mes, contexto, categoria_id: UUID.test(String(b.categoria_id)) ? b.categoria_id : null, categorias: cats.map((k) => ({ id: k.id, nome: k.nome, grupo: k.grupo })) };
     const plano = jsonDe(await ia.run(MODELO, { messages: [{ role: "system", content: PAPEL_PLANO }, { role: "user", content: JSON.stringify({ ...contextoTexto, pergunta }) }], max_tokens: 400 }));
@@ -149,7 +157,7 @@ export function rotasDaIA<E extends object>(app: Hono<{ Bindings: E }>, rodar: R
     const entrada = JSON.stringify({ pergunta, contexto, resultados, faltou: plano?.faltou ?? null });
     const resp = execs.length ? jsonDe(await ia.run(MODELO, { messages: [{ role: "system", content: PAPEL_RESPOSTA }, { role: "user", content: entrada }], max_tokens: 500 })) : null;
     const aceito = !!resp && typeof resp.resposta === "string" && numerosConferem(resp.numeros_citados, resultados);
-    await rodar(c, [consulta("insert into ai_calls (user_id, use_case, input_chars, accepted) values (current_app_user(), 'chat', $1, $2)", entrada.length, aceito)]);
+    await rodar(c, [registro(entrada.length, aceito, resp)]);
     if (!execs.length) return c.json({ resposta: String(plano?.faltou ?? "Não sei responder isso com os dados do app."), perguntas_seguintes: [] });
     if (!aceito) return c.json({ resposta: "A resposta da IA citou números que não estão nos seus dados, então mostro só a tabela.", tabela: resultados, perguntas_seguintes: [] });
     return c.json({ resposta: resp!.resposta, perguntas_seguintes: Array.isArray(resp!.perguntas_seguintes) ? resp!.perguntas_seguintes.slice(0, 2) : [], tabela: resultados });

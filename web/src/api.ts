@@ -135,7 +135,7 @@ export const apiEntrada = {
   importar: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ importadas: number; cofrinhos_criados: number }>("/api/importar", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
 };
 
-export interface RespostaChat { resposta: string; perguntas_seguintes?: string[]; demo?: boolean; verificado?: string[]; faltou?: string | null; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
+export interface RespostaChat { resposta: string; contra?: string; perguntas_seguintes?: string[]; demo?: boolean; verificado?: string[]; faltou?: string | null; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
 export const apiIA = {
   chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string; ticker?: string; historico?: { eu: string; ia: string }[] }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
   extrato: (texto: string) => pedir<{ demo?: boolean; motivo?: string; linhas?: LinhaImportada[]; descartadas?: number; de_fora?: number }>("/api/ia/extrato", { method: "POST", body: JSON.stringify({ texto }) }),
