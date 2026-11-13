@@ -6,8 +6,8 @@
 --
 
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.7
+-- Dumped by pg_dump version 18.7
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -777,6 +777,7 @@ CREATE TABLE public.ai_calls (
     input_chars integer NOT NULL,
     accepted boolean NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    response text,
     CONSTRAINT ai_calls_uso CHECK ((use_case = ANY (ARRAY['chat'::text, 'notificacao'::text, 'categoria'::text, 'extrato'::text])))
 );
 
@@ -1099,6 +1100,50 @@ CREATE TABLE public.fii_management (
     model text NOT NULL,
     generated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT fii_management_objeto CHECK ((jsonb_typeof(management) = 'object'::text))
+);
+
+
+--
+-- Name: fii_market_daily; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_market_daily (
+    day date NOT NULL,
+    trend text NOT NULL,
+    funds smallint NOT NULL,
+    above_average smallint NOT NULL,
+    median_change_21 numeric(8,2),
+    rising text[] DEFAULT '{}'::text[] NOT NULL,
+    falling text[] DEFAULT '{}'::text[] NOT NULL,
+    selic numeric(6,2),
+    selic_direction text,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_market_daily_tendencia CHECK ((trend = ANY (ARRAY['alta'::text, 'queda'::text, 'lateral'::text, 'sem_dados'::text])))
+);
+
+
+--
+-- Name: fii_opportunities; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_opportunities (
+    ticker text NOT NULL,
+    day date NOT NULL,
+    price numeric(14,6) NOT NULL,
+    score smallint,
+    percentile smallint,
+    trading_days smallint NOT NULL,
+    verdict text NOT NULL,
+    reason text NOT NULL,
+    risks jsonb DEFAULT '[]'::jsonb NOT NULL,
+    outlook text DEFAULT ''::text NOT NULL,
+    target_price numeric(14,2),
+    facts jsonb DEFAULT '{}'::jsonb NOT NULL,
+    model text,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_opportunities_nota CHECK (((score >= 0) AND (score <= 100))),
+    CONSTRAINT fii_opportunities_riscos CHECK ((jsonb_typeof(risks) = 'array'::text)),
+    CONSTRAINT fii_opportunities_veredito CHECK ((verdict = ANY (ARRAY['grande_dia'::text, 'bom_preco'::text, 'esperar'::text, 'sem_dados'::text])))
 );
 
 
@@ -1537,6 +1582,22 @@ ALTER TABLE ONLY public.fii_insights
 
 ALTER TABLE ONLY public.fii_management
     ADD CONSTRAINT fii_management_pkey PRIMARY KEY (ticker);
+
+
+--
+-- Name: fii_market_daily fii_market_daily_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_market_daily
+    ADD CONSTRAINT fii_market_daily_pkey PRIMARY KEY (day);
+
+
+--
+-- Name: fii_opportunities fii_opportunities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_opportunities
+    ADD CONSTRAINT fii_opportunities_pkey PRIMARY KEY (ticker, day);
 
 
 --
@@ -2587,6 +2648,22 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_insights TO jobs;
 
 GRANT SELECT ON TABLE public.fii_management TO app;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_management TO jobs;
+
+
+--
+-- Name: TABLE fii_market_daily; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_market_daily TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_market_daily TO jobs;
+
+
+--
+-- Name: TABLE fii_opportunities; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_opportunities TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_opportunities TO jobs;
 
 
 --

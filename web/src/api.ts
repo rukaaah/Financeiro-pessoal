@@ -114,7 +114,14 @@ export interface GestaoFii {
   planos: { texto: string; documento: number; trecho: string }[];
   mudancas: { tema: string; antes: string; agora: string; documento_antes: number; documento_agora: number; trecho: string }[];
 }
+export type Veredito = "grande_dia" | "bom_preco" | "esperar" | "sem_dados";
+export interface MomentoFii {
+  aporte: string;
+  panorama: { dia: string; tendencia: "alta" | "queda" | "lateral" | "sem_dados"; fundos: number; acima_da_media: number; variacao_21: number | null; subindo: string[]; caindo: string[]; selic: string | null; direcao_selic: string | null } | null;
+  fundos: { ticker: string; dia: string; preco: number; nota: number | null; percentil: number | null; pregoes: number; veredito: Veredito; motivo: string; riscos: string[]; previsao: string; preco_alvo: string | null; fatos: Record<string, string>; com_ia: boolean; gerado_em: string; sugestao: { cotas: number; valor: string; limite: string | null } | null }[];
+}
 export const apiInvest = {
+  momento: (aporte?: string) => pedir<MomentoFii>(`/api/investimentos/momento${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),
   noticias: () => pedir<{ noticias: NoticiasFii[] }>("/api/investimentos/noticias"),
   ver: (aporte?: string) => pedir<Investimentos>(`/api/investimentos${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),
   comprar: (corpo: object) => pedir<{ valor: string }>("/api/comprar-ativo", { method: "POST", body: JSON.stringify(corpo) }),
@@ -128,7 +135,7 @@ export const apiEntrada = {
   importar: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ importadas: number; cofrinhos_criados: number }>("/api/importar", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
 };
 
-export interface RespostaChat { resposta: string; perguntas_seguintes?: string[]; demo?: boolean; verificado?: string[]; faltou?: string | null; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
+export interface RespostaChat { resposta: string; contra?: string; perguntas_seguintes?: string[]; demo?: boolean; verificado?: string[]; faltou?: string | null; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
 export const apiIA = {
   chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string; ticker?: string; historico?: { eu: string; ia: string }[] }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
   extrato: (texto: string) => pedir<{ demo?: boolean; motivo?: string; linhas?: LinhaImportada[]; descartadas?: number; de_fora?: number }>("/api/ia/extrato", { method: "POST", body: JSON.stringify({ texto }) }),
