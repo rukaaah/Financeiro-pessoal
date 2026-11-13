@@ -1,4 +1,4 @@
-import { type AtivoNaCarteira, type Classe, deDecimal6, deDigitado, emissoesDe, NOME_DA_CLASSE, ondeAportar, type OperacaoDatada, paraNumeric, posicaoDe, proventosEstimados, relatorioDaCarteira, type RendimentoDoMes, rendimentoSobreCusto, valorDe } from "@financeiro/dominio";
+import { type AtivoNaCarteira, type Classe, cotasSugeridas, deDecimal6, deDigitado, emissoesDe, NOME_DA_CLASSE, ondeAportar, type OperacaoDatada, paraNumeric, posicaoDe, proventosEstimados, relatorioDaCarteira, type RendimentoDoMes, rendimentoSobreCusto, valorDe } from "@financeiro/dominio";
 import type { Hono } from "hono";
 import type { Rodar } from "./app.ts";
 import { consulta } from "./banco.ts";
@@ -65,10 +65,48 @@ const SQL_REGRAS = `
          coalesce((select json_object_agg(t.class, t.percent::float) from allocation_targets t), '{}') as metas
     from (select 1) x left join investment_rules r on true`;
 
+/** Momento de compra (ADR-022): o último veredito do medidor para cada FII da carteira. */
+const SQL_MOMENTO = `
+  select a.ticker, o.day::text as dia, o.price::text as preco, o.score as nota, o.percentile as percentil, o.trading_days as pregoes,
+         o.verdict as veredito, o.reason as motivo, o.risks as riscos, o.outlook as previsao, o.target_price::text as preco_alvo,
+         o.facts as fatos, o.model is not null as com_ia,
+         to_char(o.generated_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI') as gerado_em
+    from assets a
+    join lateral (select * from fii_opportunities x where x.ticker = a.ticker order by day desc limit 1) o on true
+   where a.class <> 'treasury'`;
+const SQL_PANORAMA = `
+  select day::text as dia, trend as tendencia, funds as fundos, above_average as acima_da_media, median_change_21::float as variacao_21,
+         rising as subindo, falling as caindo, selic::text as selic, selic_direction as direcao_selic
+    from fii_market_daily order by day desc limit 1`;
+const ORDEM: Record<string, number> = { grande_dia: 0, bom_preco: 1, esperar: 2, sem_dados: 3 };
+
 export function rotasDeInvestimentos<E extends object>(app: Hono<{ Bindings: E }>, rodar: Rodar<E>) {
   app.get("/api/investimentos/noticias", async (c) => {
     const [linhas = []] = await rodar(c, [consulta(SQL_NOTICIAS)]);
     return c.json({ noticias: linhas });
+  });
+
+  app.get("/api/investimentos/momento", async (c) => {
+    let aporte: bigint;
+    try { aporte = deDigitado(c.req.query("aporte") ?? "500"); } catch { return c.json({ erro: "Valor do aporte em reais, como 500 ou 1.250,00." }, 400); }
+    if (aporte <= 0n) return c.json({ erro: "O aporte precisa ser maior que zero." }, 400);
+    const [linhas = [], panoramaL = [], ativosL = [], regrasL = []] = await rodar(c, [consulta(SQL_MOMENTO), consulta(SQL_PANORAMA), consulta(SQL_ATIVOS), consulta(SQL_REGRAS)]);
+    const valores = new Map(ativosL.map((a) => [String(a.ticker), valorDe(posicaoDe(a.operacoes as { quantidade: string; preco: string }[]), a.preco ? String(a.preco) : null)]));
+    const total = [...valores.values()].reduce((s, v) => s + v, 0n);
+    const r = regrasL[0] ?? {};
+    const regras = { maxPvp: Number(r.max_pvp ?? 1), maxPeso: Number(r.max_peso ?? 20) };
+    const pvpDe = (f: Record<string, string>) => (f.pvp ? Number(f.pvp.replace(",", ".")) : null);
+    const fundos = linhas.map((o) => {
+      const fatos = (o.fatos ?? {}) as Record<string, string>;
+      const comprar = o.veredito === "grande_dia" || o.veredito === "bom_preco";
+      const s = comprar ? cotasSugeridas(String(o.preco), aporte, valores.get(String(o.ticker)) ?? 0n, total, regras, pvpDe(fatos)) : null;
+      return {
+        ticker: o.ticker, dia: o.dia, preco: Number(o.preco), nota: o.nota, percentil: o.percentil, pregoes: o.pregoes, veredito: o.veredito,
+        motivo: o.motivo, riscos: o.riscos, previsao: o.previsao, preco_alvo: o.preco_alvo, fatos, com_ia: o.com_ia, gerado_em: o.gerado_em,
+        sugestao: s ? { cotas: s.cotas, valor: paraNumeric(s.valor), limite: s.limite } : null,
+      };
+    }).sort((x, y) => (ORDEM[String(x.veredito)] ?? 9) - (ORDEM[String(y.veredito)] ?? 9) || Number(y.nota ?? -1) - Number(x.nota ?? -1));
+    return c.json({ aporte: paraNumeric(aporte), panorama: panoramaL[0] ?? null, fundos });
   });
 
   app.get("/api/investimentos", async (c) => {

@@ -66,17 +66,19 @@ describe("chat pela IA, como papel app", () => {
   it("chat do fundo: leva todo o contexto do FII, o histórico e confere os números", async () => {
     vi.stubGlobal("fetch", async () => new Response("", { status: 503 }));
     await owner.query("insert into fii_reports (ticker, ref_month, cnpj, nav_per_share, dy_month) values ($1, '2026-09-01', '00000000000100', 9.87, 0.0105)", [fii]);
-    await owner.query("insert into fii_documents (ticker, id, category, title, delivered_at, content) values ($1, 7001, 'Relatórios', 'Relatório Gerencial', '2026-10-10', 'A venda do galpão foi adiada para 2027.')", [fii]);
+    await owner.query("insert into fii_documents (ticker, id, category, title, delivered_at, content) values ($1, 7001, 'Relatórios', 'Relatório Gerencial', '2026-10-10 12:00-03', 'A venda do galpão foi adiada para 2027.')", [fii]);
     await owner.query(`insert into fii_management (ticker, management, documents, model) values ($1, '{"postura":"Adiou a venda.","planos":[],"mudancas":[]}', '{7001}', 'teste')`, [fii]);
-    const certo = modelo([{ verificado: ["Informe CVM de 09/2026", "Relatório gerencial de 10/10/2026"], resposta: "O VP da cota é R$ 9,87 e a gestão adiou a venda.", numeros_citados: ["9.87"], perguntas_seguintes: ["E a vacância?"] }]);
+    const certo = modelo([{ verificado: ["Informe CVM de 09/2026", "Relatório gerencial de 10/10/2026"], resposta: "O VP da cota é R$ 9,87 e a gestão adiou a venda.", contra: "A venda do galpão foi adiada para 2027.", tom: "neutro", numeros_citados: ["9.87"], perguntas_seguintes: ["E a vacância?"] }]);
     const app = criarApp({ banco: () => banco, credenciais: async () => ({ email: email("a"), emailVerificado: true }), ia: () => certo.ia });
     const corpo = { contexto: "fundo", ticker: fii, pergunta: "A gestão é confiável?", historico: [{ eu: "Oi", ia: "Olá" }] };
-    const r = (await (await app.request("/api/chat", { method: "POST", headers: json, body: JSON.stringify(corpo) })).json()) as { resposta: string; verificado: string[] };
+    const r = (await (await app.request("/api/chat", { method: "POST", headers: json, body: JSON.stringify(corpo) })).json()) as { resposta: string; verificado: string[]; contra: string };
     expect(r.resposta).toMatch(/adiou a venda/);
+    expect(r.contra).toMatch(/adiada para 2027/);
     expect(r.verificado).toHaveLength(2);
     const entrada = certo.chamadas[0] as { messages: { role: string; content: string }[] };
     expect(entrada.messages.map((m) => m.role)).toEqual(["system", "user", "assistant", "user"]);
     expect(entrada.messages[0]!.content).toMatch(/brutalmente honesto/);
+    expect(entrada.messages[0]!.content).toMatch(/não pode ser mais otimista/);
     const ctx = JSON.parse(entrada.messages.at(-1)!.content) as { contexto: { informes_cvm: unknown[]; gestao: { postura: string }; documentos: { trecho: string }[]; selic_meta_pct_ao_ano: unknown } };
     expect(ctx.contexto.informes_cvm).toHaveLength(1);
     expect(ctx.contexto.gestao.postura).toBe("Adiou a venda.");
@@ -86,6 +88,12 @@ describe("chat pela IA, como papel app", () => {
     const app2 = criarApp({ banco: () => banco, credenciais: async () => ({ email: email("a"), emailVerificado: true }), ia: () => inventado.ia });
     const r2 = (await (await app2.request("/api/chat", { method: "POST", headers: json, body: JSON.stringify(corpo) })).json()) as { resposta: string };
     expect(r2.resposta).toMatch(/não estão nos dados do fundo/);
+    const bajulador = modelo([{ verificado: ["Relatório gerencial de 10/10/2026"], resposta: "Sim, aumente a posição.", contra: "Nenhum relevante no momento.", tom: "favoravel", numeros_citados: [] }]);
+    const app3 = criarApp({ banco: () => banco, credenciais: async () => ({ email: email("a"), emailVerificado: true }), ia: () => bajulador.ia });
+    const r3 = (await (await app3.request("/api/chat", { method: "POST", headers: json, body: JSON.stringify(corpo) })).json()) as { resposta: string };
+    expect(r3.resposta).toMatch(/mais otimista que o medidor/);
+    const auditoria = (await owner.query("select accepted, response from ai_calls a join app_users u on u.id = a.user_id where u.email = $1 and a.response like '%aumente a posição%'", [email("a")])).rows;
+    expect(auditoria).toEqual([{ accepted: false, response: expect.stringContaining("favoravel") }]);
     expect((await app2.request("/api/chat", { method: "POST", headers: json, body: JSON.stringify({ ...corpo, ticker: "x; drop" }) })).status).toBe(400);
     vi.unstubAllGlobals();
   });

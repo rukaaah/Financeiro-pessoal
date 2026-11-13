@@ -30,6 +30,8 @@ afterAll(async () => {
   await owner.query("delete from fii_documents where ticker = $1", [ticker]);
   await owner.query("delete from fii_insights where ticker = $1", [ticker]);
   await owner.query("delete from fii_management where ticker = $1", [ticker]);
+  await owner.query("delete from fii_opportunities where ticker = $1", [ticker]);
+  await owner.query("delete from fii_market_daily where day = '1999-01-04'");
   await owner.query("delete from fii_reports where ticker = any($1)", [[ticker, fii]]);
   await owner.query("delete from fii_profiles where ticker = $1", [fii]);
   await owner.query("delete from asset_quotes where ticker = $1", [fii]);
@@ -81,6 +83,21 @@ describe("investimentos pelo Worker, como papel app", () => {
     expect(n.gestao?.postura).toBe("Adiou a venda.");
     expect(Object.keys(n.gestao_datas ?? {}).sort()).toEqual(["9001", "9002"]);
     expect(((await (await como("b").request("/api/investimentos/noticias")).json()) as N).noticias).toEqual([]);
+  });
+
+  it("momento de compra: A vê o veredito e as cotas do aporte; B não vê o fundo de A", async () => {
+    await owner.query(`insert into fii_opportunities (ticker, day, price, score, percentile, trading_days, verdict, reason, risks, outlook, target_price, facts)
+                       values ($1, current_date, 100, 82, 97, 200, 'grande_dia', 'Desconto raro.', '["histórico curto"]', 'Cenário.', 108, '{"pvp":"0,90"}')`, [ticker]);
+    // carteira de um fundo só: sem liberar o peso máximo, a regra de 20% barraria a compra
+    await owner.query("insert into investment_rules (user_id, max_weight, max_pvp) select id, 100, 1 from app_users where email = $1 on conflict (user_id) do update set max_weight = 100, max_pvp = 1", [email("a")]);
+    await owner.query("insert into fii_market_daily (day, trend, funds, above_average, selic, selic_direction) values ('1999-01-04', 'queda', 3, 1, 15, 'mantida')");
+    type M = { aporte: string; panorama: { tendencia: string } | null; fundos: { ticker: string; veredito: string; sugestao: { cotas: number; valor: string } | null }[] };
+    const r = (await (await como("a").request("/api/investimentos/momento?aporte=350")).json()) as M;
+    const f = r.fundos.find((x) => x.ticker === ticker)!;
+    expect(f).toMatchObject({ veredito: "grande_dia", sugestao: { cotas: 3, valor: "300.00" } });
+    expect(r.panorama).not.toBeNull();
+    expect(((await (await como("b").request("/api/investimentos/momento")).json()) as M).fundos).toEqual([]);
+    expect((await como("a").request("/api/investimentos/momento?aporte=0")).status).toBe(400);
   });
 
   it("B não vê a carteira de A nem compra na conta de A", async () => {
