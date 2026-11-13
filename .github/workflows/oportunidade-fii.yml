@@ -1,0 +1,38 @@
+name: Momento de compra dos FIIs
+
+# ADR-022. Durante o pregão, para dar tempo de comprar no mesmo dia: 13h30 e 16h30,
+# logo depois do preço intradia da brapi (cotacoes.yml roda aos 17 de cada hora). À
+# noite, de novo com o fechamento oficial da B3 e as notícias do dia, para o registro.
+#
+# Como o cotacoes.yml: `schedule` só dispara pelo branch padrão (main), então este
+# arquivo também precisa viver no main, rodando o código da v3 pelo `ref` até o corte.
+on:
+  schedule:
+    - cron: "30 16 * * 1-5" # 13h30 em Brasília, no pregão
+    - cron: "30 19 * * 1-5" # 16h30 em Brasília, antes do fechamento
+    - cron: "30 2 * * 2-6" # 23h30 em Brasília, com o fechamento oficial
+  workflow_dispatch:
+
+concurrency:
+  group: oportunidade-fii
+  cancel-in-progress: false
+
+jobs:
+  medir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: replanejamento/v3
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --group jobs
+      - name: Medir o momento de compra
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_OWNER_DEV }}
+          # Token com permissão "Workers AI: Read". Sem ele, o motivo sai só da conta.
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: uv run --group jobs python jobs/oportunidade_fii.py

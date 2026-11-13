@@ -22,7 +22,10 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.8",
     "yoyo-migrations>=9.0.0",
+    {include-group = "jobs"},
 ]
+# Só os jobs do GitHub Actions: texto dos PDFs do Fundos.NET (ADR-021).
+jobs = ["pypdf>=5.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -86,8 +89,7 @@ docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.12"
-# jobs/ entra nesta lista quando for criado.
-files = ["src", "tests", "scripts", "app", "streamlit_app.py"]
+files = ["src", "tests", "scripts", "app", "jobs", "streamlit_app.py"]
 strict = true
 warn_unreachable = true
 disallow_any_explicit = false
@@ -96,6 +98,12 @@ pretty = true
 
 [[tool.mypy.overrides]]
 module = ["streamlit.*"]
+ignore_missing_imports = true
+
+# Só o teste de tipos do tema lê o descritor do protobuf (dependência do
+# Streamlit, sem stubs instalados).
+[[tool.mypy.overrides]]
+module = ["google.protobuf.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------- pytest

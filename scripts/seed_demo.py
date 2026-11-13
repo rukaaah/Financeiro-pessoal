@@ -79,7 +79,10 @@ RECORRENTES = (
     Lancamento("unicred", "mercado", "-612.40", 8, "Supermercado"),
     Lancamento("unicred", "mercado", "-184.90", 19, "Feira e padaria"),
     Lancamento("unicred", "transporte", "-96.00", 14, "Combustível"),
-    Lancamento("unicred", "lazer", "-55.90", 21, "Streaming"),
+    Lancamento("unicred", "assinaturas", "-55.90", 21, "Streaming"),
+    Lancamento("unicred", "restaurantes", "-86.40", 16, "Restaurante"),
+    Lancamento("unicred", "lazer", "-64.00", 23, "Cinema"),
+    Lancamento("picpay", "tarifas", "-12.90", 2, "Tarifa do pacote de serviços"),
     # Dia 4 e dia 5 de propósito: um dia de diferença, duas faturas diferentes.
     # É a regra do ADR-008 visível na tela, não só no teste.
     Lancamento("unicred", "mercado", "-238.70", 4, "Compra no dia do fechamento"),
@@ -91,17 +94,73 @@ CONTAS = (
     ("unicred", "Unicred", "credit_card", None),
     ("cofrinho", "Cofrinho da viagem", "goal", None),
     ("receber_ana", "A receber de Ana", "receivable", "ana"),
+    ("inter", "Inter Investimentos", "investment", None),
 )
 
-GRUPOS = (("essenciais", "Essenciais", 1), ("pessoal", "Pessoal", 2), ("renda", "Renda", 3))
+# Carteira fictícia (RF09): tickers inventados de propósito, com cotação "demo".
+# Nenhum indicador de fundo real aparece no modo demonstração.
+ATIVOS = (
+    ("FICTA11", "Fundo Fictício de Papel", "paper", "25", "96.36", "98.10", "1.03", "11.9", 900000),
+    ("DEMO11", "Demo Recebíveis", "paper", "40", "9.85", "9.62", "0.94", "12.8", 650000),
+    ("TESTE11", "Teste Lajes", "brick", "12", "108.02", "102.30", "0.88", "8.9", 720000),
+    ("EXEMP11", "Exemplo Logística", "logistics", "10", "150.14", "158.40", "0.97", "8.4", 1100000),
+    ("MODEL11", "Modelo Infra", "infra", "30", "95.03", "91.70", "0.92", "13.4", 350000),
+)
+METAS = (("paper", 30), ("brick", 20), ("logistics", 15), ("infra", 10), ("treasury", 25))
+
+# Categorias base: as mesmas que uma conta real ganha na primeira entrada. A cópia
+# em TypeScript fica em `packages/dominio/src/categorias-base.ts`, e
+# `tests/unit/test_categorias_base.py` confere que as duas listas são iguais.
+GRUPOS = (
+    ("essenciais", "Essenciais", 1),
+    ("pessoal", "Pessoal", 2),
+    ("financeiro", "Financeiro", 3),
+    ("renda", "Renda", 4),
+)
 
 CATEGORIAS = (
     ("mercado", "Mercado", "essenciais", "expense"),
     ("moradia", "Moradia", "essenciais", "expense"),
+    ("contas_casa", "Contas da casa", "essenciais", "expense"),
     ("transporte", "Transporte", "essenciais", "expense"),
+    ("saude", "Saúde", "essenciais", "expense"),
+    ("educacao", "Educação", "essenciais", "expense"),
+    ("restaurantes", "Restaurantes", "pessoal", "expense"),
     ("lazer", "Lazer", "pessoal", "expense"),
-    ("saude", "Saúde", "pessoal", "expense"),
+    ("assinaturas", "Assinaturas", "pessoal", "expense"),
+    ("vestuario", "Vestuário", "pessoal", "expense"),
+    ("cuidados", "Cuidados pessoais", "pessoal", "expense"),
+    ("presentes", "Presentes", "pessoal", "expense"),
+    ("tarifas", "Tarifas bancárias", "financeiro", "expense"),
     ("salario", "Salário", "renda", "income"),
+    ("freelance", "Freelance", "renda", "income"),
+)
+
+# Previsto padrão por categoria (ADR-019), valendo desde o primeiro mês do
+# histórico. Mercado ganha um ajuste no mês corrente para o demo mostrar a
+# diferença entre padrão e exceção.
+# Categorias sem previsto (Educação, Vestuário...) aparecem com zero, como numa
+# conta real recém-criada.
+PREVISTO = {
+    "mercado": "1100.00",
+    "moradia": "1900.00",
+    "contas_casa": "250.00",
+    "transporte": "150.00",
+    "saude": "150.00",
+    "restaurantes": "200.00",
+    "lazer": "120.00",
+    "assinaturas": "60.00",
+    "tarifas": "15.00",
+    "salario": "4200.00",
+}
+AJUSTE_DO_MES = ("mercado", "1250.00")
+
+# Contas recorrentes (RF20): o aluguel já é lançado todo mês e fica ligado à conta;
+# luz e internet ainda não, e aparecem como "a pagar" e na Atenção.
+CONTAS_RECORRENTES = (
+    ("aluguel", "Aluguel", "1450.00", 10, "moradia", "picpay", "essential"),
+    ("luz", "Conta de luz", "150.00", 28, "contas_casa", "picpay", "essential"),
+    ("internet", "Internet", "100.00", 30, "contas_casa", "picpay", "important"),
 )
 
 
@@ -120,6 +179,7 @@ def _transferencia(
     quando: date,
     descricao: str,
     chave: str,
+    quita: date | None = None,
 ) -> None:
     """Insere as duas pernas de uma transferência.
 
@@ -129,11 +189,22 @@ def _transferencia(
     transfer_id = ident(f"transfer:{chave}")
     cur.executemany(
         "INSERT INTO transactions"
-        " (id, user_id, kind, account_id, amount, occurred_on, description, transfer_id)"
-        " VALUES (%s, %s, 'transfer', %s, %s, %s, %s, %s)",
+        " (id, user_id, kind, account_id, amount, occurred_on, description, transfer_id,"
+        "  settles_invoice_month)"
+        " VALUES (%s, %s, 'transfer', %s, %s, %s, %s, %s, %s)",
         [
-            (ident(f"{chave}:saida"), USUARIO, de, -valor, quando, descricao, transfer_id),
-            (ident(f"{chave}:entrada"), USUARIO, para, valor, quando, descricao, transfer_id),
+            (ident(f"{chave}:saida"), USUARIO, de, -valor, quando, descricao, transfer_id, None),
+            # Só a perna que entra no cartão aponta a fatura que quita (ADR-010).
+            (
+                ident(f"{chave}:entrada"),
+                USUARIO,
+                para,
+                valor,
+                quando,
+                descricao,
+                transfer_id,
+                quita,
+            ),
         ],
     )
 
@@ -189,6 +260,161 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 (ident(chave), USUARIO, ident(grupo), nome, tipo),
             )
 
+        for chave, previsto in PREVISTO.items():
+            cur.execute(
+                "INSERT INTO budget_templates (id, user_id, category_id, amount, valid_from)"
+                " VALUES (%s, %s, %s, %s, %s)",
+                (
+                    ident(f"previsto:{chave}"),
+                    USUARIO,
+                    ident(chave),
+                    Decimal(previsto),
+                    primeiro_dia(hoje, 2),
+                ),
+            )
+        cur.execute(
+            "INSERT INTO budget_adjustments (id, user_id, category_id, month, amount)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (
+                ident("ajuste:mercado"),
+                USUARIO,
+                ident(AJUSTE_DO_MES[0]),
+                primeiro_dia(hoje, 0),
+                Decimal(AJUSTE_DO_MES[1]),
+            ),
+        )
+        for chave, nome, valor_conta, dia, categoria, conta, urgencia in CONTAS_RECORRENTES:
+            cur.execute(
+                "INSERT INTO recurring_bills (id, user_id, name, amount, due_day, category_id,"
+                " account_id, urgency, valid_from) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    ident(f"conta:{chave}"),
+                    USUARIO,
+                    nome,
+                    Decimal(valor_conta),
+                    dia,
+                    ident(categoria),
+                    ident(conta),
+                    urgencia,
+                    primeiro_dia(hoje, 2),
+                ),
+            )
+        compra = primeiro_dia(hoje, 2).replace(day=15)
+        total_compras = Decimal("0")
+        for ticker, nome, classe, qtd, pm, preco, pvp, dy, liquidez in ATIVOS:
+            cur.execute(
+                "INSERT INTO assets (id, user_id, ticker, name, class, account_id)"
+                " VALUES (%s, %s, %s, %s, %s, %s)",
+                (ident(f"ativo:{ticker}"), USUARIO, ticker, nome, classe, ident("inter")),
+            )
+            cur.execute(
+                "INSERT INTO asset_trades (user_id, asset_id, traded_on, quantity, unit_price)"
+                " VALUES (%s, %s, %s, %s, %s)",
+                (USUARIO, ident(f"ativo:{ticker}"), compra, Decimal(qtd), Decimal(pm)),
+            )
+            total_compras += Decimal(qtd) * Decimal(pm)
+            for quando, preco_do_dia in (
+                (primeiro_dia(hoje, 1), Decimal(pm)),
+                (hoje, Decimal(preco)),
+            ):
+                cur.execute(
+                    "INSERT INTO asset_quotes"
+                    " (ticker, quoted_on, price, pvp, dy_12m, liquidity, source)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, 'demo') ON CONFLICT (ticker, quoted_on)"
+                    " DO UPDATE SET price = excluded.price, pvp = excluded.pvp,"
+                    " dy_12m = excluded.dy_12m, liquidity = excluded.liquidity",
+                    (ticker, quando, preco_do_dia, Decimal(pvp), Decimal(dy), liquidez),
+                )
+        _transferencia(
+            cur,
+            de=ident("picpay"),
+            para=ident("inter"),
+            valor=total_compras.quantize(Decimal("0.01")),
+            quando=compra,
+            descricao="Compra de cotas",
+            chave="compra:cotas",
+        )
+        for classe, meta in METAS:
+            cur.execute(
+                "INSERT INTO allocation_targets (user_id, class, percent) VALUES (%s, %s, %s)",
+                (USUARIO, classe, meta),
+            )
+        cur.execute("INSERT INTO investment_rules (user_id) VALUES (%s)", (USUARIO,))
+        # Meta do cofrinho da viagem (RF14) e um empréstimo dele ainda não devolvido (RF18).
+        cur.execute(
+            "INSERT INTO goal_settings (account_id, user_id, target, target_date, started_on)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (
+                ident("cofrinho"),
+                USUARIO,
+                Decimal("3000.00"),
+                primeiro_dia(hoje, -8),
+                primeiro_dia(hoje, 2),
+            ),
+        )
+        # Freelance em dólar pelo PayPal (ideia 21): o do mês passado já chegou, com o
+        # desconto medido contra a PTAX; o deste mês está previsto para o dia 25.
+        recebido_em = primeiro_dia(hoje, 1).replace(day=25)
+        cur.execute(
+            "INSERT INTO transactions (id, user_id, kind, account_id, category_id, amount,"
+            " occurred_on, description) VALUES (%s, %s, 'income', %s, %s, %s, %s, %s)",
+            (
+                ident("freelance:recebido"),
+                USUARIO,
+                ident("picpay"),
+                ident("freelance"),
+                Decimal("1565.10"),
+                recebido_em,
+                "Freelance (PayPal)",
+            ),
+        )
+        cur.execute(
+            "INSERT INTO expected_incomes (id, user_id, description, currency, amount,"
+            " expected_on, account_id, category_id, transaction_id, received_brl,"
+            " reference_rate, fee_brl)"
+            " VALUES (%s, %s, %s, 'USD', %s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                ident("entrada:passada"),
+                USUARIO,
+                "Freelance (PayPal)",
+                Decimal("300.00"),
+                recebido_em,
+                ident("picpay"),
+                ident("freelance"),
+                ident("freelance:recebido"),
+                Decimal("1565.10"),
+                Decimal("5.40000"),
+                Decimal("54.90"),
+            ),
+        )
+        cur.execute(
+            "INSERT INTO expected_incomes (id, user_id, description, currency, amount,"
+            " expected_on, account_id, category_id) VALUES (%s, %s, %s, 'USD', %s, %s, %s, %s)",
+            (
+                ident("entrada:prevista"),
+                USUARIO,
+                "Freelance (PayPal)",
+                Decimal("300.00"),
+                max(hoje, primeiro_dia(hoje, 0).replace(day=25)),
+                ident("picpay"),
+                ident("freelance"),
+            ),
+        )
+        # Saldo com que a conta começou o histórico: sem ele, três meses de aluguel,
+        # fatura e compra de cotas deixam o PicPay negativo e o demo mente (ideia 18).
+        cur.execute(
+            "INSERT INTO transactions (id, user_id, kind, account_id, category_id, amount,"
+            " occurred_on, description) VALUES (%s, %s, 'income', %s, %s, %s, %s, %s)",
+            (
+                ident("saldo-inicial"),
+                USUARIO,
+                ident("picpay"),
+                ident("salario"),
+                Decimal("12000.00"),
+                primeiro_dia(hoje, 3),
+                "Saldo inicial",
+            ),
+        )
         # Três meses de histórico, terminando no mês corrente.
         for meses_atras in (2, 1, 0):
             mes = primeiro_dia(hoje, meses_atras)
@@ -202,8 +428,8 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 cur.execute(
                     "INSERT INTO transactions"
                     " (id, user_id, kind, account_id, category_id, amount,"
-                    "  occurred_on, description)"
-                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    "  occurred_on, description, recurring_bill_id)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         ident(f"{rotulo}:{indice}"),
                         USUARIO,
@@ -213,6 +439,7 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                         valor,
                         quando,
                         lanc.descricao,
+                        ident("conta:aluguel") if lanc.descricao == "Aluguel" else None,
                     ),
                 )
 
@@ -274,6 +501,7 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 quando=vencimento,
                 descricao=f"Pagamento da fatura de {mes_fatura:%m/%Y}",
                 chave=f"fatura:{mes_fatura:%Y-%m}",
+                quita=mes_fatura,
             )
 
         # Pagar por alguém é transferência, não gasto (RF17): o dinheiro sai da
@@ -302,6 +530,35 @@ def semear(conexao: psycopg.Connection[tuple[object, ...]], hoje: date) -> None:
                 chave="devolucao:ana",
             )
 
+        emprestimo_cofrinho = primeiro_dia(hoje, 1).replace(day=20)
+        transfer_id = ident("transfer:emprestimo:cofrinho")
+        cur.executemany(
+            "INSERT INTO transactions (id, user_id, kind, account_id, amount, occurred_on,"
+            " description, transfer_id, goal_movement)"
+            " VALUES (%s, %s, 'transfer', %s, %s, %s, %s, %s, %s)",
+            [
+                (
+                    ident("emprestimo:cofrinho:saida"),
+                    USUARIO,
+                    ident("cofrinho"),
+                    Decimal("-150.00"),
+                    emprestimo_cofrinho,
+                    "Empréstimo do cofrinho",
+                    transfer_id,
+                    "loan",
+                ),
+                (
+                    ident("emprestimo:cofrinho:entrada"),
+                    USUARIO,
+                    ident("picpay"),
+                    Decimal("150.00"),
+                    emprestimo_cofrinho,
+                    "Empréstimo do cofrinho",
+                    transfer_id,
+                    None,
+                ),
+            ],
+        )
         # Uma segunda vez, ainda em aberto: sem ela a tela de valores a receber
         # ficaria zerada, e é justamente o saldo pendente que ela precisa mostrar.
         em_aberto = primeiro_dia(hoje, 0).replace(day=2)

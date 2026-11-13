@@ -1,0 +1,1 @@
+ALTER TABLE ai_calls DROP COLUMN IF EXISTS response;

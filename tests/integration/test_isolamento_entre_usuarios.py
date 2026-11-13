@@ -75,7 +75,7 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         (usuario, f"{usuario}@exemplo.com", nome),
     )
 
-    pessoa, corrente, cartao, receber, grupo, categoria = (uuid.uuid4() for _ in range(6))
+    pessoa, corrente, cartao, receber, grupo, categoria, cofrinho = (uuid.uuid4() for _ in range(7))
 
     cur.execute(
         "INSERT INTO counterparties (id, user_id, name) VALUES (%s, %s, %s)",
@@ -88,7 +88,14 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
             (corrente, usuario, "PicPay", "checking", None),
             (cartao, usuario, "Unicred", "credit_card", None),
             (receber, usuario, "A receber", "receivable", pessoa),
+            (cofrinho, usuario, "Cofrinho Jogos", "goal", None),
         ],
+    )
+    # Migration 006: inserção mensal prevista do cofrinho (ADR-014).
+    cur.execute(
+        "INSERT INTO goal_contributions (user_id, account_id, vigencia, amount)"
+        " VALUES (%s, %s, '[2026-01-01,)', 150)",
+        (usuario, cofrinho),
     )
     cur.execute(
         "INSERT INTO account_terms (user_id, account_id, vigencia, closing_day, due_day)"
@@ -103,6 +110,74 @@ def _povoa(cur: Cursor, nome: str) -> uuid.UUID:
         "INSERT INTO categories (id, user_id, group_id, name, kind)"
         " VALUES (%s, %s, %s, %s, 'expense')",
         (categoria, usuario, grupo, "Mercado"),
+    )
+    cur.execute(
+        "INSERT INTO budget_templates (user_id, category_id, amount, valid_from)"
+        " VALUES (%s, %s, %s, %s)",
+        (usuario, categoria, Decimal("600.00"), date(2026, 1, 1)),
+    )
+    cur.execute(
+        "INSERT INTO budget_adjustments (user_id, category_id, month, amount)"
+        " VALUES (%s, %s, %s, %s)",
+        (usuario, categoria, date(2026, 3, 1), Decimal("700.00")),
+    )
+    cur.execute(
+        "INSERT INTO recurring_bills"
+        " (user_id, name, amount, due_day, category_id, account_id, valid_from)"
+        " VALUES (%s, 'Conta de luz', %s, 28, %s, %s, %s)",
+        (usuario, Decimal("120.00"), categoria, corrente, date(2026, 1, 1)),
+    )
+    cur.execute(
+        "INSERT INTO expected_incomes"
+        " (user_id, description, currency, amount, expected_on, account_id, category_id)"
+        " VALUES (%s, 'Freelance', 'USD', %s, %s, %s, %s)",
+        (usuario, Decimal("300.00"), date(2026, 3, 25), corrente, categoria),
+    )
+    cur.execute(
+        "INSERT INTO goal_settings (account_id, user_id, target, target_date, started_on)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        (cofrinho, usuario, Decimal("3000.00"), date(2027, 1, 1), date(2026, 1, 1)),
+    )
+    cur.execute(
+        "INSERT INTO reconciliations"
+        " (user_id, account_id, reconciled_on, bank_balance, app_balance)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        (usuario, corrente, date(2026, 3, 1), Decimal("100.00"), Decimal("100.00")),
+    )
+    investimento = uuid.uuid4()
+    ativo = uuid.uuid4()
+    cur.execute(
+        "INSERT INTO accounts (id, user_id, name, kind) VALUES (%s, %s, 'Inter', 'investment')",
+        (investimento, usuario),
+    )
+    cur.execute(
+        "INSERT INTO assets (id, user_id, ticker, name, class, account_id)"
+        " VALUES (%s, %s, 'TESTE11', 'Teste', 'brick', %s)",
+        (ativo, usuario, investimento),
+    )
+    cur.execute(
+        "INSERT INTO asset_trades (user_id, asset_id, traded_on, quantity, unit_price)"
+        " VALUES (%s, %s, %s, 10, 100)",
+        (usuario, ativo, date(2026, 3, 1)),
+    )
+    cur.execute("INSERT INTO investment_rules (user_id) VALUES (%s)", (usuario,))
+    cur.execute("INSERT INTO asset_watchlist (user_id, ticker) VALUES (%s, 'FICT11')", (usuario,))
+    cur.execute(
+        "INSERT INTO allocation_targets (user_id, class, percent) VALUES (%s, 'brick', 50)",
+        (usuario,),
+    )
+    cur.execute(
+        "INSERT INTO categorization_rules (user_id, contains, category_id) VALUES (%s, 'UBER', %s)",
+        (usuario, categoria),
+    )
+    cur.execute(
+        "INSERT INTO ai_calls (user_id, use_case, input_chars, accepted)"
+        " VALUES (%s, 'chat', 120, true)",
+        (usuario,),
+    )
+    cur.execute(
+        "INSERT INTO attention_snoozes (user_id, item_key, until) VALUES (%s, %s, NULL)",
+        (usuario, "conta:teste:2026-03"),
     )
 
     transfer = uuid.uuid4()

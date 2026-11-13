@@ -1,0 +1,45 @@
+# Worker da v3 (ADR-015): serve a PWA de web/dist e a API em /api.
+# Segredos (DATABASE_URL, GOOGLE_CLIENT_SECRET, SESSION_SECRET) não ficam aqui:
+# chegam pelo `secrets:` do cloudflare/wrangler-action no deploy (ADR-018).
+name = "financeiro-pessoal-dev"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Põe o Worker perto do banco (Neon, sa-east-1), não perto de quem pede.
+[placement]
+mode = "smart"
+
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/auth/*"]
+
+[observability]
+enabled = true
+
+# Workers AI (ADR-018): sem chave separada; o acesso vem da conta.
+[ai]
+binding = "AI"
+
+# Produção (fatia 11): mesmo código, outro Worker, banco no branch `production`.
+# Publicado só pelo gatilho manual do deploy-v3.yml (`ambiente: production`).
+# Bindings não são herdados entre ambientes do wrangler, então repetem aqui.
+[env.production]
+name = "financeiro-pessoal"
+
+[env.production.placement]
+mode = "smart"
+
+[env.production.assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/auth/*"]
+
+[env.production.observability]
+enabled = true
+
+[env.production.ai]
+binding = "AI"

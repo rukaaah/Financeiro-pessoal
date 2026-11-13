@@ -1,0 +1,670 @@
+<title>Financeiro pessoal · esboço v3</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block">
+<style>
+/* Layout: uma coluna de celular (máx. 440 px) centrada, barra inferior fixa; um bloco de destaque por tela. */
+:root{
+  --papel:#fbfbf9; --sup:#f1f2ee; --sup2:#e6e8e2; --tinta:#181b1a; --t2:#585f5c; --regua:#cdd0ca;
+  --azul:#2b55d0; --heroi:#18264f; --heroi-t:#ffffff; --heroi-t2:#c9d3f3; --heroi-linha:#33437a; --azul-claro:#a9b9ef;
+  --fora:#b3261e; --fora-f:#f9e2e0; --fora-t:#6d1712; --perto:#8a5a00; --perto-f:#f7ead1; --dentro:#1f6f54; --dentro-f:#e2efe9;
+  --tarja:#322d1f; --tarja-t:#f6e7c4; --sombra:0 8px 32px rgb(24 27 26 / 18%);
+  --fonte:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --papel:#111413; --sup:#1a1e1c; --sup2:#262b28; --tinta:#e7e9e6; --t2:#a6ada8; --regua:#2f3532;
+  --azul:#7d9bff; --heroi:#1b2a5c; --heroi-linha:#34477f; --azul-claro:#6f86d6;
+  --fora:#ff8a80; --fora-f:#3a1d1b; --fora-t:#ffd7d3; --perto:#e8b45a; --perto-f:#352a14; --dentro:#6fcfa5; --dentro-f:#15302a;
+  --sombra:0 8px 32px rgb(0 0 0 / 50%); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --papel:#111413; --sup:#1a1e1c; --sup2:#262b28; --tinta:#e7e9e6; --t2:#a6ada8; --regua:#2f3532;
+  --azul:#7d9bff; --heroi:#1b2a5c; --heroi-linha:#34477f; --azul-claro:#6f86d6;
+  --fora:#ff8a80; --fora-f:#3a1d1b; --fora-t:#ffd7d3; --perto:#e8b45a; --perto-f:#352a14; --dentro:#6fcfa5; --dentro-f:#15302a;
+  --sombra:0 8px 32px rgb(0 0 0 / 50%); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--papel);color:var(--tinta);font:16px/1.45 var(--fonte);font-variant-numeric:tabular-nums}
+.app{max-width:440px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+.ms{font-family:"Material Symbols Outlined";font-weight:normal;font-style:normal;font-size:24px;line-height:1;display:inline-block;vertical-align:middle;-webkit-font-feature-settings:"liga";font-feature-settings:"liga"}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--azul);outline-offset:2px;border-radius:4px}
+.tarja{background:var(--tarja);color:var(--tarja-t);font-size:13px;display:flex;justify-content:space-between;gap:8px;padding:8px 14px;border-radius:0 0 6px 6px}
+.tarja b{font-weight:600}
+header{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0 6px}
+h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em}
+.mes{display:flex;align-items:center;gap:2px;color:var(--t2);font-size:15px;font-weight:500;margin-left:-8px}
+.mes button{width:36px;height:36px;display:grid;place-items:center;border-radius:50%}
+.icone{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;margin-right:-10px}
+.heroi{background:var(--heroi);color:var(--heroi-t);border-radius:6px;padding:18px 18px 14px}
+.heroi .rot{font-size:13px;color:var(--heroi-t2)}
+.heroi .grande{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin:2px 0 4px}
+.heroi .conta{font-size:13px;color:var(--heroi-t2);margin:0 0 14px}
+.trilho{height:14px;border-radius:999px;background:var(--heroi-linha);display:flex;overflow:hidden}
+.trilho i{display:block;height:100%}
+.tres{display:grid;grid-template-columns:repeat(3,1fr);margin-top:14px;border-top:1px solid var(--heroi-linha);padding-top:12px}
+.tres>div+div{border-left:1px solid var(--heroi-linha);padding-left:12px}
+.tres .r{font-size:12px;color:var(--heroi-t2);display:flex;align-items:center;gap:6px}
+.tres .v{font-size:17px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:2px;display:inline-block}
+.heroi .pe{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:var(--heroi-t2)}
+.btn-claro{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--heroi-linha);border-radius:4px;padding:8px 12px;min-height:40px;color:var(--heroi-t);font-weight:600;font-size:14px}
+.achado{margin-top:12px;background:var(--fora-f);color:var(--fora-t);border-radius:6px;padding:12px 14px;display:flex;gap:10px;font-size:15px}
+.achado .ms{color:var(--fora)}
+section{margin-top:24px}
+h2{font-size:18px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px;text-wrap:balance}
+h2 .lado{font-size:14px;color:var(--t2);font-weight:500}
+h2 a,h2 button.link{font-size:14px;color:var(--azul);font-weight:600;text-decoration:none}
+.lista{background:var(--sup);border-radius:6px;padding:0 14px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:12px 0;border-top:1px solid var(--sup2);width:100%;text-align:left}
+.lista>.item:first-child,.grupo>.item:first-of-type{border-top:0}
+.nome{font-weight:600;min-width:0}
+.valor{font-weight:700;text-align:right}
+.sub{font-size:14px;color:var(--t2)}
+.acao{font-size:14px;font-weight:700;color:var(--azul);text-align:right}
+.selo{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 8px;margin-right:6px;white-space:nowrap}
+.selo.fora{background:var(--fora-f);color:var(--fora)}.selo.perto{background:var(--perto-f);color:var(--perto)}
+.proj{background:var(--sup);border-radius:6px;padding:12px 14px}
+.proj .fim{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.proj .fim b{font-size:22px;letter-spacing:-.01em}
+.proj svg{display:block;width:100%;height:auto;margin-top:6px}
+.grupo{background:var(--sup);border-radius:6px;padding:0 14px;margin-top:8px}
+.grupo-cab{display:flex;justify-content:space-between;padding:12px 0 4px;font-size:13px;color:var(--t2);font-weight:600}
+.cat .barra{grid-column:1/-1;height:3px;background:var(--sup2);border-radius:2px;margin-top:6px;overflow:hidden}
+.cat .barra i{display:block;height:100%;background:var(--t2)}
+.cat.fora .barra i{background:var(--fora)}.cat.perto .barra i{background:var(--perto)}
+.cat .valor{font-weight:600}
+.linha-total{display:flex;justify-content:space-between;padding:12px 0;font-weight:700;border-top:2px solid var(--regua);margin-top:8px}
+.rodape{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--regua);border-radius:4px;padding:10px 14px;min-height:44px;font-weight:600;font-size:14px}
+nav.barra{position:fixed;left:0;right:0;bottom:0;background:var(--papel);border-top:1px solid var(--regua);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);z-index:5}
+nav.barra .in{max-width:440px;margin:0 auto;height:68px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;text-align:center;font-size:12px;color:var(--t2)}
+nav.barra button{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:56px;justify-content:center}
+nav.barra button[aria-current="page"]{color:var(--tinta);font-weight:700}
+nav.barra .lancar{width:56px;height:56px;border-radius:50%;background:var(--azul);color:#fff;display:grid;place-items:center;margin:-22px auto 0}
+nav.barra .lancar .ms{font-size:30px}
+.vazio{background:var(--sup);border-radius:6px;padding:20px;margin-top:16px}
+/* folha inferior */
+.veu{position:fixed;inset:0;background:rgb(0 0 0 / 40%);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.folha{background:var(--papel);width:100%;max-width:440px;border-radius:6px 6px 0 0;box-shadow:var(--sombra);max-height:86%;overflow:auto;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.folha .topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.folha h3{margin:0;font-size:18px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px}
+.chip{border:1px solid var(--regua);border-radius:999px;padding:8px 12px;white-space:nowrap;font-size:14px;min-height:40px}
+.msg{border-radius:6px;padding:10px 12px;margin-top:8px;font-size:15px}
+.msg.eu{background:var(--sup2);margin-left:48px}
+.msg.ia{background:var(--sup)}
+.msg .base{display:block;font-size:13px;color:var(--t2);margin-top:6px}
+.aviso{font-size:13px;color:var(--t2);margin-top:12px}
+.colunas{display:flex;align-items:flex-end;gap:4px;height:110px;margin:10px 0 4px}
+.colunas i{flex:1;background:var(--sup2);border-radius:2px 2px 0 0;position:relative}
+.colunas i.atual{background:var(--azul)}
+.colunas-rot{display:flex;justify-content:space-between;font-size:12px;color:var(--t2)}
+
+.abas{display:flex;gap:20px;border-bottom:1px solid var(--regua);overflow-x:auto;margin:4px 0 16px}
+.abas button{padding:10px 0;font-weight:500;color:var(--t2);border-bottom:2px solid transparent;white-space:nowrap;min-height:44px}
+.abas button[aria-selected="true"]{color:var(--tinta);font-weight:700;border-bottom-color:var(--tinta)}
+.chip[aria-pressed="true"]{background:var(--tinta);color:var(--papel);border-color:var(--tinta);font-weight:600}
+.lote{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
+.lote .btn{justify-content:center}
+.dia{font-size:13px;font-weight:700;color:var(--t2);padding:14px 0 6px}
+.entrada{color:var(--dentro)}
+.heroi .acao-heroi{display:flex;gap:8px;margin-top:14px}
+.btn-cheio{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--heroi-t);color:var(--heroi);border-radius:4px;padding:10px 16px;min-height:44px;font-weight:700;font-size:15px}
+.btn-tinta{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--tinta);color:var(--papel);border-radius:4px;padding:12px 16px;min-height:48px;font-weight:700;font-size:16px;width:100%}
+.colfat{display:flex;align-items:flex-end;gap:10px;height:90px;margin-top:8px}
+.colfat div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--t2);height:100%;justify-content:flex-end}
+.colfat i{display:block;width:100%;background:var(--sup2);border-radius:2px 2px 0 0}
+.colfat .atual i{background:var(--azul)}
+.partes .item{grid-template-columns:minmax(0,1fr) auto}
+.menos{color:var(--t2)}
+.prog{grid-column:1/-1;height:4px;background:var(--sup2);border-radius:999px;margin-top:6px;overflow:hidden;position:relative}
+.prog i{display:block;height:100%;background:var(--tinta)}
+.prog b{position:absolute;top:-3px;width:2px;height:10px;background:var(--azul)}
+.aloc{display:grid;grid-template-columns:90px minmax(0,1fr) 46px;gap:8px;align-items:center;padding:6px 0;font-size:14px}
+.aloc .tr{height:10px;background:var(--sup2);border-radius:999px;position:relative}
+.aloc .tr i{position:absolute;left:0;top:0;bottom:0;background:var(--azul);border-radius:999px}
+.aloc .tr b{position:absolute;top:-3px;width:2px;height:16px;background:var(--tinta)}
+.pessoa{display:flex;align-items:center;gap:10px}
+.inicial{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;color:var(--tinta)}
+.areas .item{align-items:center}
+.toggle{width:40px;height:24px;border-radius:999px;background:var(--dentro);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--papel)}
+.campo{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.campo label{font-size:14px;font-weight:600}
+.campo input,.campo select{font:inherit;font-size:16px;color:var(--tinta);background:var(--sup);border:1px solid var(--t2);border-radius:4px;padding:10px 12px;min-height:46px;width:100%}
+.campo .grande-in{font-size:28px;font-weight:700}
+.nota{font-size:14px;color:var(--t2);margin-top:6px}
+.nota b{color:var(--tinta)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--tinta);color:var(--papel);border-radius:6px;padding:10px 14px;display:flex;gap:16px;align-items:center;z-index:30;max-width:calc(100% - 32px)}
+.toast button{color:var(--papel);font-weight:700;text-decoration:underline;min-height:36px}
+
+.seg{display:flex;background:var(--sup);border-radius:6px;padding:3px;margin:16px 0 4px;overflow-x:auto}
+.seg button{flex:1;padding:8px 10px;border-radius:4px;font-size:14px;font-weight:600;color:var(--t2);white-space:nowrap;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--papel);color:var(--tinta);box-shadow:0 1px 2px rgb(0 0 0 / 12%)}
+.graf{background:var(--sup);border-radius:6px;padding:12px 14px}
+.graf svg{display:block;width:100%;height:auto}
+.leg{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--t2);margin-top:6px}
+.leg span{display:inline-flex;align-items:center;gap:6px}
+.leg i{width:14px;height:3px;display:inline-block;border-radius:2px}
+.leg i.q{width:10px;height:10px;border-radius:2px}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.kv div{background:var(--sup);border-radius:6px;padding:10px 12px}
+.kv .r{font-size:12px;color:var(--t2)}.kv .v{font-size:17px;font-weight:700}
+.pos{color:var(--dentro)}.neg{color:var(--fora)}
+.ativo{cursor:pointer}
+@media (prefers-reduced-motion:no-preference){.folha{animation:sobe .16s ease-out}@keyframes sobe{from{transform:translateY(24px);opacity:.6}}}
+</style>
+
+<div class="app">
+  <div class="tarja"><span><b>Dados fictícios</b> · esboço navegável</span><span>v3</span></div>
+  <main id="tela"></main>
+</div>
+<nav class="barra" aria-label="Destinos"><div class="in">
+  <button data-tela="mes" aria-current="page"><span class="ms">calendar_month</span>Mês</button>
+  <button data-tela="lancamentos"><span class="ms">receipt_long</span>Lançamentos</button>
+  <button class="lancar-wrap" data-acao="lancar" aria-label="Lançar"><span class="lancar"><span class="ms">add</span></span></button>
+  <button data-tela="cartao"><span class="ms">credit_card</span>Cartão</button>
+  <button data-tela="patrimonio"><span class="ms">account_balance</span>Patrimônio</button>
+</div></nav>
+<div id="camada"></div>
+
+<script>
+// Dados fictícios de novembro de 2026. Todo total é somado das partes (centavos inteiros).
+const HOJE = 4, DIAS = 30;
+const grupos = [
+  ["Alimentação", [["Mercado",60000,54150,52000],["Restaurantes",15000,16500,14000],["Lanches e delivery",20000,11275,18300]]],
+  ["Transporte", [["Apps",10000,6048,8900],["Combustível",20000,18080,19500],["Passagens",5000,0,1600]]],
+  ["Lazer", [["Jogos",8000,3000,6000],["Hobbies",8000,8400,5200],["Saídas e eventos",15000,3000,12400]]],
+  ["Esporte", [["Muay thai",15000,15000,15000]]],
+  ["Compras", [["Presentes",10000,12075,4500],["Compras pessoais",15000,12825,13100]]],
+  ["Contas e taxas", [["Tarifas bancárias",2000,2000,2000],["Contas da casa",47500,0,46200]]],
+  ["Emergência", [["Imprevistos",10000,5250,3300]]],
+  ["Outros", [["Outros",7000,3898,5100]]],
+]; // [nome, previsto, gasto, média de 3 meses]
+const aPagar = [["Seguro do carro",15,15000],["Celular",20,6000],["Conta de luz",28,12000],["Internet",30,10000],["Streaming",30,4500]];
+const renda = 420000, guardadoPlan = 145000;
+const guardado = [["Reserva",30000,30000],["Investimentos",80000,75000],["Cofrinho Jogos",15000,15000],["Cofrinho Viagem",20000,10000]];
+const saldoHoje = 184035, fatura = [11, 84340], freelance = [25, 156840, "US$ 300,00"];
+
+const soma = a => a.reduce((s,x)=>s+x,0);
+const cats = grupos.flatMap(([g,l])=>l.map(([n,p,v,m])=>({g,n,p,v,m})));
+const previsto = soma(cats.map(c=>c.p)), gasto = soma(cats.map(c=>c.v));
+const pagar = soma(aPagar.map(x=>x[2])), livre = previsto - gasto - pagar;
+const guardadoReal = soma(guardado.map(x=>x[2])), sobra = renda - gasto - guardadoReal;
+const diasRest = DIAS - HOJE + 1;
+console.assert(previsto===267500 && gasto===171501 && livre===48499, "régua do mês não fecha");
+console.assert(pagar===soma(cats.filter(c=>c.n==="Contas da casa").map(c=>c.p)), "contas a pagar ≠ previsto de Contas da casa");
+
+const brl = c => (c<0?"−":"")+"R$ "+(Math.abs(c)/100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = c => (Math.abs(c)/100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = (a,b) => Math.round(a/b*100);
+const estado = c => c.v > c.p ? "fora" : (c.p>0 && c.v >= .8*c.p && c.n!=="Contas da casa") ? "perto" : "";
+const esc = s => String(s).replace(/[&<>"]/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+
+function projecao(){ // saldo diário da conta corrente, com o livre gasto por igual
+  const pts=[]; let s=saldoHoje; const porDia = livre/diasRest;
+  for(let d=HOJE; d<=DIAS; d++){
+    if(d>HOJE) s -= porDia;
+    if(d===fatura[0]) s -= fatura[1];
+    if(d===freelance[0]) s += freelance[1];
+    aPagar.forEach(([,dia,v])=>{ if(dia===d) s -= v; });
+    pts.push([d, Math.round(s)]);
+  }
+  return pts;
+}
+
+function telaMes(){
+  const pts = projecao(), fim = pts[pts.length-1][1], min = Math.min(...pts.map(p=>p[1]));
+  const W=330,H=110, x=d=>(d-1)/(DIAS-1)*W, max=Math.max(...pts.map(p=>p[1]), saldoHoje);
+  const y=v=>H-8 - v/max*(H-24);
+  const linha = pts.map(([d,v])=>`${x(d).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const atencao = cats.filter(c=>c.v>c.p).map(c=>({n:c.n, v:c.v, s:`<span class="selo fora">fora</span>de ${brl(c.p)}`, a:"Ver", cat:c.n}));
+  atencao.unshift({n:"Fatura Unicred", v:fatura[1], s:`<span class="selo perto">vence em 7 dias</span>11/11`, a:"Pagar"});
+  const linhasGrupo = grupos.map(([g])=>{
+    const cs = cats.filter(c=>c.g===g);
+    return `<div class="grupo"><div class="grupo-cab"><span>${g}</span><span>${brl(soma(cs.map(c=>c.v)))} de ${brl(soma(cs.map(c=>c.p)))}</span></div>
+      ${cs.map(c=>{const e=estado(c); const largura = c.p? Math.min(100,c.v/c.p*100):0;
+        const dif = c.v - c.m, comp = c.m ? (dif>=0? `${brl(dif)} acima da média` : `${brl(-dif)} abaixo da média`) : "";
+        return `<button class="item cat ${e}" data-cat="${esc(c.n)}"><span class="nome">${e?`<span class="selo ${e}">${e}</span>`:""}${esc(c.n)}</span><span class="valor">${brl(c.v)}</span>
+        <span class="sub">de ${brl(c.p)}${c.n==="Contas da casa"?" · vencem até 30/11":" · "+comp}</span><span class="sub">${c.p?pct(c.v,c.p)+"%":"—"}</span>
+        <span class="barra"><i style="width:${largura}%"></i></span></button>`}).join("")}</div>`;
+  }).join("");
+  return `
+  <header><div><h1>Mês</h1><div class="mes"><button data-acao="mes-ant" aria-label="Mês anterior"><span class="ms">chevron_left</span></button>Novembro de 2026<button data-acao="mes-prox" aria-label="Próximo mês"><span class="ms">chevron_right</span></button></div></div>
+    <button class="icone" data-acao="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button></header>
+
+  <div class="heroi">
+    <div class="rot">Livre para gastar até 30/11</div>
+    <div class="grande">${brl(livre)}</div>
+    <p class="conta">${brl(Math.round(livre/diasRest))} por dia nos ${diasRest} dias · previsto − gasto − a pagar</p>
+    <div class="trilho" role="img" aria-label="Gasto ${pct(gasto,previsto)}%, a pagar ${pct(pagar,previsto)}% do previsto"><i style="width:${gasto/previsto*100}%;background:var(--heroi-t)"></i><i style="width:${pagar/previsto*100}%;background:var(--azul-claro)"></i></div>
+    <div class="tres">
+      <div><div class="r">Previsto</div><div class="v">${num(previsto)}</div></div>
+      <div><div class="r"><span class="dot" style="background:var(--heroi-t)"></span>Gasto</div><div class="v">${num(gasto)}</div></div>
+      <div><div class="r"><span class="dot" style="background:var(--azul-claro)"></span>A pagar</div><div class="v">${num(pagar)}</div></div>
+    </div>
+    <div class="pe"><span>${pct(gasto,previsto)}% gasto · dia ${HOJE} de ${DIAS}</span><button class="btn-claro" data-acao="chat" data-contexto="mes"><span class="ms" style="font-size:18px">auto_awesome</span>Perguntar</button></div>
+  </div>
+
+  <div class="achado"><span class="ms">error</span><div><b>Restaurantes passou ${brl(16500-15000)}</b> do previsto e está ${brl(16500-14000)} acima da média de 3 meses.</div></div>
+
+  <section aria-labelledby="h-at">
+    <h2 id="h-at">Atenção · ${atencao.length} <a href="#" data-acao="breve">Ver todos</a></h2>
+    <div class="lista">${atencao.slice(0,3).map(i=>`<button class="item" ${i.cat?`data-cat="${esc(i.cat)}"`:'data-acao="breve"'}><span class="nome">${esc(i.n)}</span><span class="valor">${brl(i.v)}</span><span class="sub">${i.s}</span><span class="acao">${i.a}</span></button>`).join("")}</div>
+  </section>
+
+  <section aria-labelledby="h-pr">
+    <h2 id="h-pr">Saldo projetado <span class="lado">PicPay</span></h2>
+    <div class="proj">
+      <div class="fim"><span class="sub">em 30/11, se o livre for todo gasto</span><b>${brl(fim)}</b></div>
+      <svg viewBox="0 -14 ${W} ${H+30}" role="img" aria-label="Saldo de ${brl(saldoHoje)} hoje até ${brl(fim)} em 30/11; menor saldo ${brl(min)}">
+        <line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--regua)"/>
+        <line x1="0" x2="${W}" y1="${y(max/2)}" y2="${y(max/2)}" stroke="var(--sup2)"/>
+        <polyline fill="none" stroke="var(--azul)" stroke-width="2.5" stroke-dasharray="5 4" points="${linha}"/>
+        <circle cx="${x(HOJE)}" cy="${y(saldoHoje)}" r="4" fill="var(--tinta)"/>
+        <text x="${x(HOJE)+6}" y="${y(saldoHoje)-8}" font-size="11" fill="var(--t2)">hoje ${brl(saldoHoje)}</text>
+        <text x="${x(fatura[0])}" y="${y(pts[fatura[0]-HOJE][1])+16}" font-size="11" fill="var(--t2)">fatura</text>
+        <text x="${x(freelance[0])}" y="${y(pts[freelance[0]-HOJE][1])-8}" font-size="11" fill="var(--t2)" text-anchor="middle">freelance</text>
+        <text x="0" y="${H+12}" font-size="11" fill="var(--t2)">1/11</text><text x="${W/2}" y="${H+12}" font-size="11" fill="var(--t2)" text-anchor="middle">15/11</text><text x="${W}" y="${H+12}" font-size="11" fill="var(--t2)" text-anchor="end">30/11</text>
+      </svg>
+      <div class="sub">Entradas previstas: freelance ${freelance[2]} em 25/11, ≈ ${brl(freelance[1])} pela PTAX menos o desconto médio do PayPal (3,4%). Saídas: fatura ${brl(fatura[1])} em 11/11 e ${aPagar.length} contas.</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-cat">
+    <h2 id="h-cat">Categorias <span class="lado">gasto · previsto</span></h2>
+    ${linhasGrupo}
+    <div class="linha-total"><span>Total</span><span>${brl(gasto)} de ${brl(previsto)}</span></div>
+    <p class="sub">Compra no cartão conta no mês de vencimento da fatura. Toque numa categoria para ver o detalhe e perguntar.</p>
+  </section>
+
+  <section aria-labelledby="h-gu">
+    <h2 id="h-gu">Guardado no mês <span class="lado">${brl(guardadoReal)} de ${brl(guardadoPlan)}</span></h2>
+    <div class="lista">${guardado.map(([n,p,v])=>`<div class="item"><span class="nome">${n}</span><span class="valor">${brl(v)}</span><span class="sub">de ${brl(p)} planejados</span><span class="sub">${pct(v,p)}%</span></div>`).join("")}</div>
+    <div class="linha-total"><span>Sobra do mês</span><span>${brl(sobra)}</span></div>
+    <p class="sub">Renda ${brl(renda)} − gasto ${brl(gasto)} − guardado ${brl(guardadoReal)}.</p>
+  </section>
+
+  <div class="rodape"><button class="btn" data-acao="copiar"><span class="ms" style="font-size:18px">content_copy</span>Copiar resumo do mês</button><button class="btn" data-acao="chat" data-contexto="mes"><span class="ms" style="font-size:18px">auto_awesome</span>Avaliar o mês</button></div>
+  <p class="sub" id="copiado" aria-live="polite"></p>`;
+}
+
+
+// ---- outras telas (mesmos dados fictícios)
+const lanc = [ // [dia, descrição, categoria, conta, valor em centavos (+ entrada / − saída), tipo]
+  [4,"Supermercado Bom Preço","Mercado","PicPay",-22150,"g"],[4,"Uber","Apps","PicPay",-1890,"g"],
+  [3,"Supermercado","Mercado","Unicred · fatura 11/2026",-31840,"g"],[3,"Lanche","Lanches e delivery","PicPay",-4250,"g"],
+  [3,"Aporte na Reserva","","PicPay → Cofrinho Reserva",30000,"t"],[2,"Combustível","Combustível","Unicred · fatura 11/2026",-18000,"g"],
+  [2,"Mensalidade muay thai","Muay thai","PicPay",-15000,"g"],[1,"Salário","Salário","PicPay",420000,"r"],
+  [1,"Presente","Presentes","Unicred · fatura 11/2026",-11500,"g"],[1,"Tarifa","Tarifas bancárias","PicPay",-2000,"g"],
+];
+const faturas = [["Out/26","paga",64840,"paga em 11/10"],["Nov/26","aberta",84340,"vence 11/11"],["Dez/26","futura",23000,""],["Jan/27","futura",23000,""],["Fev/27","futura",15000,""],["Mar/27","futura",15000,""]];
+const comprasNov = [["Supermercado","03/11 · Mercado",31840],["Combustível","02/11 · Combustível",18000],["Presente","01/11 · Presentes",11500],["Fone de ouvido","20/10 · Compras pessoais · parcela 1/3",8000],["Console de jogos","10/10 · Jogos · parcela 2/6",15000]];
+console.assert(soma(comprasNov.map(c=>c[2]))===84340, "fatura de novembro não fecha");
+const comprometido = soma(faturas.filter(f=>f[1]==="futura").map(f=>f[2]));
+const cofrinhos = [["Reserva",180000,300000,210000,10000,""],["Viagem",95000,240000,80000,0,""],["Jogos",30000,45000,30000,6000,""],["CDB PicPay",125000,0,0,0,"100% do CDI"],["CDB Inter",82000,0,0,0,"102% do CDI"]]; // saldo, meta, deveria ter, a devolver, %CDI
+const fiis = [["Papel",[["FICTA11",245250,"25 cotas · P/VP 1,03"],["DEMO11",38480,"40 cotas · P/VP 0,94"]],30],["Tijolo",[["TESTE11",122760,"12 cotas · P/VP 0,88"]],20],["Logística",[["EXEMP11",158400,"10 cotas · P/VP 0,97"]],15],["FI-Infra",[["MODEL11",275100,"30 cotas · P/VP 0,92"]],10],["Tesouro",[["Tesouro Selic 2031",150000,"título público"]],25]];
+const investido = soma(fiis.flatMap(c=>c[1].map(a=>a[1])));
+const contas = 184035, cofr = soma(cofrinhos.map(c=>c[1])), cartaoDivida = 84340 + comprometido;
+const patrimonio = contas + cofr + investido - cartaoDivida;
+const receber = [["Pais",35000,[["Consulta paga com dinheiro dos cofrinhos","29/10 · há 6 dias",35000]],"#e8e0f7"],["Ana",15000,[["Combustível","26/10 · há 9 dias",5000],["Parte da conta do jantar","01/11 · há 3 dias",10000]],"#dff1ea"]];
+console.assert(cofr===512000 && investido===989990 && patrimonio===1525685, "patrimônio não fecha");
+
+function telaLancamentos(){
+  const filtro = estadoTela.filtro || "Tudo";
+  const vis = lanc.filter(l=> filtro==="Tudo" || (filtro==="Gastos"&&l[5]==="g") || (filtro==="Entradas"&&l[5]==="r") || (filtro==="Transferências"&&l[5]==="t"));
+  const entrou = soma(lanc.filter(l=>l[5]==="r").map(l=>l[4])), saiu = -soma(lanc.filter(l=>l[5]==="g"&&!l[3].startsWith("Unicred")).map(l=>l[4]));
+  const dias = [...new Set(vis.map(l=>l[0]))];
+  const nomeDia = d => d===4?"Hoje, qua 4 de nov": d===3?"Ontem, ter 3 de nov": d===2?"seg, 2 de nov":"dom, 1 de nov";
+  return `<header><div><h1>Lançamentos</h1><div class="sub">Novembro · ${lanc.length} lançamentos</div></div><button class="icone" data-acao="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button></header>
+  <div class="lote"><button class="btn" data-acao="importar"><span class="ms" style="font-size:20px">upload_file</span>Importar extrato</button><button class="btn" data-acao="colar"><span class="ms" style="font-size:20px">content_paste</span>Colar notificação</button></div>
+  <div class="chips" role="group" aria-label="Filtro">${["Tudo","Gastos","Entradas","Transferências"].map(f=>`<button class="chip" data-acao="filtro" data-f="${f}" aria-pressed="${f===filtro}">${f}</button>`).join("")}<button class="chip" data-acao="breve"><span class="ms" style="font-size:18px">search</span> Buscar</button></div>
+  ${dias.length? dias.map(d=>`<div class="dia">${nomeDia(d)}</div><div class="lista">${vis.filter(l=>l[0]===d).map(l=>`<button class="item" data-acao="editar" data-i="${lanc.indexOf(l)}"><span class="nome">${l[5]==="t"?'<span class="ms" style="font-size:18px">swap_horiz</span> ':""}${esc(l[1])}</span><span class="valor ${l[5]==="r"?"entrada":""}">${l[5]==="t"?brl(l[4]):(l[4]>0?"+":"")+brl(l[4])}</span><span class="sub">${esc([l[2],l[3]].filter(Boolean).join(" · "))}</span><span></span></button>`).join("")}</div>`).join("") : `<div class="vazio">Nenhum lançamento deste tipo em novembro.</div>`}
+  <div class="linha-total"><span>Entrou · Saiu</span><span>${brl(entrou)} · ${brl(saiu)}</span></div>
+  <p class="sub">Pela data do lançamento, sem transferências e sem compras no cartão, que contam no mês da fatura. Por isso não é o mesmo gasto do Mês.</p>
+  <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">download</span>Exportar CSV</button></div>`;
+}
+
+function telaCartao(){
+  const i = estadoTela.fatura ?? 1, f = faturas[i], mx = Math.max(...faturas.map(x=>x[2]));
+  return `<header><div><h1>Cartão</h1><div class="sub">Unicred · fecha dia 4, vence dia 11</div></div><button class="icone" data-acao="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button></header>
+  <div class="chips" role="group" aria-label="Fatura">${faturas.map((x,j)=>`<button class="chip" data-acao="fatura" data-i="${j}" aria-pressed="${j===i}">${x[0]} · ${x[1]}</button>`).join("")}</div>
+  <div class="heroi">
+    <div class="rot">Fatura de ${f[0].toLowerCase()} · ${f[1]}</div>
+    <div class="grande">${brl(f[2])}</div>
+    <p class="conta">${f[1]==="aberta"?"vence 11/11, em 7 dias · fechou dia 4": f[1]==="paga"? f[3] : "parcelas que já caem nesta fatura"}</p>
+    ${f[1]==="aberta"?`<div class="acao-heroi"><button class="btn-cheio" data-acao="pagar"><span class="ms" style="font-size:20px">payments</span>Pagar fatura</button></div>`:""}
+  </div>
+  <section aria-labelledby="h-comp"><h2 id="h-comp">Já comprometido <span class="lado">${brl(comprometido)} em ${faturas.filter(x=>x[1]==="futura").length} faturas</span></h2>
+    <div class="proj"><div class="colfat">${faturas.map((x,j)=>`<div class="${j===i?"atual":""}"><span>${num(x[2]).replace(",00","")}</span><i style="height:${x[2]/mx*60}px"></i><span>${x[0].slice(0,3)}</span></div>`).join("")}</div></div></section>
+  <section aria-labelledby="h-compras"><h2 id="h-compras">Compras da fatura <span class="lado">${i===1?comprasNov.length:"—"}</span></h2>
+    ${i===1? `<div class="lista">${comprasNov.map(c=>`<div class="item"><span class="nome">${c[0]}</span><span class="valor">${brl(c[2])}</span><span class="sub">${c[1]}</span><span></span></div>`).join("")}</div>`: `<div class="vazio">Este esboço só detalha a fatura de novembro.</div>`}</section>
+  <p class="sub" style="margin-top:16px">Compra no dia do fechamento ainda entra nesta fatura. O pagamento é transferência, não gasto. Prazos em Ajustes → Cartões.</p>`;
+}
+
+function telaPatrimonio(){
+  const aba = estadoTela.aba || "Visão";
+  const abas = `<div class="abas" role="tablist">${["Visão","Cofrinhos","Investimentos","A receber"].map(a=>`<button role="tab" data-acao="aba" data-a="${a}" aria-selected="${a===aba}">${a}</button>`).join("")}</div>`;
+  let corpo="";
+  if(aba==="Visão") corpo = `<div class="heroi"><div class="rot">Patrimônio líquido hoje</div><div class="grande">${brl(patrimonio)}</div><p class="conta">+R$ 420,79 desde 31/10 · sem os valores a receber</p></div>
+    <section><h2>As partes</h2><div class="lista partes">
+      <div class="item"><span class="nome">Contas</span><span class="valor">${brl(contas)}</span><span class="sub">PicPay · atualizado hoje 09:14</span><span></span></div>
+      <div class="item"><span class="nome">Cofrinhos</span><span class="valor">${brl(cofr)}</span><span class="sub">5 cofrinhos, com os CDBs</span><span></span></div>
+      <div class="item"><span class="nome">Investimentos</span><span class="valor">${brl(investido)}</span><span class="sub">cotações de 04/11</span><span></span></div>
+      <div class="item"><span class="nome">Cartão</span><span class="valor menos">${brl(-cartaoDivida)}</span><span class="sub">fatura aberta e parcelas futuras</span><span></span></div>
+    </div><div class="linha-total"><span>Patrimônio líquido</span><span>${brl(patrimonio)}</span></div>
+    <div class="lista"><div class="item"><span class="nome">A receber de pessoas</span><span class="valor">${brl(50000)}</span><span class="sub">fora do patrimônio</span><span></span></div>
+    <div class="item"><span class="nome">O PayPal ficou com</span><span class="valor">${brl(41260)}</span><span class="sub">em 2026, contra a PTAX, em 3 recebimentos</span><span></span></div></div></section>
+    <div class="rodape"><button class="btn" data-acao="conciliar"><span class="ms" style="font-size:18px">rule</span>Conciliar saldo</button></div><p class="sub">Última conciliação: PicPay em 01/11.</p>`;
+  if(aba==="Cofrinhos") corpo = `<div class="heroi"><div class="rot">Guardado nos cofrinhos</div><div class="grande">${brl(cofr)}</div><p class="conta">${brl(16000)} a devolver: empréstimos que você fez para si mesmo</p>
+      <div class="acao-heroi"><button class="btn-cheio" data-acao="lancar" data-int="Guardei">Guardar</button><button class="btn-claro" data-acao="lancar" data-int="Resgatei">Resgatar</button></div></div>
+    <section><h2>Cofrinhos <span class="lado">${cofrinhos.length}</span></h2><div class="lista">${cofrinhos.map(([n,sal,meta,dev,adev,cdi])=>`<div class="item"><span class="nome">${adev?`<span class="selo perto">devolver ${brl(adev)}</span>`:""}${n}</span><span class="valor">${brl(sal)}</span>
+      <span class="sub">${meta? `meta ${brl(meta)} · deveria ter ${brl(dev)}${sal<dev?` · atrasado ${brl(dev-sal)}`: sal>dev?` · adiantado ${brl(sal-dev)}`:" · em dia"}` : cdi}</span><span class="sub">${meta?Math.round(sal/meta*100)+"%":""}</span>
+      ${meta?`<span class="prog"><i style="width:${sal/meta*100}%"></i><b style="left:${dev/meta*100}%"></b></span>`:""}</div>`).join("")}</div></section>
+    <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">add</span>Novo cofrinho</button></div>`;
+  if(aba==="Investimentos") corpo = telaInvest();
+  if(aba==="A receber") corpo = `<div class="heroi"><div class="rot">A receber de pessoas</div><div class="grande">${brl(50000)}</div><p class="conta">Fica fora do patrimônio e do gasto do mês.</p></div>
+    ${receber.map(([n,t,itens,tom])=>`<section><h2><span class="pessoa"><span class="inicial" style="background:${tom}">${n[0]}</span>${n}</span><span>${brl(t)}</span></h2><div class="lista">${itens.map(i=>`<div class="item"><span class="nome">${i[0]}</span><span class="valor">${brl(i[2])}</span><span class="sub">${i[1]}</span><span></span></div>`).join("")}</div>
+      <div class="rodape" style="margin-top:8px"><button class="btn" data-acao="breve">Registrar recebimento</button><button class="btn" data-acao="breve">Perdoar</button></div></section>`).join("")}`;
+  return `<header><div><h1>Patrimônio</h1><div class="sub">hoje, 04/11/2026</div></div><button class="icone" data-acao="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button></header>${abas}${corpo}`;
+}
+
+
+// ---- Investimentos: séries fictícias de 12 meses (dez/25 a nov/26), coerentes com o valor investido de hoje
+const MESES = ["dez","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov"];
+const aportes = [40000,50000,45000,60000,50000,45000,70000,50000,45000,65000,50000,75000]; // por mês, centavos
+const baseAportada = 285000; // antes de dez/25
+const aportado = aportes.reduce((a,v,k)=>(a.push((a[k-1]??baseAportada)+v),a),[]);
+const ganhoFinal = investido - aportado[11];
+const ganho = MESES.map((_,k)=>Math.round(ganhoFinal*Math.pow((k+1)/12,1.25)));
+const valorMes = MESES.map((_,k)=>aportado[k]+ganho[k]);
+console.assert(valorMes[11]===investido, "série do patrimônio investido não fecha");
+const rCart=[0.8,1.1,0.4,1.3,0.9,-0.6,1.2,0.7,1.0,0.5,1.4,1.2], rCdi=Array(12).fill(0.766), rIfix=[0.9,-0.4,0.6,1.1,0.2,-0.9,1.3,0.4,0.8,0.7,1.0,1.4];
+const acum = r => r.reduce((a,v,k)=>(a.push(((1+(a[k-1]??0)/100)*(1+v/100)-1)*100),a),[]);
+const aC=acum(rCart), aD=acum(rCdi), aI=acum(rIfix);
+const proventos = [3820,4100,4450,4710,5230,5500,5860,6120,6640,7080,7530,8269];
+const mediaProv = Math.round(soma(proventos)/12);
+const pct1 = v => (v>=0?"+":"−")+Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
+const ativos = { // preço, cotas, preço médio, variação no mês %, P/VP, DY 12m %, provento por cota (centavos) no último mês, liquidez R$ mil/dia
+  "FICTA11":{cl:"Papel",p:9810,q:25,pm:9636,vm:1.8,pvp:1.03,dy:11.9,prov:105,liq:900},
+  "DEMO11":{cl:"Papel",p:962,q:40,pm:985,vm:-2.3,pvp:0.94,dy:12.8,prov:11,liq:650},
+  "TESTE11":{cl:"Tijolo",p:10230,q:12,pm:10802,vm:-5.3,pvp:0.88,dy:8.9,prov:72,liq:720},
+  "EXEMP11":{cl:"Logística",p:15840,q:10,pm:15014,vm:5.5,pvp:0.97,dy:8.4,prov:110,liq:1100},
+  "MODEL11":{cl:"FI-Infra",p:9170,q:30,pm:9503,vm:-3.5,pvp:0.92,dy:13.4,prov:108,liq:350},
+  "Tesouro Selic 2031":{cl:"Tesouro",p:150000,q:1,pm:143000,vm:0.9,pvp:null,dy:null,prov:0,liq:null},
+};
+Object.entries(ativos).forEach(([n,a])=>{ const linha = fiis.flatMap(c=>c[1]).find(x=>x[0]===n); console.assert(linha && linha[1]===a.p*a.q, "preço × cotas ≠ valor de "+n); });
+const agenda = [["DEMO11","06/11","16/11",440,"anunciado"],["TESTE11","09/11","19/11",864,"anunciado"],["FICTA11","13/11","23/11",2625,"estimado"],["EXEMP11","18/11","28/11",1100,"anunciado"],["MODEL11","24/11","04/12",3240,"estimado"]];
+const movimentos = [["03/11","Aporte na carteira","de PicPay",65000,"+"],["31/10","Proventos recebidos","5 fundos",7530,"+"],["18/10","Compra · EXEMP11","2 cotas a R$ 155,20",31040,""],["18/10","Compra · DEMO11","20 cotas a R$ 9,80",19600,""],["02/10","Aporte na carteira","de CDB Inter, realocação",50000,"+"],["30/09","Proventos recebidos","5 fundos",7080,"+"]];
+
+function svgLinhas(series, opts){ // series: [{v:[...], cor, larg, trac}], valores em %
+  const W=330,H=150,pl=34,pr=56,pt=8,pb=20; const all=series.flatMap(s=>s.v); const mn=Math.min(0,...all), mx=Math.max(...all);
+  const top=Math.ceil(mx/5)*5||5, bot=Math.floor(mn/5)*5; const x=k=>pl+k/(series[0].v.length-1)*(W-pl-pr), y=v=>pt+(top-v)/(top-bot)*(H-pt-pb);
+  const ticks=[]; for(let t=bot;t<=top;t+=5) ticks.push(t);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.rotulo}">
+    ${ticks.map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--sup2)"/><text x="${pl-6}" y="${y(t)+4}" font-size="11" fill="var(--t2)" text-anchor="end">${t}%</text>`).join("")}
+    ${(()=>{ const ys = series.map((s,i)=>({i, y:y(s.v[s.v.length-1])+4})).sort((a,b)=>a.y-b.y); for(let k=1;k<ys.length;k++) if(ys[k].y-ys[k-1].y<14) ys[k].y=ys[k-1].y+14; const pos={}; ys.forEach(o=>pos[o.i]=o.y);
+      return series.map((s,i)=>`<polyline fill="none" stroke="${s.cor}" stroke-width="${s.larg||2}" ${s.trac?'stroke-dasharray="4 3"':""} points="${s.v.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ")}"/>
+      <text x="${W-pr+6}" y="${pos[i]}" font-size="12" font-weight="700" fill="${s.cor}">${pct1(s.v[s.v.length-1])}</text>`).join(""); })()}
+    ${[0,4,8,11].map(k=>`<text x="${x(k)}" y="${H-4}" font-size="11" fill="var(--t2)" text-anchor="middle">${MESES[k]}</text>`).join("")}
+  </svg>`;
+}
+function svgBarras(vals, opts){ // centavos; opts.empilha: segunda série
+  const W=330,H=150,pl=48,pr=6,pt=8,pb=20, n=vals.length, mx=Math.max(...vals.map((v,k)=>v+(opts.cima?.[k]||0)));
+  const passo = opts.passo, top=Math.ceil(mx/passo)*passo, bw=(W-pl-pr)/n*0.68, x=k=>pl+k*(W-pl-pr)/n+((W-pl-pr)/n-bw)/2, y=v=>pt+(1-v/top)*(H-pt-pb);
+  const ticks=[0,top/2,top];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.rotulo}">
+    ${ticks.map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--sup2)"/><text x="${pl-6}" y="${y(t)+4}" font-size="11" fill="var(--t2)" text-anchor="end">${opts.fmt(t)}</text>`).join("")}
+    ${vals.map((v,k)=>`<rect x="${x(k)}" y="${y(v)}" width="${bw}" height="${y(0)-y(v)}" fill="${k===n-1&&opts.destacaUltimo?"var(--azul)":opts.cor||"var(--t2)"}"/>${opts.cima?`<rect x="${x(k)}" y="${y(v+opts.cima[k])}" width="${bw}" height="${y(v)-y(v+opts.cima[k])}" fill="var(--azul)"/>`:""}`).join("")}
+    ${opts.media!=null?`<line x1="${pl}" x2="${W-pr}" y1="${y(opts.media)}" y2="${y(opts.media)}" stroke="var(--tinta)" stroke-dasharray="4 3"/><text x="${W-pr}" y="${y(opts.media)-5}" font-size="11" fill="var(--tinta)" text-anchor="end">média ${brl(opts.media)}</text>`:""}
+    ${[0,4,8,11].map(k=>`<text x="${x(k)+bw/2}" y="${H-4}" font-size="11" fill="var(--t2)" text-anchor="middle">${MESES[k]}</text>`).join("")}
+  </svg>`;
+}
+function svgVariacao(){ const lista=Object.entries(ativos).sort((a,b)=>b[1].vm-a[1].vm); const W=330, row=26, H=lista.length*row+6, mid=200, esc=90/6;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Variação no mês por ativo"><line x1="${mid}" x2="${mid}" y1="0" y2="${H}" stroke="var(--regua)"/>
+    ${lista.map(([n,a],k)=>{const w=Math.abs(a.vm)*esc, yy=k*row+4; return `<text x="0" y="${yy+15}" font-size="12" fill="var(--tinta)">${n.replace("Tesouro Selic 2031","Tesouro Selic")}</text>
+      <rect x="${a.vm>=0?mid:mid-w}" y="${yy+4}" width="${w}" height="14" fill="${a.vm>=0?"var(--dentro)":"var(--fora)"}"/>
+      <text x="${a.vm>=0?mid+w+4:mid-w-4}" y="${yy+15}" font-size="12" font-weight="700" fill="var(--tinta)" text-anchor="${a.vm>=0?"start":"end"}">${pct1(a.vm)}</text>`}).join("")}</svg>`;
+}
+
+function telaInvest(){
+  const sub = estadoTela.inv || "Resumo";
+  const varMes = valorMes[11]-valorMes[10]-aportes[11], varPct = varMes/valorMes[10]*100;
+  const marca = 2000000, ritmo = Math.round(soma(aportes)/12), meses = Math.ceil((marca-investido)/(ritmo + investido*0.0075));
+  const seg = `<div class="seg" role="group" aria-label="Investimentos">${["Resumo","Carteira","Proventos","Movimentos"].map(x=>`<button data-acao="inv" data-s="${x}" aria-pressed="${x===sub}">${x}</button>`).join("")}</div>`;
+  const heroi = `<div class="heroi"><div class="rot">Investido hoje</div><div class="grande">${brl(investido)}</div>
+    <p class="conta">${varMes>=0?"+":"−"}${brl(Math.abs(varMes)).replace("R$ ","R$ ")} no mês (${pct1(varPct)}), fora o aporte · mais ${brl(207000)} em CDBs, em Cofrinhos</p>
+    <div class="tres"><div><div class="r">Você aportou</div><div class="v">${num(aportado[11])}</div></div><div><div class="r">Rendeu</div><div class="v">${num(ganhoFinal)}</div></div><div><div class="r">Proventos nov</div><div class="v">${num(proventos[11])}</div></div></div>
+    <div class="acao-heroi"><button class="btn-cheio" data-acao="aportar">Onde aportar</button><button class="btn-claro" data-acao="chat" data-contexto="inv"><span class="ms" style="font-size:18px">auto_awesome</span>Perguntar</button></div></div>`;
+  let c="";
+  if(sub==="Resumo") c = `
+    <section><h2>Estou ganhando do CDI? <span class="lado">12 meses</span></h2><div class="graf">${svgLinhas([{v:aI,cor:"var(--t2)",trac:1},{v:aD,cor:"var(--tinta)",trac:1},{v:aC,cor:"var(--azul)",larg:3}],{rotulo:"Rentabilidade acumulada"})}
+      <div class="leg"><span><i style="background:var(--azul)"></i>Carteira</span><span><i style="background:var(--tinta)"></i>CDI</span><span><i style="background:var(--t2)"></i>IFIX</span></div>
+      <p class="sub">Rentabilidade acumulada, sem contar os aportes. A carteira ficou ${(aC[11]-aD[11]).toLocaleString("pt-BR",{maximumFractionDigits:1})} p.p. acima do CDI; o pior mês foi maio (${pct1(rCart[5])}).</p></div></section>
+    <section><h2>Esforço e rendimento <span class="lado">patrimônio investido</span></h2><div class="graf">${svgBarras(aportado,{cima:ganho,passo:500000,fmt:v=>(v/100000).toLocaleString("pt-BR")+" mil",rotulo:"Aportado e rendimento por mês",cor:"var(--sup2)"})}
+      <div class="leg"><span><i class="q" style="background:var(--sup2)"></i>Aportado ${brl(aportado[11])}</span><span><i class="q" style="background:var(--azul)"></i>Rendimento ${brl(ganhoFinal)}</span></div>
+      <p class="sub">Você colocou ${brl(soma(aportes))} nos últimos 12 meses, ${brl(ritmo)} por mês em média.</p></div></section>
+    <section><h2>Próxima marca</h2><div class="kv"><div><div class="r">R$ 20 mil em</div><div class="v">~${meses} meses</div></div><div><div class="r">Renda passiva média</div><div class="v">${brl(mediaProv)}/mês</div></div><div><div class="r">Aporte médio</div><div class="v">${brl(ritmo)}</div></div><div><div class="r">Taxa de poupança</div><div class="v">31%</div></div></div>
+      <div class="rodape"><button class="btn" data-acao="projecao"><span class="ms" style="font-size:18px">insights</span>Abrir projeção</button></div></section>`;
+  if(sub==="Carteira") c = `
+    <section><h2>Alocação contra a meta</h2><div class="proj">${fiis.map(([cl,at,meta])=>{const v=soma(at.map(a=>a[1])),p=v/investido*100;return `<div class="aloc"><span>${cl}</span><span class="tr"><i style="width:${p}%"></i><b style="left:${meta}%"></b></span><span style="text-align:right">${Math.round(p)}%</span></div>`}).join("")}<p class="sub">Barra: hoje. Traço: sua meta. FI-Infra está ${Math.round(275100/investido*100)-10} p.p. acima; Tesouro, ${25-Math.round(150000/investido*100)} p.p. abaixo.</p></div></section>
+    <section><h2>Como cada ativo se comportou <span class="lado">no mês</span></h2><div class="graf">${svgVariacao()}</div></section>
+    <section><h2>Ativos <span class="lado">tickers fictícios</span></h2>${fiis.map(([cl,at])=>`<div class="grupo"><div class="grupo-cab"><span>${cl}</span><span>${brl(soma(at.map(a=>a[1])))}</span></div>${at.map(x=>{const a=ativos[x[0]], vpm=(a.p/a.pm-1)*100; return `<button class="item ativo" data-acao="ativo" data-n="${esc(x[0])}"><span class="nome">${x[0]}</span><span class="valor">${brl(x[1])}</span>
+      <span class="sub">${a.q} ${a.q>1?"cotas":"título"}${a.pvp?` · P/VP ${a.pvp.toLocaleString("pt-BR",{minimumFractionDigits:2})} · DY ${a.dy.toLocaleString("pt-BR")}%`:""}</span><span class="sub ${vpm>=0?"pos":"neg"}">${pct1(vpm)} s/ PM</span></button>`}).join("")}</div>`).join("")}<p class="sub">Toque num ativo para ver preço, proventos e indicadores. Cotação, P/VP e DY lidos em 04/11.</p></section>
+    <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">photo_camera</span>Importar posição por print</button></div>`;
+  if(sub==="Proventos") c = `
+    <section><h2>Recebido por mês</h2><div class="graf">${svgBarras(proventos,{passo:5000,fmt:v=>"R$ "+(v/100).toFixed(0),destacaUltimo:1,media:mediaProv,rotulo:"Proventos por mês"})}
+      <p class="sub">Novembro: ${brl(proventos[11])} previstos, ${brl(soma(agenda.filter(a=>a[4]==="anunciado").map(a=>a[3])))} já anunciados. Em 12 meses: ${brl(soma(proventos))}, ${pct1((proventos[11]/proventos[0]-1)*100)} do primeiro ao último mês.</p></div></section>
+    <section><h2>Agenda <span class="lado">data-com → pagamento</span></h2><div class="lista">${agenda.map(a=>`<div class="item"><span class="nome">${a[0]}${a[4]==="estimado"?' <span class="selo perto">estimado</span>':""}</span><span class="valor">${brl(a[3])}</span><span class="sub">com em ${a[1]} · paga em ${a[2]}</span><span class="sub">yield on cost ${(ativos[a[0]].prov*12/ativos[a[0]].pm*100).toLocaleString("pt-BR",{maximumFractionDigits:1})}%</span></div>`).join("")}</div></section>`;
+  if(sub==="Movimentos") c = `
+    <section><h2>Últimos movimentos</h2><div class="lista">${movimentos.map(m=>`<div class="item"><span class="nome">${m[1]}</span><span class="valor ${m[4]?"entrada":""}">${m[4]}${brl(m[3])}</span><span class="sub">${m[0]} · ${m[2]}</span><span></span></div>`).join("")}</div>
+    <p class="sub">Aporte novo e realocação aparecem separados: a realocação do CDB Inter não conta como guardado no mês.</p></section>`;
+  return heroi + seg + c;
+}
+
+function detalheAtivo(n){
+  const a = ativos[n]; const serie = MESES.map((_,k)=>Math.round(a.pm*(0.96+0.06*Math.sin(k/1.7+n.length)+ (a.p/a.pm-0.96)*k/11)));
+  serie[11]=a.p; const mx=Math.max(...serie,a.pm), mn=Math.min(...serie,a.pm), W=330,H=130, x=k=>8+k/11*(W-60), y=v=>10+(mx-v)/(mx-mn||1)*(H-30);
+  const provs = MESES.map((_,k)=>Math.round(a.prov*(0.85+0.15*k/11)));
+  abrir(`<div class="topo"><h3>${esc(n)}</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <div class="sub">${a.cl} · ${a.q} ${a.q>1?"cotas":"título"} · ticker fictício</div>
+    <div style="font-size:30px;font-weight:700;letter-spacing:-.02em;margin-top:6px">${brl(a.p*a.q)}</div>
+    <div class="sub"><span class="${a.vm>=0?"pos":"neg"}">${pct1(a.vm)} no mês</span> · <span class="${a.p>=a.pm?"pos":"neg"}">${pct1((a.p/a.pm-1)*100)} sobre o preço médio</span></div>
+    <div class="graf" style="margin-top:10px"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Preço em 12 meses e preço médio">
+      <line x1="8" x2="${W-52}" y1="${y(a.pm)}" y2="${y(a.pm)}" stroke="var(--tinta)" stroke-dasharray="4 3"/><text x="${W-48}" y="${y(a.pm)+4}" font-size="11" fill="var(--tinta)">PM ${num(a.pm)}</text>
+      <polyline fill="none" stroke="var(--azul)" stroke-width="2.5" points="${serie.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ")}"/>
+      <text x="${x(11)+6}" y="${y(a.p)-6}" font-size="12" font-weight="700" fill="var(--azul)">${num(a.p)}</text>
+      ${[0,4,8,11].map(k=>`<text x="${x(k)}" y="${H-2}" font-size="11" fill="var(--t2)" text-anchor="middle">${MESES[k]}</text>`).join("")}</svg>
+      <div class="leg"><span><i style="background:var(--azul)"></i>Preço da cota</span><span><i style="background:var(--tinta)"></i>Seu preço médio</span></div></div>
+    <div class="kv">${a.pvp?`<div><div class="r">P/VP</div><div class="v">${a.pvp.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div><div><div class="r">DY 12 meses</div><div class="v">${a.dy.toLocaleString("pt-BR")}%</div></div>
+      <div><div class="r">Último provento por cota</div><div class="v">${brl(a.prov)}</div></div><div><div class="r">Liquidez</div><div class="v">R$ ${a.liq} mil/dia</div></div>`:`<div><div class="r">Rende</div><div class="v">Selic</div></div><div><div class="r">Vencimento</div><div class="v">2031</div></div>`}
+      <div><div class="r">Peso na carteira</div><div class="v">${(a.p*a.q/investido*100).toLocaleString("pt-BR",{maximumFractionDigits:1})}%</div></div><div><div class="r">Preço médio</div><div class="v">${brl(a.pm)}</div></div></div>
+    ${a.prov?`<section><h2>Proventos por cota <span class="lado">12 meses</span></h2><div class="graf">${svgBarras(provs,{passo:50,fmt:v=>"R$ "+(v/100).toFixed(1).replace(".",","),destacaUltimo:1,rotulo:"Proventos por cota"})}</div></section>`:""}
+    <div class="rodape"><button class="btn" data-acao="chat" data-contexto="inv"><span class="ms" style="font-size:18px">auto_awesome</span>Perguntar sobre ${esc(n)}</button></div>`);
+}
+
+function ondeAportar(valorTxt){
+  const valor = Math.round(parseFloat(String(valorTxt||"500").replace(/\./g,"").replace(",","."))*100) || 50000;
+  const total = investido + valor; const metas = Object.fromEntries(fiis.map(([cl,at,m])=>[cl,{m, v:soma(at.map(a=>a[1]))}]));
+  const gaps = Object.entries(metas).map(([cl,o])=>[cl, Math.max(0, o.m/100*total - o.v)]).filter(g=>g[1]>0);
+  const somaGap = soma(gaps.map(g=>g[1])); let sobra = valor; const linhas=[], fora=[];
+  Object.entries(ativos).forEach(([n,a])=>{ if(a.pvp && a.pvp>1) fora.push([n,`P/VP ${a.pvp.toLocaleString("pt-BR",{minimumFractionDigits:2})} acima do seu máximo (1,00)`]); else if(a.liq && a.liq<500) fora.push([n,`liquidez de R$ ${a.liq} mil/dia, abaixo do mínimo de R$ 500 mil`]); });
+  gaps.forEach(([cl,g])=>{ const parte = Math.floor(valor*g/somaGap); const eleg = Object.entries(ativos).filter(([n,a])=>a.cl===cl && !fora.some(f=>f[0]===n)).sort((x,y)=>(x[1].pvp??0)-(y[1].pvp??0))[0];
+    if(!eleg) return; const [n,a]=eleg; const cotas = cl==="Tesouro"? null : Math.floor(parte/a.p); const gasto = cl==="Tesouro"? parte : cotas*a.p; if(gasto<=0) return; sobra -= gasto;
+    linhas.push([n, gasto, cl==="Tesouro"? "fração do título" : `${cotas} cota${cotas>1?"s":""}`, `${cl} está ${((metas[cl].m/100*investido-metas[cl].v)/investido*100).toLocaleString("pt-BR",{maximumFractionDigits:1})} p.p. abaixo da meta${a.pvp?`; menor P/VP elegível (${a.pvp.toLocaleString("pt-BR",{minimumFractionDigits:2})})`:""}.`]); });
+  if(sobra>0) linhas.push(["CDB Inter", sobra, "o que sobrou", "Não fechou cota inteira."]);
+  console.assert(soma(linhas.map(l=>l[1]))===valor, "distribuição ≠ valor do aporte");
+  abrir(`<div class="topo"><h3>Onde aportar</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <div class="campo"><label for="a-val">Quanto vai aportar (R$)</label><input id="a-val" class="grande-in" inputmode="decimal" value="${num(valor)}"></div>
+    <div class="rodape" style="margin-top:8px"><button class="btn" data-acao="recalcular">Recalcular</button></div>
+    <section><h2>Distribuição <span class="lado">${brl(valor)}</span></h2><div class="lista">${linhas.map(l=>`<div class="item"><span class="nome">${l[0]}</span><span class="valor">${brl(l[1])}</span><span class="sub">${l[3]}</span><span class="sub">${l[2]}</span></div>`).join("")}</div></section>
+    <section><h2>Ficaram de fora</h2><div class="lista">${fora.map(f=>`<div class="item"><span class="nome">${f[0]}</span><span></span><span class="sub">${f[1]}</span><span></span></div>`).join("")}</div></section>
+    <p class="aviso">Sugestão pelas suas regras de Ajustes → Investimentos (metas por classe, P/VP até 1,00, liquidez mínima de R$ 500 mil/dia). Não é recomendação de analista.</p>`);
+}
+
+function projecaoInv(aporteTxt, dyTxt, anos){
+  const ap = Math.round(parseFloat(String(aporteTxt||"537,50").replace(/\./g,"").replace(",","."))*100)||53750, dy = parseFloat(String(dyTxt||"9").replace(",","."))||9; anos = anos||10;
+  const calc = d => { let v=investido; const pts=[v]; for(let m=1;m<=anos*12;m++){ v = v*(1+d/1200) + ap; if(m%12===0) pts.push(v);} return pts; };
+  const meio=calc(dy), baixo=calc(dy-2), alto=calc(dy+2); const fim=meio[meio.length-1];
+  const W=330,H=140, mx=alto[alto.length-1], x=k=>36+k/anos*(W-110), y=v=>10+(1-v/mx)*(H-30);
+  const pl = arr => arr.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  abrir(`<div class="topo"><h3>Projeção</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <p class="sub">Uma conta com premissas visíveis, não previsão de mercado. Proventos reinvestidos.</p>
+    <div class="kv"><div class="campo" style="margin:0;background:none;padding:0"><label for="p-ap">Aporte por mês (R$)</label><input id="p-ap" inputmode="decimal" value="${num(ap)}"></div><div class="campo" style="margin:0;background:none;padding:0"><label for="p-dy">DY ao ano (%)</label><input id="p-dy" inputmode="decimal" value="${String(dy).replace(".",",")}"></div></div>
+    <div class="chips" style="margin-top:10px">${[5,10,20].map(a=>`<button class="chip" data-acao="proj-anos" data-a="${a}" aria-pressed="${a===anos}">${a} anos</button>`).join("")}<button class="chip" data-acao="proj-recalc">Recalcular</button></div>
+    <div class="heroi" style="margin-top:8px"><div class="rot">Em ${anos} anos</div><div class="grande">${brl(Math.round(fim))}</div><p class="conta">Renda de ${brl(Math.round(fim*dy/1200))}/mês com DY de ${String(dy).replace(".",",")}% · faixa de ${brl(Math.round(baixo[baixo.length-1]))} a ${brl(Math.round(mx))} (DY ±2 p.p.)</p></div>
+    <div class="graf" style="margin-top:10px"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Projeção do patrimônio investido">
+      <polygon points="${pl(alto)} ${pl(baixo).split(" ").reverse().join(" ")}" fill="var(--azul)" fill-opacity=".12"/>
+      <polyline fill="none" stroke="var(--azul)" stroke-width="2.5" points="${pl(meio)}"/>
+      <text x="${x(anos)+6}" y="${y(fim)+4}" font-size="12" font-weight="700" fill="var(--azul)">${(fim/100000).toLocaleString("pt-BR",{maximumFractionDigits:0})} mil</text>
+      <text x="${x(0)}" y="${H-4}" font-size="11" fill="var(--t2)">hoje</text><text x="${x(anos)}" y="${H-4}" font-size="11" fill="var(--t2)" text-anchor="end">${anos} anos</text></svg>
+      <div class="leg"><span><i style="background:var(--azul)"></i>DY ${String(dy).replace(".",",")}%</span><span><i class="q" style="background:var(--azul);opacity:.25"></i>faixa ±2 p.p.</span></div></div>`);
+  const f=camada.querySelector(".folha"); f.dataset.anos=anos;
+}
+
+function telaAjustes(){
+  const areas = [["account_balance","Contas","PicPay, Unicred, Inter"],["credit_card","Cartões","Unicred: fecha 4, vence 11"],["category","Categorias e previsto","15 categorias · R$ 2.675,00 por mês"],["event_repeat","Recorrentes e entradas previstas","5 contas · freelance em USD"],["trending_up","Investimentos","metas por classe e critérios"],["rule","Regras","4 regras de categoria"],["group","Acesso","só quem administra"]];
+  const ia = [["Chat por contexto","lançamentos do período, com nomes de pessoas trocados e números apagados"],["Colar notificação","o texto colado, sem números de conta"],["Categoria sugerida","só o nome do estabelecimento"]];
+  return `<header><div><h1>Ajustes</h1><div class="sub">Pedro · modo real</div></div><button class="icone" data-acao="voltar" aria-label="Voltar"><span class="ms">close</span></button></header>
+  <div class="lista areas">${areas.map(a=>`<button class="item" data-acao="breve"><span class="nome"><span class="ms" style="font-size:20px;color:var(--t2)">${a[0]}</span> ${a[1]}</span><span class="ms" style="color:var(--t2)">chevron_right</span><span class="sub">${a[2]}</span><span></span></button>`).join("")}</div>
+  <section><h2>IA <span class="lado">Cloudflare Workers AI</span></h2><div class="lista">${ia.map(x=>`<div class="item" style="align-items:center"><span class="nome">${x[0]}</span><span class="toggle" role="switch" aria-checked="true" aria-label="${x[0]} ligado"></span><span class="sub">Envia: ${x[1]}</span><span></span></div>`).join("")}</div>
+  <p class="sub">Nunca é enviado: nome de banco, número de conta ou cartão, CPF, e-mail. O provedor não guarda nem treina com o que recebe.</p></section>
+  <div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">logout</span>Sair</button></div>`;
+}
+
+const estadoTela = {};
+let telaAtual = "mes", telaAntes = "mes";
+const telas = {mes:telaMes, lancamentos:telaLancamentos, cartao:telaCartao, patrimonio:telaPatrimonio, ajustes:telaAjustes};
+function mostrar(id){
+  if(id!=="ajustes") telaAntes = id; telaAtual = id;
+  document.getElementById("tela").innerHTML = telas[id]();
+  document.querySelectorAll("nav.barra [data-tela]").forEach(b=>{ if(b.dataset.tela===id) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+}
+function redesenhar(){ const y = scrollY; document.getElementById("tela").innerHTML = telas[telaAtual](); scrollTo(0,y); }
+function toast(txt){ document.querySelector(".toast")?.remove(); document.body.insertAdjacentHTML("beforeend", `<div class="toast" role="status"><span>${txt}</span><button data-acao="desfazer">Desfazer</button></div>`); setTimeout(()=>document.querySelector(".toast")?.remove(), 5000); }
+
+function lancar(intencao){
+  intencao = intencao || "Gastei";
+  const ints = ["Gastei","Recebi","Guardei","Resgatei","Paguei a fatura","Vou receber"];
+  const contasOp = `<option>PicPay</option><option>Unicred (cartão)</option>`;
+  const catOp = cats.map(c=>`<option ${c.n==="Lanches e delivery"?"selected":""}>${c.n}</option>`).join("");
+  const campos = {
+    "Gastei": `<div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="42,50"></div>
+      <div class="campo"><label for="f-cat">Categoria <span class="selo perto" style="margin-left:4px">sugerida</span></label><select id="f-cat">${catOp}</select></div>
+      <div class="campo"><label for="f-conta">Pago com</label><select id="f-conta" data-acao-change="conta">${contasOp}</select></div>
+      <p class="nota" id="nota-cartao" hidden>Entra na <b>fatura que vence em 11/12</b>, porque a de novembro fechou no dia 4.</p>
+      <div class="campo"><label for="f-data">Data</label><input id="f-data" value="04/11/2026"></div>
+      <p class="nota">Mais opções: paguei por outra pessoa · usei dinheiro de cofrinho · parcelas</p>`,
+    "Recebi": `<div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="1.568,40"></div>
+      <div class="campo"><label for="f-cat">Categoria</label><select id="f-cat"><option>Freelance / Data Annotation</option><option>Salário</option></select></div>
+      <div class="campo"><label for="f-usd">Dólares recebidos (se veio pelo PayPal)</label><input id="f-usd" inputmode="decimal" value="300,00"></div>
+      <p class="nota">PTAX de hoje 5,4120 → R$ 1.623,60. <b>O PayPal ficou com R$ 55,20 (3,4%).</b></p>`,
+    "Guardei": `<div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="100,00"></div>
+      <div class="campo"><label for="f-cof">Cofrinho</label><select id="f-cof">${cofrinhos.map(c=>`<option>${c[0]}</option>`).join("")}</select></div>
+      <p class="nota">Você deve R$ 100,00 ao Reserva. <b>É devolução?</b> Sem marcar, conta como guardado novo e a dívida continua.</p>`,
+    "Resgatei": `<div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="200,00"></div>
+      <div class="campo"><label for="f-cof">Cofrinho</label><select id="f-cof">${cofrinhos.map(c=>`<option>${c[0]}</option>`).join("")}</select></div>
+      <div class="campo"><label for="f-fin">Para quê</label><select id="f-fin"><option>Usei no objetivo</option><option>Empréstimo (fica a devolver)</option><option>Retirada definitiva</option></select></div>`,
+    "Paguei a fatura": `<div class="campo"><label for="f-fat">Fatura que este pagamento quita</label><select id="f-fat"><option>Nov/26 · R$ 843,40</option></select></div>
+      <div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" class="grande-in" inputmode="decimal" value="843,40"></div>
+      <p class="nota">Valor igual ao total: a fatura fica paga. Não entra como gasto.</p>`,
+    "Vou receber": `<div class="campo"><label for="f-usd">Dólares</label><input id="f-usd" class="grande-in" inputmode="decimal" value="300,00"></div>
+      <div class="campo"><label for="f-data">Data prevista</label><input id="f-data" value="25/11/2026"></div>
+      <p class="nota">≈ <b>R$ 1.568,40</b>: PTAX de hoje (5,4120) menos o desconto médio do PayPal (3,4%). Entra no saldo projetado em 25/11.</p>`,
+  };
+  abrir(`<div class="topo"><h3>Lançar</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <div class="chips" role="group" aria-label="O que aconteceu">${ints.map(x=>`<button class="chip" data-acao="intencao" data-int="${x}" aria-pressed="${x===intencao}">${x}</button>`).join("")}</div>
+    <form id="form-lancar">${campos[intencao]}<div style="margin-top:16px"><button type="submit" class="btn-tinta">Salvar</button></div></form>`);
+  camada.querySelector("#f-valor, #f-usd")?.focus();
+}
+
+// ---- folhas
+const camada = document.getElementById("camada");
+function abrir(html){ camada.innerHTML = `<div class="veu" data-acao="fechar"><div class="folha" role="dialog" aria-modal="true">${html}</div></div>`; camada.querySelector(".folha button")?.focus(); }
+function fechar(){ camada.innerHTML=""; }
+
+const respostas = {
+  mes: [
+    ["Avalie meu orçamento", `Você gastou ${brl(gasto)} de ${brl(previsto)} (64%) no dia 4, com ${brl(pagar)} de contas ainda a pagar. Três categorias passaram do previsto: Presentes (+${brl(2075)}), Restaurantes (+${brl(1500)}) e Hobbies (+${brl(400)}).`, `com base em: gasto, previsto e a pagar de novembro`],
+    ["Onde gastei mais?", `Mercado: ${brl(54150)}, 32% do gasto do mês. Depois Combustível (${brl(18080)}) e Restaurantes (${brl(16500)}).`, `com base em: gasto por categoria`],
+    ["Como melhorar?", `Restaurantes já está ${brl(2500)} acima da média de 3 meses. Segurar a categoria no previsto até o fim do mês mantém o livre em ${brl(livre)}; repetir o ritmo atual o reduziria em cerca de ${brl(Math.round(16500/HOJE*(DIAS-HOJE)) )}.`, `com base em: Restaurantes ${brl(16500)} em ${HOJE} dias, média ${brl(14000)}`],
+  ],
+  inv: [
+    ["O que mudou na carteira?", `No mês, EXEMP11 foi o que mais subiu (+5,5%) e TESTE11 o que mais caiu (−5,3%). Você aportou R$ 750,00 e recebeu R$ 82,69 de proventos. FI-Infra está em 28% da carteira, contra meta de 10%, e Tesouro em 15%, contra 25%.`, `com base em: variação no mês por ativo, movimentos e alocação × meta`],
+    ["O que é P/VP?", `Preço sobre valor patrimonial: quanto o mercado paga por cada real de patrimônio do fundo. 0,88 (TESTE11) é abaixo do patrimônio; 1,03 (FICTA11), acima. Não diz sozinho se é bom ou ruim.`, `com base em: glossário e P/VP da carteira`],
+    ["Por que TESTE11 caiu?", `A cota foi de R$ 108,02 de preço médio para R$ 102,30 (−5,3% no mês). O provento por cota seguiu em R$ 0,72, então o DY sobre o preço atual subiu. O app não tem o motivo da queda; o relatório do fundo é a fonte.`, `com base em: preço, preço médio e proventos de TESTE11`],
+    ["Devo vender TESTE11?", `Não faço recomendação de investimento. O Onde aportar aplica as suas regras.`, `regra fixa do chat`],
+  ],
+  cat: n => { const c = cats.find(x=>x.n===n); return [
+    ["Onde gastei mais?", n==="Mercado"? `Supermercado Bom Preço: R$ 221,50 em 1 compra (41% da categoria), e Supermercado no cartão: R$ 318,40.` : `Em ${n}, ${brl(c.v)} no mês até hoje; o maior lançamento foi de ${brl(Math.round(c.v*0.6))}.`, `com base em: lançamentos de ${n} em novembro (aprovado enviar)`],
+    ["Isso é normal?", c.m? `${c.v>=c.m?"Acima":"Abaixo"} do normal: a média dos últimos 3 meses é ${brl(c.m)}, e este mês já está em ${brl(c.v)} no dia ${HOJE}.` : "Não há histórico suficiente nesta categoria.", `com base em: média de 3 meses`],
+    ["Como diminuir?", c.v>0? `Para fechar no previsto de ${brl(c.p)}, o resto do mês comporta ${brl(Math.max(0,c.p-c.v))}, cerca de ${brl(Math.max(0,Math.round((c.p-c.v)/diasRest)))} por dia.` : `Nada gasto ainda; o previsto é ${brl(c.p)}.`, `com base em: previsto − gasto, ${diasRest} dias restantes`],
+  ];}
+};
+function chat(contexto, nome){
+  const lista = contexto==="mes"? respostas.mes : contexto==="inv"? respostas.inv : respostas.cat(nome);
+  const titulo = contexto==="mes"? "Orçamento de novembro" : contexto==="inv"? "Investimentos" : `${nome} · novembro`;
+  abrir(`<div class="topo"><h3>${esc(titulo)}</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <div class="chips">${lista.map((q,i)=>`<button class="chip" data-acao="pergunta" data-i="${i}">${q[0]}</button>`).join("")}</div>
+    <div id="conversa" aria-live="polite"></div>
+    <p class="aviso">Esboço: respostas de exemplo, fixas. No app, a IA escolhe as consultas e o app confere cada número.</p>`);
+  camada.querySelector(".folha").dataset.ctx = contexto; camada.querySelector(".folha").dataset.nome = nome||"";
+}
+function detalhe(nome){
+  const c = cats.find(x=>x.n===nome), e = estado(c);
+  const hist = [c.m*0.9,c.m*1.1,c.m*0.95,c.m*1.05,c.m,c.m*0.85,c.m*1.2,c.m*0.9,c.m*1.0,c.m*1.1,c.m*0.9,c.v].map(Math.round);
+  const mx = Math.max(...hist, c.p, 1);
+  abrir(`<div class="topo"><h3>${esc(nome)}</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+    <div style="font-size:30px;font-weight:700;letter-spacing:-.02em">${brl(c.v)}</div>
+    <div class="sub">${e?`<span class="selo ${e}">${e}</span>`:""}de ${brl(c.p)} previstos · média de 3 meses ${brl(c.m)}</div>
+    <div class="colunas" role="img" aria-label="Gasto nos últimos 12 meses">${hist.map((v,i)=>`<i class="${i===11?"atual":""}" style="height:${Math.max(2,v/mx*100)}%"></i>`).join("")}</div>
+    <div class="colunas-rot"><span>dez/25</span><span>nov/26</span></div>
+    <div class="rodape"><button class="btn" data-acao="chat" data-contexto="cat" data-nome="${esc(nome)}"><span class="ms" style="font-size:18px">auto_awesome</span>Perguntar sobre ${esc(nome)}</button><button class="btn" data-acao="breve">Ajustar previsto deste mês</button></div>`);
+}
+
+document.addEventListener("click", ev=>{
+  const t = ev.target.closest("[data-tela],[data-acao],[data-cat]"); if(!t) return;
+  if(t.classList.contains("veu") && ev.target!==t) return;
+  if(t.dataset.tela){ mostrar(t.dataset.tela); return; }
+  if(t.dataset.cat && !t.dataset.acao){ detalhe(t.dataset.cat); return; }
+  const a = t.dataset.acao; ev.preventDefault();
+  if(a==="fechar") fechar();
+  else if(a==="chat") chat(t.dataset.contexto, t.dataset.nome);
+  else if(a==="pergunta"){ const f=camada.querySelector(".folha"); const l = f.dataset.ctx==="mes"? respostas.mes : f.dataset.ctx==="inv"? respostas.inv : respostas.cat(f.dataset.nome); const [q,r,b]=l[+t.dataset.i];
+    document.getElementById("conversa").insertAdjacentHTML("beforeend", `<div class="msg eu">${q}</div><div class="msg ia">${r}<span class="base">${b}</span></div>`); }
+  else if(a==="copiar"){ const txt = `Novembro/2026 · previsto ${brl(previsto)} · gasto ${brl(gasto)} · a pagar ${brl(pagar)} · livre ${brl(livre)} · guardado ${brl(guardadoReal)} de ${brl(guardadoPlan)}`;
+    const ok=()=>document.getElementById("copiado").textContent="Resumo copiado.";
+    try{ navigator.clipboard.writeText(txt).then(ok, ()=>{document.getElementById("copiado").textContent=txt;}); }catch(e){ document.getElementById("copiado").textContent=txt; } }
+  else if(a==="lancar"||a==="intencao") lancar(t.dataset.int);
+  else if(a==="pagar") lancar("Paguei a fatura");
+  else if(a==="ajustes") mostrar("ajustes");
+  else if(a==="voltar") mostrar(telaAntes);
+  else if(a==="filtro"){ estadoTela.filtro=t.dataset.f; redesenhar(); }
+  else if(a==="fatura"){ estadoTela.fatura=+t.dataset.i; redesenhar(); }
+  else if(a==="aba"){ estadoTela.aba=t.dataset.a; redesenhar(); }
+  else if(a==="inv"){ estadoTela.inv=t.dataset.s; redesenhar(); }
+  else if(a==="ativo") detalheAtivo(t.dataset.n);
+  else if(a==="aportar") ondeAportar();
+  else if(a==="recalcular") ondeAportar(document.getElementById("a-val").value);
+  else if(a==="projecao") projecaoInv();
+  else if(a==="proj-anos") projecaoInv(document.getElementById("p-ap").value, document.getElementById("p-dy").value, +t.dataset.a);
+  else if(a==="proj-recalc") projecaoInv(document.getElementById("p-ap").value, document.getElementById("p-dy").value, +camada.querySelector(".folha").dataset.anos);
+  else if(a==="desfazer"){ document.querySelector(".toast")?.remove(); }
+  else if(a==="editar"){ const l=lanc[+t.dataset.i]; abrir(`<div class="topo"><h3>Editar lançamento</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+      <div class="campo"><label for="e-desc">Descrição</label><input id="e-desc" value="${esc(l[1])}"></div><div class="campo"><label for="e-val">Valor (R$)</label><input id="e-val" class="grande-in" value="${num(l[4])}"></div>
+      <p class="nota">${esc([l[2],l[3]].filter(Boolean).join(" · "))}</p><div style="margin-top:16px"><button class="btn-tinta" data-acao="salvo">Salvar</button></div>
+      <div class="rodape"><button class="btn" data-acao="excluido" style="color:var(--fora)">Excluir “${esc(l[1])}”</button></div>`); }
+  else if(a==="salvo"){ fechar(); toast("Lançamento salvo."); }
+  else if(a==="excluido"){ fechar(); toast("Lançamento excluído."); }
+  else if(a==="colar") abrir(`<div class="topo"><h3>Colar notificação</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+      <div class="campo"><label for="c-txt">Texto da notificação ou do SMS</label><input id="c-txt" value="Compra aprovada de R$ 42,50 em IFOOD *RESTAURANTE em 03/11"></div>
+      <p class="nota">Li: <b>R$ 42,50 · IFOOD RESTAURANTE · 03/11 · cartão</b></p><div style="margin-top:16px"><button class="btn-tinta" data-acao="lancar" data-int="Gastei">Abrir em Gastei</button></div>`);
+  else if(a==="importar") abrir(`<div class="topo"><h3>Importar extrato</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+      <p class="sub">PicPay, em PDF. Nada é gravado antes de você revisar e confirmar; o fechamento é conferido pelo saldo diário impresso.</p><div class="rodape"><button class="btn" data-acao="breve"><span class="ms" style="font-size:18px">upload_file</span>Escolher o PDF</button></div>`);
+  else if(a==="conciliar") abrir(`<div class="topo"><h3>Conciliar saldo</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div>
+      <div class="campo"><label for="k-val">Quanto o PicPay mostra agora (R$)</label><input id="k-val" class="grande-in" value="1.840,35"></div><p class="nota">Igual ao app: <b>diferença R$ 0,00</b>. Salvar grava a conciliação de hoje.</p><div style="margin-top:16px"><button class="btn-tinta" data-acao="salvo">Salvar</button></div>`);
+  else if(a==="mes-ant"||a==="mes-prox"||a==="breve") abrir(`<div class="topo"><h3>Fora do esboço</h3><button class="icone" data-acao="fechar" aria-label="Fechar"><span class="ms">close</span></button></div><p class="sub">Este esboço tem só novembro e não abre este detalhe. O briefing completo está em docs/v3/06b-telas.md.</p>`);
+});
+document.addEventListener("submit", e=>{ if(e.target.id==="form-lancar"){ e.preventDefault(); fechar(); toast("Lançado."); } });
+document.addEventListener("change", e=>{ if(e.target.id==="f-conta"){ document.getElementById("nota-cartao").hidden = !e.target.value.startsWith("Unicred"); } });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") fechar(); });
+mostrar("mes");
+</script>

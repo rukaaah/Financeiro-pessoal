@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#fbfbf9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111413" media="(prefers-color-scheme: dark)" />
+    <title>Financeiro pessoal</title>
+    <script>
+      (function () {
+        var d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 7);
+        var a = (window.__adiantados = {});
+        ["/api/mes?mes=" + d, "/api/sessao"].forEach(function (u) { a[u] = fetch(u, { headers: { accept: "application/json" } }); });
+      })();
+    </script>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icone.svg?v=2" type="image/svg+xml" />
+    <link rel="icon" href="/icone-192.png?v=2" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

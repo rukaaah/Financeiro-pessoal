@@ -1,0 +1,13 @@
+== qua 28 out 2026 22:56:31 -03
+ + toml==0.10.2
+ + typing-extensions==4.16.0
+ + urllib3==2.8.0
+ + uvicorn==0.54.0
+ + websockets==17.2
+== versão
+1.65.0
+== opções de tema conhecidas pelo Streamlit
+283 opções theme.* conhecidas
+USADAS: 60
+USADAS_INEXISTENTES: []
+== FIM

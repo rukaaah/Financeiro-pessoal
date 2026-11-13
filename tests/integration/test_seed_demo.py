@@ -223,3 +223,22 @@ def test_erro_do_banco_nao_deixa_demo_pela_metade(conn: Conexao) -> None:
     with conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM app_users WHERE is_demo")
         assert cur.fetchone() == (0,)
+
+
+def test_o_demo_tem_as_categorias_base(conn: Conexao, demo: uuid.UUID) -> None:
+    """As mesmas 15 categorias, em 4 grupos, que uma conta real ganha na primeira entrada."""
+    assert _conta(conn, "SELECT count(*) FROM category_groups WHERE user_id = %s", (demo,)) == 4
+    assert _conta(conn, "SELECT count(*) FROM categories WHERE user_id = %s", (demo,)) == 15
+
+
+def test_freelance_e_streaming_nas_categorias_novas(conn: Conexao, demo: uuid.UUID) -> None:
+    """O mapeamento das categorias antigas: nada de freelance em Salário nem streaming em Lazer."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT t.description, c.name FROM transactions t"
+            " JOIN categories c ON c.id = t.category_id"
+            " WHERE t.user_id = %s AND t.description IN ('Freelance (PayPal)', 'Streaming')",
+            (demo,),
+        )
+        linhas = set(cur.fetchall())
+    assert linhas == {("Freelance (PayPal)", "Freelance"), ("Streaming", "Assinaturas")}
