@@ -9,6 +9,7 @@ import { rotasDoCartao } from "./cartao.ts";
 import { rotasDaAtencao } from "./atencao.ts";
 import { rotasDoPatrimonio } from "./patrimonio.ts";
 import { rotasDeInvestimentos } from "./investimentos.ts";
+import type { Macro } from "./macro.ts";
 import { rotasDeImportacao } from "./importar.ts";
 import { rotasDeAjustes } from "./ajustes.ts";
 import { type ModeloDeIA, rotasDaIA, type RodarComSessao } from "./ia.ts";
@@ -29,6 +30,8 @@ export interface Dependencias<E> {
   buscar?: Buscar;
   /** PTAX de venda do dia (Banco Central). Sem ela, entrada em dólar fica sem estimativa. */
   ptax?(env: E): Promise<string | null>;
+  /** Selic e última reunião do Copom (Banco Central). Sem ela, a tela mostra só a carteira. */
+  macro?(env: E): Promise<Macro | null>;
   /** Workers AI pelo binding; sem ele, a IA fica desligada. */
   ia?(env: E): ModeloDeIA | null;
 }
@@ -65,6 +68,10 @@ export function criarApp<E extends object>(deps: Dependencias<E>) {
   rotasDaAtencao(app, rodar, deps.ptax ?? (async () => null));
   rotasDoPatrimonio(app, rodar);
   rotasDeInvestimentos(app, rodar);
+  app.get("/api/macro", async (c) => {
+    const m = await (deps.macro?.(c.env) ?? Promise.resolve(null)).catch((e: unknown) => { console.error(e); return null; });
+    return m ? c.json(m) : c.json({ erro: "O Banco Central não respondeu agora. Tente mais tarde." }, 503);
+  });
   rotasDeImportacao(app, rodar);
   rotasDeAjustes(app, rodar);
   const rodarComSessao: RodarComSessao<E> = async (c, consultas) => {

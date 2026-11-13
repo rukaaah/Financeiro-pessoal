@@ -1,0 +1,36 @@
+name: Notícias dos FIIs
+
+# ADR-021. Uma vez por dia, depois do pregão (a maior parte dos fatos relevantes e
+# avisos sai à tarde): documentos oficiais de cada FII em carteira pelo Fundos.NET da
+# B3 e resumo pela Workers AI. Sem scraping de site de notícia. A tela lê do banco.
+#
+# Como o cotacoes.yml: `schedule` só dispara pelo branch padrão (main), então este
+# arquivo também vive no main e roda o código da v3 pelo `ref` até o corte.
+on:
+  schedule:
+    - cron: "30 0 * * *" # 21h30 em Brasília, todo dia
+  workflow_dispatch:
+
+concurrency:
+  group: insights-fii
+  cancel-in-progress: false
+
+jobs:
+  pesquisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: replanejamento/v3
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --group jobs
+      - name: Pesquisar documentos e resumir
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_OWNER_DEV }}
+          # Token com permissão "Workers AI: Read". Sem ele, só os documentos entram.
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: uv run --group jobs python jobs/pesquisar_fiis.py

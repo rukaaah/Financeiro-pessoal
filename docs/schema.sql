@@ -6,8 +6,8 @@
 --
 
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.7
+-- Dumped by pg_dump version 18.7
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -458,7 +458,8 @@ COMMENT ON FUNCTION public.resolve_app_user(p_email text) IS 'E-mail verificado 
 CREATE FUNCTION public.tickers_em_carteira() RETURNS SETOF text
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'public'
-    AS $$ SELECT DISTINCT ticker FROM assets WHERE class <> 'treasury' ORDER BY 1 $$;
+    AS $$ SELECT ticker FROM assets WHERE class <> 'treasury'
+          UNION SELECT ticker FROM asset_watchlist ORDER BY 1 $$;
 
 
 --
@@ -777,6 +778,7 @@ CREATE TABLE public.ai_calls (
     input_chars integer NOT NULL,
     accepted boolean NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    response text,
     CONSTRAINT ai_calls_uso CHECK ((use_case = ANY (ARRAY['chat'::text, 'notificacao'::text, 'categoria'::text, 'extrato'::text])))
 );
 
@@ -864,6 +866,18 @@ CREATE TABLE public.asset_trades (
 --
 
 COMMENT ON COLUMN public.asset_trades.quantity IS 'Positiva na compra, negativa na venda.';
+
+
+--
+-- Name: asset_watchlist; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.asset_watchlist (
+    user_id uuid NOT NULL,
+    ticker text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT asset_watchlist_ticker_formato CHECK ((ticker ~ '^[A-Z]{4}[0-9]{2}$'::text))
+);
 
 
 --
@@ -1056,6 +1070,113 @@ COMMENT ON COLUMN public.expected_incomes.fee_brl IS 'Quanto o intermediário (P
 
 
 --
+-- Name: fii_documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_documents (
+    ticker text NOT NULL,
+    id bigint NOT NULL,
+    category text NOT NULL,
+    title text NOT NULL,
+    ref_date date,
+    delivered_at timestamp with time zone NOT NULL,
+    content text DEFAULT ''::text NOT NULL,
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: fii_insights; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_insights (
+    ticker text NOT NULL,
+    summary text NOT NULL,
+    prepare jsonb DEFAULT '[]'::jsonb NOT NULL,
+    events jsonb DEFAULT '[]'::jsonb NOT NULL,
+    documents bigint[] NOT NULL,
+    model text NOT NULL,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_insights_events_lista CHECK ((jsonb_typeof(events) = 'array'::text)),
+    CONSTRAINT fii_insights_prepare_lista CHECK ((jsonb_typeof(prepare) = 'array'::text))
+);
+
+
+--
+-- Name: fii_management; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_management (
+    ticker text NOT NULL,
+    management jsonb NOT NULL,
+    documents bigint[] NOT NULL,
+    model text NOT NULL,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_management_objeto CHECK ((jsonb_typeof(management) = 'object'::text))
+);
+
+
+--
+-- Name: fii_market_daily; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_market_daily (
+    day date NOT NULL,
+    trend text NOT NULL,
+    funds smallint NOT NULL,
+    above_average smallint NOT NULL,
+    median_change_21 numeric(8,2),
+    rising text[] DEFAULT '{}'::text[] NOT NULL,
+    falling text[] DEFAULT '{}'::text[] NOT NULL,
+    selic numeric(6,2),
+    selic_direction text,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_market_daily_tendencia CHECK ((trend = ANY (ARRAY['alta'::text, 'queda'::text, 'lateral'::text, 'sem_dados'::text])))
+);
+
+
+--
+-- Name: fii_opportunities; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_opportunities (
+    ticker text NOT NULL,
+    day date NOT NULL,
+    price numeric(14,6) NOT NULL,
+    score smallint,
+    percentile smallint,
+    trading_days smallint NOT NULL,
+    verdict text NOT NULL,
+    reason text NOT NULL,
+    risks jsonb DEFAULT '[]'::jsonb NOT NULL,
+    outlook text DEFAULT ''::text NOT NULL,
+    target_price numeric(14,2),
+    facts jsonb DEFAULT '{}'::jsonb NOT NULL,
+    model text,
+    generated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fii_opportunities_nota CHECK (((score >= 0) AND (score <= 100))),
+    CONSTRAINT fii_opportunities_riscos CHECK ((jsonb_typeof(risks) = 'array'::text)),
+    CONSTRAINT fii_opportunities_veredito CHECK ((verdict = ANY (ARRAY['grande_dia'::text, 'bom_preco'::text, 'esperar'::text, 'sem_dados'::text])))
+);
+
+
+--
+-- Name: fii_profiles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fii_profiles (
+    ticker text NOT NULL,
+    cnpj text NOT NULL,
+    name text,
+    started_on date,
+    segment text,
+    mandate text,
+    management text,
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: fii_reports; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1066,6 +1187,9 @@ CREATE TABLE public.fii_reports (
     nav_per_share numeric(18,6) NOT NULL,
     dy_month numeric(10,6) NOT NULL,
     fetched_at timestamp with time zone DEFAULT now() NOT NULL,
+    shares_outstanding numeric(20,0),
+    shareholders integer,
+    net_assets numeric(18,2),
     CONSTRAINT fii_reports_mes CHECK ((ref_month = (date_trunc('month'::text, (ref_month)::timestamp with time zone))::date))
 );
 
@@ -1317,6 +1441,14 @@ ALTER TABLE ONLY public.asset_trades
 
 
 --
+-- Name: asset_watchlist asset_watchlist_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_watchlist
+    ADD CONSTRAINT asset_watchlist_pkey PRIMARY KEY (user_id, ticker);
+
+
+--
 -- Name: assets assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1469,6 +1601,54 @@ ALTER TABLE ONLY public.expected_incomes
 
 
 --
+-- Name: fii_documents fii_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_documents
+    ADD CONSTRAINT fii_documents_pkey PRIMARY KEY (ticker, id);
+
+
+--
+-- Name: fii_insights fii_insights_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_insights
+    ADD CONSTRAINT fii_insights_pkey PRIMARY KEY (ticker);
+
+
+--
+-- Name: fii_management fii_management_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_management
+    ADD CONSTRAINT fii_management_pkey PRIMARY KEY (ticker);
+
+
+--
+-- Name: fii_market_daily fii_market_daily_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_market_daily
+    ADD CONSTRAINT fii_market_daily_pkey PRIMARY KEY (day);
+
+
+--
+-- Name: fii_opportunities fii_opportunities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_opportunities
+    ADD CONSTRAINT fii_opportunities_pkey PRIMARY KEY (ticker, day);
+
+
+--
+-- Name: fii_profiles fii_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fii_profiles
+    ADD CONSTRAINT fii_profiles_pkey PRIMARY KEY (ticker);
+
+
+--
 -- Name: fii_reports fii_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1567,6 +1747,13 @@ CREATE UNIQUE INDEX app_users_um_demo_ativo ON public.app_users USING btree (is_
 --
 
 CREATE UNIQUE INDEX categories_um_cofrinho_por_categoria ON public.categories USING btree (goal_account_id) WHERE (goal_account_id IS NOT NULL);
+
+
+--
+-- Name: fii_documents_recentes; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX fii_documents_recentes ON public.fii_documents USING btree (ticker, delivered_at DESC);
 
 
 --
@@ -1744,6 +1931,14 @@ ALTER TABLE ONLY public.asset_trades
 
 ALTER TABLE ONLY public.asset_trades
     ADD CONSTRAINT asset_trades_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_watchlist asset_watchlist_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_watchlist
+    ADD CONSTRAINT asset_watchlist_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id) ON DELETE CASCADE;
 
 
 --
@@ -2095,6 +2290,19 @@ CREATE POLICY asset_trades_isolamento ON public.asset_trades TO app USING ((user
 
 
 --
+-- Name: asset_watchlist; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.asset_watchlist ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: asset_watchlist asset_watchlist_isolamento; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY asset_watchlist_isolamento ON public.asset_watchlist TO app USING ((user_id = public.current_app_user())) WITH CHECK ((user_id = public.current_app_user()));
+
+
+--
 -- Name: assets; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -2425,6 +2633,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.asset_trades TO app;
 
 
 --
+-- Name: TABLE asset_watchlist; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE ON TABLE public.asset_watchlist TO app;
+
+
+--
 -- Name: TABLE assets; Type: ACL; Schema: public; Owner: -
 --
 
@@ -2485,6 +2700,54 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.counterparties TO app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.expected_incomes TO app;
+
+
+--
+-- Name: TABLE fii_documents; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_documents TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_documents TO jobs;
+
+
+--
+-- Name: TABLE fii_insights; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_insights TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_insights TO jobs;
+
+
+--
+-- Name: TABLE fii_management; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_management TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_management TO jobs;
+
+
+--
+-- Name: TABLE fii_market_daily; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_market_daily TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_market_daily TO jobs;
+
+
+--
+-- Name: TABLE fii_opportunities; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_opportunities TO app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fii_opportunities TO jobs;
+
+
+--
+-- Name: TABLE fii_profiles; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.fii_profiles TO app;
+GRANT SELECT,INSERT,UPDATE ON TABLE public.fii_profiles TO jobs;
 
 
 --

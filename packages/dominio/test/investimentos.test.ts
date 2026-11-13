@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diaUtilAnterior, ondeAportar, posicaoDe, projetar, relatorioDaCarteira, valorDe } from "../src/investimentos.ts";
+import { cotasSugeridas, diaUtilAnterior, ondeAportar, posicaoDe, projetar, relatorioDaCarteira, valorDe } from "../src/investimentos.ts";
 
 describe("posição", () => {
   it("preço médio ponderado; venda não mexe no preço médio", () => {
@@ -69,5 +69,22 @@ describe("relatório da carteira", () => {
   it("avisa quando a cotação mais nova é de antes do dia útil anterior", () => {
     expect(diaUtilAnterior("2026-11-09")).toBe("2026-11-06"); // segunda → sexta
     expect(relatorioDaCarteira([{ ...base, ticker: "VELHO11", valor: 1n, preco: 10, pvp: null, dy: null, cotadoEm: "2026-11-02" }], regras, "2026-11-05").desatualizado).toBe("2026-11-02");
+  });
+});
+
+describe("cotas sugeridas no momento de compra", () => {
+  const regras = { maxPvp: 1, maxPeso: 20 };
+  it("cotas inteiras que o aporte paga", () => {
+    expect(cotasSugeridas("98.500000", 100_000n, 0n, 1_000_000n, regras, 0.9)).toEqual({ cotas: 10, valor: 98_500n, limite: null });
+  });
+  it("respeita o peso máximo por ativo", () => {
+    // carteira de R$ 10.000 com R$ 1.900 no fundo; aporte de R$ 1.000: teto 20% de 11.000 = 2.200, sobra 300
+    const r = cotasSugeridas("100.000000", 100_000n, 190_000n, 1_000_000n, regras, 0.9);
+    expect(r.cotas).toBe(3);
+    expect(r.limite).toMatch(/peso máximo de 20,0%/);
+  });
+  it("P/VP acima do máximo do usuário não sugere cota", () => {
+    const r = cotasSugeridas("100.000000", 100_000n, 0n, 1_000_000n, regras, 1.08);
+    expect(r).toMatchObject({ cotas: 0, limite: "P/VP 1,08 acima do seu máximo (1,00)" });
   });
 });

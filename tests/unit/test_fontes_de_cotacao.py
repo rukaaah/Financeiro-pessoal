@@ -5,7 +5,12 @@ from decimal import Decimal
 
 from financeiro.market_data.adapters.brapi import ler_preco
 from financeiro.market_data.adapters.cotahist import Fechamento, ler_cotahist
-from financeiro.market_data.adapters.cvm_informe_mensal import informes_por_cnpj, isin_para_cnpj
+from financeiro.market_data.adapters.cvm_informe_mensal import (
+    extras_por_cnpj,
+    informes_por_cnpj,
+    isin_para_cnpj,
+    perfis_por_cnpj,
+)
 from financeiro.market_data.domain.indicadores import (
     InformeMensal,
     dy_12m_percentual,
@@ -126,3 +131,40 @@ def test_brapi_le_o_preco_e_recusa_resposta_sem_preco() -> None:
     assert ler_preco('{"error":true,"code":"MISSING_TOKEN"}') is None
     assert ler_preco('{"results":[{"regularMarketPrice":null}]}') is None
     assert ler_preco("não é json") is None
+
+
+GERAL_COMPLETO = (
+    "CNPJ_Fundo_Classe;Data_Referencia;Versao;Nome_Fundo_Classe;Data_Funcionamento;"
+    "Quantidade_Cotas_Emitidas;Segmento_Atuacao;Mandato;Tipo_Gestao\n"
+    "11.111.111/0001-11;2026-08-01;1;FUNDO FICTICIO;2015-03-02;1000;Logística;Renda;Ativa\n"
+    "11.111.111/0001-11;2026-09-01;1;FUNDO FICTICIO;2015-03-02;1000;Logística;Renda;Ativa\n"
+    "11.111.111/0001-11;2026-09-01;2;FUNDO FICTICIO NOVO;2015-03-02;1500;Logística;Renda;Ativa\n"
+    "99.999.999/0001-99;2026-09-01;1;OUTRO;2020-01-01;10;;;\n"
+)
+
+
+def test_perfil_vem_da_linha_mais_recente_e_guarda_cotas_por_mes() -> None:
+    perfil = perfis_por_cnpj(GERAL_COMPLETO, {"11.111.111/0001-11"})["11.111.111/0001-11"]
+    assert (perfil.nome, perfil.inicio, perfil.segmento, perfil.gestao) == (
+        "FUNDO FICTICIO NOVO",
+        date(2015, 3, 2),
+        "Logística",
+        "Ativa",
+    )
+    assert perfil.cotas_por_mes == {
+        date(2026, 8, 1): Decimal(1000),
+        date(2026, 9, 1): Decimal(1500),
+    }
+
+
+def test_extras_tem_cotistas_e_pl_da_maior_versao_e_aceitam_campo_vazio() -> None:
+    texto = (
+        "CNPJ_Fundo_Classe;Data_Referencia;Versao;Total_Numero_Cotistas;Patrimonio_Liquido\n"
+        "11.111.111/0001-11;2026-09-01;1;100;1000.50\n"
+        "11.111.111/0001-11;2026-09-01;2;120;1100.00\n"
+        "11.111.111/0001-11;2026-08-01;1;;\n"
+    )
+    assert extras_por_cnpj(texto, {"11.111.111/0001-11"}) == {
+        ("11.111.111/0001-11", date(2026, 9, 1)): (120, Decimal("1100.00")),
+        ("11.111.111/0001-11", date(2026, 8, 1)): (None, None),
+    }

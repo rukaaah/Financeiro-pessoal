@@ -94,18 +94,59 @@ export const apiPatrimonio = {
   ajustarCofrinho: (corpo: { cofrinho_id: string; saldo: string }) => pedir<{ saldo: string }>("/api/cofrinhos/saldo", { method: "POST", body: JSON.stringify(corpo) }),
 };
 
-export interface Ativo { id: string; ticker: string; nome: string; classe: string; classe_nome: string; quantidade: number; preco_medio: string; preco: string | null; valor: string; custo: string; peso: number; variacao_pm: number; variacao_mes: number | null; pvp: number | null; dy: number | null; liquidez: number | null; cotado_em: string | null; fonte: string | null; atualizado_em: string | null; variacao_dia: number | null; variacao_30d: number | null; vp_cota: number | null; vp_mes: string | null }
+export interface Ativo { id: string; ticker: string; nome: string; classe: string; classe_nome: string; quantidade: number; preco_medio: string; preco: string | null; valor: string; custo: string; peso: number; variacao_pm: number; variacao_mes: number | null; pvp: number | null; dy: number | null; liquidez: number | null; cotado_em: string | null; fonte: string | null; atualizado_em: string | null; variacao_dia: number | null; variacao_30d: number | null; vp_cota: number | null; vp_mes: string | null; rendimento: Rendimento; proventos_desde: string | null }
 export interface Investimentos {
-  total: string; custo: string; variacao_mes: string; ativos: Ativo[];
-  classes: { classe: string; nome: string; valor: string; peso: number; meta: number | null }[];
+  total: string; custo: string; variacao_mes: string; ativos: Ativo[]; rendimento: Rendimento;
+  classes: { classe: string; nome: string; valor: string; peso: number; meta: number | null; rendimento: Rendimento }[];
   series: { mes: string; aporte: string; proventos: string; aportado_acumulado: string }[];
   regras: { maxPvp: number; maxPeso: number; minLiquidez: number };
   onde_aportar: { aporte: string; sugestoes: { ticker: string; valor: string; cotas: number | null; motivo: string }[]; fora: { ticker: string; motivo: string }[]; sobra: string; avisos: string[] };
   relatorio: { renda_mensal: string; alertas: { ticker: string; tipo: "oportunidade" | "atencao"; texto: string }[]; desatualizado: string | null; atualizado_em: string | null; fonte: string | null };
 }
+/** Percentuais sobre o custo; proventos estimados pelos informes da CVM. */
+export interface Rendimento { valorizacao: number | null; proventos: number | null; total: number | null; proventos_valor: string }
+export type AcaoCopom = "manteve" | "reduziu" | "elevou";
+export interface Macro {
+  selic: number; fase: "manutencao" | "queda" | "alta"; seguidas: number;
+  antes: { acao: "reduziu" | "elevou"; reunioes: number; pontos: number | null } | null;
+  ultima: { reuniao: number; data: string; titulo: string; acao: AcaoCopom; unanime: boolean | null; texto: string[] };
+  ata: { reuniao: number; publicada: string } | null;
+  historico: { reuniao: number; data: string; acao: AcaoCopom; taxa: number }[]; fonte: string;
+}
+export interface FichaFundo {
+  ticker: string; em_carteira: boolean; acompanhando: boolean; rendimento_12m: number | null;
+  perfil: { nome: string | null; cnpj: string; inicio: string | null; segmento: string | null; mandato: string | null; gestao: string | null } | null;
+  cotacao: { preco: string; pvp: number | null; dy: number | null; cotado_em: string; fonte: string; liquidez: number | null } | null;
+  historico: { mes: string; vp_cota: number; dy_mes: number; por_cota: number | null; cotas: number | null; cotistas: number | null; pl: number | null }[];
+  emissoes: { mes: string; novas: number }[];
+  noticias: NoticiasFii | null;
+}
+export interface EventoFii { tipo: "data_com" | "pagamento" | "subscricao" | "assembleia" | "outro"; data: string; texto: string; documento: number }
+export interface NoticiasFii {
+  ticker: string; resumo: string | null; preparar: string[]; eventos: EventoFii[]; gerado_em: string | null;
+  documentos: { id: number; titulo: string; categoria: string; entregue_em: string }[];
+  gestao: GestaoFii | null; gestao_datas: Record<string, string> | null;
+}
+export interface GestaoFii {
+  postura: string;
+  planos: { texto: string; documento: number; trecho: string }[];
+  mudancas: { tema: string; antes: string; agora: string; documento_antes: number; documento_agora: number; trecho: string }[];
+}
+export type Veredito = "grande_dia" | "bom_preco" | "esperar" | "sem_dados";
+export interface MomentoFii {
+  aporte: string;
+  panorama: { dia: string; tendencia: "alta" | "queda" | "lateral" | "sem_dados"; fundos: number; acima_da_media: number; variacao_21: number | null; subindo: string[]; caindo: string[]; selic: string | null; direcao_selic: string | null } | null;
+  fundos: { ticker: string; dia: string; preco: number; nota: number | null; percentil: number | null; pregoes: number; veredito: Veredito; motivo: string; riscos: string[]; previsao: string; preco_alvo: string | null; fatos: Record<string, string>; com_ia: boolean; gerado_em: string; sugestao: { cotas: number; valor: string; limite: string | null } | null }[];
+}
 export const apiInvest = {
+  momento: (aporte?: string) => pedir<MomentoFii>(`/api/investimentos/momento${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),
+  noticias: () => pedir<{ noticias: NoticiasFii[] }>("/api/investimentos/noticias"),
   ver: (aporte?: string) => pedir<Investimentos>(`/api/investimentos${aporte ? `?aporte=${encodeURIComponent(aporte)}` : ""}`),
   comprar: (corpo: object) => pedir<{ valor: string }>("/api/comprar-ativo", { method: "POST", body: JSON.stringify(corpo) }),
+  macro: () => pedir<Macro>("/api/macro"),
+  fundo: (ticker: string) => pedir<FichaFundo>(`/api/investimentos/fundo/${encodeURIComponent(ticker)}`),
+  acompanhar: (ticker: string) => pedir("/api/investimentos/acompanhar", { method: "POST", body: JSON.stringify({ ticker }) }),
+  deixarDeAcompanhar: (ticker: string) => pedir(`/api/investimentos/acompanhar/${encodeURIComponent(ticker)}`, { method: "DELETE" }),
 };
 
 export type TipoDaLinha = "gasto" | "entrada" | "guardar" | "resgatar" | "transferir";
@@ -116,9 +157,9 @@ export const apiEntrada = {
   importar: (conta_id: string, linhas: LinhaImportada[]) => pedir<{ importadas: number; cofrinhos_criados: number }>("/api/importar", { method: "POST", body: JSON.stringify({ conta_id, linhas }) }),
 };
 
-export interface RespostaChat { resposta: string; perguntas_seguintes?: string[]; demo?: boolean; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
+export interface RespostaChat { resposta: string; contra?: string; perguntas_seguintes?: string[]; demo?: boolean; verificado?: string[]; faltou?: string | null; tabela?: { funcao: string; linhas: Record<string, unknown>[] }[] }
 export const apiIA = {
-  chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
+  chat: (corpo: { contexto: string; pergunta: string; mes: string; categoria_id?: string; ticker?: string; historico?: { eu: string; ia: string }[] }) => pedir<RespostaChat>("/api/chat", { method: "POST", body: JSON.stringify(corpo) }),
   extrato: (texto: string) => pedir<{ demo?: boolean; motivo?: string; linhas?: LinhaImportada[]; descartadas?: number; de_fora?: number }>("/api/ia/extrato", { method: "POST", body: JSON.stringify({ texto }) }),
   notificacao: (texto: string) => pedir<{ regra?: boolean; reconheceu?: boolean; valor?: string | null; data?: string | null; estabelecimento?: string | null; sentido?: string; motivo?: string }>("/api/ia/notificacao", { method: "POST", body: JSON.stringify({ texto }) }),
 };
